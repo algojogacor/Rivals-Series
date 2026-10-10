@@ -1200,7 +1200,7 @@ export function SquadBuilderWorkbench({
                             cardId={p.card_id}
                             basePlayerId={p.base_player_id}
                             name={p.name}
-                            position={p.position}
+                            position={p.position || p.position_label}
                             isTrending={p.is_trending}
                             isIndonesian={p.is_indonesian}
                             size="lg"
@@ -1209,10 +1209,10 @@ export function SquadBuilderWorkbench({
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center gap-1">
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-extrabold bg-[var(--ink-1)] border border-[var(--line)] text-[var(--text)]">
-                                {p.position}
+                                {p.position || p.position_label}
                               </span>
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-[var(--ink-1)] text-[var(--text-dim)]">
-                                {p.player_type_label}
+                                {p.player_type_label || p.card_type_label}
                               </span>
                               {p.is_trending === 1 && (
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-[var(--p-a-soft)] text-[var(--p-a)] border border-[var(--p-a)]/30">
@@ -1231,7 +1231,7 @@ export function SquadBuilderWorkbench({
                             </div>
 
                             <div className="text-[11px] text-[var(--text-dim)] truncate">
-                              {p.club_name || 'Free Agent'} · {p.nationality_name}
+                              {p.club_name || p.team_name || 'Free Agent'} · {p.nationality_name || p.country_name || '-'}
                             </div>
 
                             {p.variation_name && (
@@ -1260,22 +1260,29 @@ export function SquadBuilderWorkbench({
                             className="grid grid-cols-3 gap-1.5 pt-2 border-t border-[var(--line)] cursor-pointer"
                             onClick={() => setDetailCardId(p.card_id)}
                           >
-                            {top6.slice(0, 6).map((st: any) => (
-                              <div
-                                key={st.key}
-                                className="px-2 py-1 rounded bg-[var(--ink-1)] flex items-center justify-between text-[10px]"
-                              >
-                                <span className="text-[var(--text-faint)] truncate mr-1">
-                                  {st.label.replace('Awareness', 'Awr').replace('Defensive', 'Def').replace('Offensive', 'Off')}
-                                </span>
-                                <span
-                                  className="font-mono font-bold tabular-nums"
-                                  style={{ color: getStatTierColor(st.val) }}
+                            {top6.slice(0, 6).map((st: any, sIdx: number) => {
+                              const rawLabel = String(st?.label || st?.l || st?.k || st?.key || '');
+                              const val = Number(st?.val ?? st?.v ?? 0);
+                              return (
+                                <div
+                                  key={st?.key || st?.k || sIdx}
+                                  className="px-2 py-1 rounded bg-[var(--ink-1)] flex items-center justify-between text-[10px]"
                                 >
-                                  {st.val}
-                                </span>
-                              </div>
-                            ))}
+                                  <span className="text-[var(--text-faint)] truncate mr-1">
+                                    {rawLabel
+                                      .replace('Awareness', 'Awr')
+                                      .replace('Defensive', 'Def')
+                                      .replace('Offensive', 'Off')}
+                                  </span>
+                                  <span
+                                    className="font-mono font-bold tabular-nums"
+                                    style={{ color: getStatTierColor(val) }}
+                                  >
+                                    {val}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -1599,22 +1606,26 @@ export function SquadBuilderWorkbench({
 
                         {top6.length > 0 && (
                           <div className="grid grid-cols-3 gap-1 pt-2 border-t border-[var(--line)]">
-                            {top6.slice(0, 6).map((st: any) => (
-                              <div
-                                key={st.key}
-                                className="px-1.5 py-0.5 rounded bg-[var(--ink-1)] flex items-center justify-between text-[10px]"
-                              >
-                                <span className="text-[var(--text-faint)] truncate mr-1">
-                                  {st.label.slice(0, 8)}
-                                </span>
-                                <span
-                                  className="font-mono font-bold"
-                                  style={{ color: getStatTierColor(st.val) }}
+                            {top6.slice(0, 6).map((st: any, sIdx: number) => {
+                              const rawLabel = String(st?.label || st?.l || st?.k || st?.key || '');
+                              const val = Number(st?.val ?? st?.v ?? 0);
+                              return (
+                                <div
+                                  key={st?.key || st?.k || sIdx}
+                                  className="px-1.5 py-0.5 rounded bg-[var(--ink-1)] flex items-center justify-between text-[10px]"
                                 >
-                                  {st.val}
-                                </span>
-                              </div>
-                            ))}
+                                  <span className="text-[var(--text-faint)] truncate mr-1">
+                                    {rawLabel.slice(0, 8)}
+                                  </span>
+                                  <span
+                                    className="font-mono font-bold"
+                                    style={{ color: getStatTierColor(val) }}
+                                  >
+                                    {val}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
 

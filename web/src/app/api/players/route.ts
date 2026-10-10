@@ -24,15 +24,30 @@ function stripDiacritics(str: string): string {
     .trim();
 }
 
-function mapSummaryRow(r: any): EfootballPlayerSummary {
-  let top6Lv1 = [];
-  let top6Max = [];
+function normalizeTop6(rawJson: any) {
   try {
-    top6Lv1 = r.top6_lv1_json ? JSON.parse(String(r.top6_lv1_json)) : [];
-  } catch {}
-  try {
-    top6Max = r.top6_max_json ? JSON.parse(String(r.top6_max_json)) : [];
-  } catch {}
+    const parsed = rawJson ? JSON.parse(String(rawJson)) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item: any) => {
+      const k = String(item?.k || item?.key || '');
+      const l = String(item?.l || item?.label || k);
+      const v = Number(item?.v ?? item?.val ?? 0);
+      return { k, l, v, key: k, label: l, val: v };
+    });
+  } catch {
+    return [];
+  }
+}
+
+function mapSummaryRow(r: any): EfootballPlayerSummary & Record<string, any> {
+  const top6Lv1 = normalizeTop6(r.top6_lv1_json);
+  const top6Max = normalizeTop6(r.top6_max_json);
+  const posLabel = String(r.position_label || '');
+  const cardTypeLabel = String(r.card_type_label || 'Standard');
+  const teamName = String(r.team_name || '-');
+  const countryName = String(r.country_name || '-');
+  const levelCap = Number(r.level_cap || 1);
+  const strongerFoot = Number(r.stronger_foot || 0);
 
   return {
     card_id: String(r.card_id),
@@ -40,10 +55,12 @@ function mapSummaryRow(r: any): EfootballPlayerSummary {
     name: String(r.name),
     accented_name: String(r.accented_name),
     player_type: Number(r.player_type),
-    card_type_label: String(r.card_type_label),
+    card_type_label: cardTypeLabel,
+    player_type_label: cardTypeLabel,
     variation_name: r.variation_name ? String(r.variation_name) : null,
     registered_position: Number(r.registered_position),
-    position_label: String(r.position_label),
+    position_label: posLabel,
+    position: posLabel,
     playing_style: Number(r.playing_style || 0),
     playing_style_label: r.playing_style_label ? String(r.playing_style_label) : null,
     playing_style_defensive: Number(r.playing_style_defensive || 0),
@@ -52,18 +69,22 @@ function mapSummaryRow(r: any): EfootballPlayerSummary {
       : null,
     overall_lv1: Number(r.overall_lv1),
     overall_max: Number(r.overall_max),
-    level_cap: Number(r.level_cap || 1),
+    level_cap: levelCap,
+    max_level: levelCap,
     country_id: Number(r.country_id || 0),
-    country_name: String(r.country_name || '-'),
+    country_name: countryName,
+    nationality_name: countryName,
     is_indonesian: Number(r.is_indonesian || 0),
     is_trending: Number(r.is_trending || 0),
     club_id: Number(r.club_id || 0),
-    team_name: String(r.team_name || '-'),
+    team_name: teamName,
+    club_name: teamName,
     league_name: String(r.league_name || '-'),
     height: Number(r.height || 0),
     weight: Number(r.weight || 0),
     age: Number(r.age || 0),
-    stronger_foot: Number(r.stronger_foot || 0),
+    stronger_foot: strongerFoot,
+    foot: strongerFoot,
     condition_rating: Number(r.condition_rating || 0),
     stars: Number(r.stars || 0),
     top6_lv1: top6Lv1,

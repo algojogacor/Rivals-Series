@@ -59,7 +59,7 @@ const PITCH_ROWS: Array<Array<{ pos: string; label: string }>> = [
   [{ pos: 'GK', label: 'GK' }],
 ];
 
-const STAT_CATEGORIES = ['Attacking', 'Dribbling', 'Defending', 'Athleticism', 'Goalkeeping'];
+const STAT_CATEGORIES = ['Attacking', 'Defending', 'Athleticism', 'Goalkeeping'];
 
 export function PlayerDetailModal({
   cardId,
@@ -458,9 +458,14 @@ export function PlayerDetailModal({
                   <div className="rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] p-3 space-y-1.5">
                     {PITCH_ROWS.map((row, rIdx) => (
                       <div key={rIdx} className="flex items-center justify-center gap-1.5">
-                        {row.map((cell) => {
-                          const prof = Number(player.positions?.[cell.pos] ?? 0);
-                          const isPrimary = player.position === cell.pos;
+                          { row.map((cell) => {
+                          const prof = Number(
+                            player.positions?.proficiency?.[cell.pos] ??
+                              player.positions?.[cell.pos] ??
+                              0
+                          );
+                          const isPrimary =
+                            (player.position || player.position_label) === cell.pos;
                           return (
                             <div
                               key={cell.pos}
