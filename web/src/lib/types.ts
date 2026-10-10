@@ -88,6 +88,8 @@ export interface MatchGoalEvent {
   id: string;
   match_id: string;
   scoring_participant_id: ParticipantId;
+  scorer_card_id?: string | null;
+  scorer_base_player_id?: number | null;
   scorer_player_name: string;
   scorer_card_version?: string | null;
   minute?: number | null;
@@ -100,7 +102,10 @@ export interface GoalkeeperMatchRecord {
   id: string;
   match_id: string;
   participant_id: ParticipantId;
+  goalkeeper_card_id?: string | null;
+  goalkeeper_base_player_id?: number | null;
   goalkeeper_name: string;
+  goalkeeper_card_version?: string | null;
   is_starter: number;
   remained_full_match: number;
   clean_sheet_eligible: number;
@@ -116,6 +121,47 @@ export interface MatchQuotaCredit {
   trending_first_half: number; // 0 or 1 (2 Trending players simultaneously full 1st half)
   trending_second_half: number; // 0 or 1 (2 Trending players simultaneously full 2nd half)
   notes?: string | null;
+}
+
+export interface RosterPhaseStatus {
+  phase: number;
+  is_locked: number;
+  locked_at?: string | null;
+  locked_by?: string | null;
+  pa_locked: number;
+  pa_locked_at?: string | null;
+  pb_locked: number;
+  pb_locked_at?: string | null;
+  both_locked: boolean;
+  md10_completed: boolean;
+}
+
+export interface RosterCard {
+  id: string;
+  participant_id: ParticipantId;
+  roster_phase: number;
+  efootball_card_id?: string | null;
+  base_player_id?: number | null;
+  player_name: string;
+  card_version: string;
+  card_category?: string | null;
+  is_trending: number;
+  nationality?: string | null;
+  is_indonesian: number;
+  position?: string | null;
+  overall_lv1?: number | null;
+  overall_max?: number | null;
+  slot_code?: string | null;
+  is_active: number;
+  created_at?: string | null;
+  // Enriched from efootball_players join when available
+  club_name?: string | null;
+  playing_style?: number | null;
+  playing_style_label?: string | null;
+  player_type?: number | null;
+  player_type_label?: string | null;
+  top6_lv1?: Array<{ key: string; label: string; val: number }>;
+  top6_max?: Array<{ key: string; label: string; val: number }>;
 }
 
 export type SanctionType = 
@@ -179,6 +225,7 @@ export interface EarlyChampionCalculation {
 }
 
 export interface GoldenBootEntry {
+  base_player_id?: number | null;
   player_name: string;
   participant_id: ParticipantId;
   total_goals: number;
@@ -186,9 +233,11 @@ export interface GoldenBootEntry {
 }
 
 export interface GoldenGloveEntry {
+  base_player_id?: number | null;
   goalkeeper_name: string;
   participant_id: ParticipantId;
   clean_sheets: number;
+  card_versions?: string[];
 }
 
 export interface GoalNomination {

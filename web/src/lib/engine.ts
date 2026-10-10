@@ -432,13 +432,23 @@ export function calculateEarlyChampion(
 
 /**
  * Pasal 42: Golden Boot Goal Aggregation
- * Combines player card versions, excludes own goals, shootout, reconstruction-only, and forfeit goals.
+ * Combines player card versions of the same virtual player (base_player_id or normalized name),
+ * excludes own goals, shootout, reconstruction-only, and forfeit goals.
  */
 export function calculateGoldenBoot(
   goalEvents: MatchGoalEvent[],
   confirmedMatchIds: Set<string>
 ): GoldenBootEntry[] {
-  const map = new Map<string, { participantId: ParticipantId; totalGoals: number; versions: Set<string> }>();
+  const map = new Map<
+    string,
+    {
+      basePlayerId: number | null;
+      playerName: string;
+      participantId: ParticipantId;
+      totalGoals: number;
+      versions: Set<string>;
+    }
+  >();
 
   for (const ev of goalEvents) {
     // Only count goals from confirmed matches
@@ -448,11 +458,18 @@ export function calculateGoldenBoot(
     // Exclude reconstruction-only own goals
     if (ev.is_reconstruction_only) continue;
 
-    const key = ev.scorer_player_name.trim();
-    if (!key) continue;
+    const cleanName = ev.scorer_player_name.trim();
+    if (!cleanName) continue;
+
+    const baseId = ev.scorer_base_player_id ? Number(ev.scorer_base_player_id) : null;
+    const key = baseId
+      ? `${ev.scoring_participant_id}::base_${baseId}`
+      : `${ev.scoring_participant_id}::name_${cleanName.toLowerCase()}`;
 
     if (!map.has(key)) {
       map.set(key, {
+        basePlayerId: baseId,
+        playerName: cleanName,
         participantId: ev.scoring_participant_id,
         totalGoals: 0,
         versions: new Set<string>(),
@@ -466,8 +483,9 @@ export function calculateGoldenBoot(
     }
   }
 
-  const results: GoldenBootEntry[] = Array.from(map.entries()).map(([name, data]) => ({
-    player_name: name,
+  const results: GoldenBootEntry[] = Array.from(map.values()).map((data) => ({
+    base_player_id: data.basePlayerId,
+    player_name: data.playerName,
     participant_id: data.participantId,
     total_goals: data.totalGoals,
     card_versions: Array.from(data.versions),
@@ -479,21 +497,35 @@ export function calculateGoldenBoot(
 /**
  * Pasal 44: Golden Glove Individual Clean-Sheet Eligibility
  * Goalkeeper must start and remain on the pitch until final whistle.
+ * Combines card versions of the same virtual goalkeeper (goalkeeper_base_player_id or normalized name).
  * Excludes matches that ended in forfeit or Technical Win.
  */
 export function calculateGoldenGlove(
   gkRecords: GoalkeeperMatchRecord[],
   matches: Match[]
 ): GoldenGloveEntry[] {
-  const matchMap = new Map<string, Match>(matches.map(m => [m.id, m]));
-  const map = new Map<string, { participantId: ParticipantId; cleanSheets: number }>();
+  const matchMap = new Map<string, Match>(matches.map((m) => [m.id, m]));
+  const map = new Map<
+    string,
+    {
+      basePlayerId: number | null;
+      goalkeeperName: string;
+      participantId: ParticipantId;
+      cleanSheets: number;
+      versions: Set<string>;
+    }
+  >();
 
   for (const rec of gkRecords) {
     const match = matchMap.get(rec.match_id);
     if (!match || !isOfficialMatch(match)) continue;
 
     // Forfeit and Technical Win do NOT produce clean sheets
-    if (['forfeit_pa', 'forfeit_pb', 'double_forfeit', 'technical_win_pa', 'technical_win_pb'].includes(match.result_type)) {
+    if (
+      ['forfeit_pa', 'forfeit_pb', 'double_forfeit', 'technical_win_pa', 'technical_win_pb'].includes(
+        match.result_type
+      )
+    ) {
       continue;
     }
 
@@ -502,26 +534,150 @@ export function calculateGoldenGlove(
 
     // Check if team conceded zero goals
     const isHome = match.home_participant_id === rec.participant_id;
-    const goalsConceded = isHome 
-      ? (match.et_played ? (match.away_et_score ?? match.away_score ?? 0) : (match.away_score ?? 0))
-      : (match.et_played ? (match.home_et_score ?? match.home_score ?? 0) : (match.home_score ?? 0));
+    const goalsConceded = isHome
+      ? match.et_played
+        ? (match.away_et_score ?? match.away_score ?? 0)
+        : (match.away_score ?? 0)
+      : match.et_played
+      ? (match.home_et_score ?? match.home_score ?? 0)
+      : (match.home_score ?? 0);
 
     if (goalsConceded === 0) {
-      const key = rec.goalkeeper_name.trim();
+      const cleanName = rec.goalkeeper_name.trim();
+      if (!cleanName) continue;
+      const baseId = rec.goalkeeper_base_player_id ? Number(rec.goalkeeper_base_player_id) : null;
+      const key = baseId
+        ? `${rec.participant_id}::base_${baseId}`
+        : `${rec.participant_id}::name_${cleanName.toLowerCase()}`;
+
       if (!map.has(key)) {
-        map.set(key, { participantId: rec.participant_id, cleanSheets: 0 });
+        map.set(key, {
+          basePlayerId: baseId,
+          goalkeeperName: cleanName,
+          participantId: rec.participant_id,
+          cleanSheets: 0,
+          versions: new Set<string>(),
+        });
       }
-      map.get(key)!.cleanSheets += 1;
+      const entry = map.get(key)!;
+      entry.cleanSheets += 1;
+      if (rec.goalkeeper_card_version) {
+        entry.versions.add(rec.goalkeeper_card_version);
+      }
     }
   }
 
-  const results: GoldenGloveEntry[] = Array.from(map.entries()).map(([name, data]) => ({
-    goalkeeper_name: name,
+  const results: GoldenGloveEntry[] = Array.from(map.values()).map((data) => ({
+    base_player_id: data.basePlayerId,
+    goalkeeper_name: data.goalkeeperName,
     participant_id: data.participantId,
     clean_sheets: data.cleanSheets,
+    card_versions: Array.from(data.versions),
   }));
 
   return results.sort((a, b) => b.clean_sheets - a.clean_sheets);
+}
+
+/**
+ * Pasal 14 & Pasal 17: Validate Squad before Locking
+ * Enforces max 26 cards, no duplicate virtual players (base_player_id), and minimum 2 Trending cards.
+ */
+export function validateSquadForLock(
+  cards: Array<{
+    base_player_id?: number | null;
+    player_name: string;
+    card_version?: string | null;
+    is_trending?: number | boolean | null;
+    is_indonesian?: number | boolean | null;
+  }>
+): {
+  valid: boolean;
+  totalCards: number;
+  trendingCount: number;
+  indonesianCount: number;
+  duplicatePlayers: string[];
+  errors: string[];
+} {
+  const totalCards = cards.length;
+  const trendingCount = cards.filter((c) => Number(c.is_trending) === 1).length;
+  const indonesianCount = cards.filter((c) => Number(c.is_indonesian) === 1).length;
+
+  const seenVirtual = new Map<string, string>();
+  const duplicatePlayers: string[] = [];
+
+  for (const c of cards) {
+    const virtualKey = c.base_player_id
+      ? `base_${c.base_player_id}`
+      : `name_${c.player_name.trim().toLowerCase()}`;
+    if (seenVirtual.has(virtualKey)) {
+      const existingName = seenVirtual.get(virtualKey)!;
+      if (!duplicatePlayers.includes(existingName)) {
+        duplicatePlayers.push(existingName);
+      }
+    } else {
+      seenVirtual.set(virtualKey, c.player_name);
+    }
+  }
+
+  const errors: string[] = [];
+
+  if (totalCards === 0) {
+    errors.push('Skuad masih kosong. Pilih kartu pemain terlebih dahulu sebelum mengunci skuad.');
+  }
+  if (totalCards > 26) {
+    errors.push(
+      `Total kartu melebihi batas: terdaftar ${totalCards} kartu dari maksimal 26 kartu (kelebihan ${totalCards - 26} kartu, Pasal 14 ayat 1).`
+    );
+  }
+  if (trendingCount < 2) {
+    errors.push(
+      `Syarat kartu Trending belum terpenuhi: baru ada ${trendingCount} kartu Trending dari minimal 2 kartu Trending wajib (kurang ${2 - trendingCount} kartu Trending, Pasal 14 ayat 4 & Pasal 17).`
+    );
+  }
+  if (duplicatePlayers.length > 0) {
+    errors.push(
+      `Terdapat kartu kembar dari pemain virtual yang sama (${duplicatePlayers.join(', ')}). Setiap pemain virtual hanya boleh memiliki satu kartu di dalam skuad (Pasal 14 ayat 3).`
+    );
+  }
+
+  return {
+    valid: errors.length === 0,
+    totalCards,
+    trendingCount,
+    indonesianCount,
+    duplicatePlayers,
+    errors,
+  };
+}
+
+/**
+ * Pasal 17: Evaluate Per-Matchday Trending Card Compliance
+ * Requires at least 1 full regular half (45 mins) with >= 2 Trending players simultaneously on the pitch.
+ */
+export function evaluateMatchTrendingCompliance(
+  quotaCredit?: Partial<MatchQuotaCredit> | null
+): {
+  compliant: boolean;
+  firstHalf: boolean;
+  secondHalf: boolean;
+  explanation: string;
+} {
+  const firstHalf = Number(quotaCredit?.trending_first_half ?? 0) === 1;
+  const secondHalf = Number(quotaCredit?.trending_second_half ?? 0) === 1;
+  const compliant = firstHalf || secondHalf;
+
+  let explanation = '';
+  if (firstHalf && secondHalf) {
+    explanation = 'Memenuhi syarat (Babak 1 & Babak 2 penuh dengan ≥2 pemain Trending bersamaan).';
+  } else if (firstHalf) {
+    explanation = 'Memenuhi syarat (Babak 1 penuh dengan ≥2 pemain Trending bersamaan).';
+  } else if (secondHalf) {
+    explanation = 'Memenuhi syarat (Babak 2 penuh dengan ≥2 pemain Trending bersamaan).';
+  } else {
+    explanation = 'Tidak memenuhi syarat Pasal 17 (Belum ada babak reguler penuh dengan ≥2 pemain Trending bersamaan).';
+  }
+
+  return { compliant, firstHalf, secondHalf, explanation };
 }
 
 /**

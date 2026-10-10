@@ -324,18 +324,82 @@ export default async function MatchDetailPage({
 
         {/* Right Column: Kuota Indonesia & Bukti Audit */}
         <div className="space-y-6">
+          {/* Kepatuhan Kartu Trending per Matchday (Pasal 17) */}
+          <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-5 space-y-4">
+            <h2 className="font-[family-name:var(--font-display)] font-bold text-lg uppercase tracking-tight text-[var(--text)] flex items-center gap-2">
+              <Flag className="w-4 h-4 text-[var(--p-a)]" />
+              <span>Kepatuhan Kartu Trending (Pasal 17)</span>
+            </h2>
+
+            <div className="space-y-3">
+              {(() => {
+                const paH1 = Number(paCredits?.trending_first_half ?? 1);
+                const paH2 = Number(paCredits?.trending_second_half ?? 0);
+                const paCompliant = paH1 === 1 || paH2 === 1;
+                return (
+                  <div className="p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-[11px] text-[var(--text-faint)] uppercase tracking-wider block">
+                        Trending Pemain A (Wajib ≥2 Kartu di ≥1 Babak)
+                      </span>
+                      <span className="font-semibold text-sm text-[var(--text)]">
+                        Babak 1: {paH1 ? 'Ya (≥2)' : 'Tidak'} · Babak 2: {paH2 ? 'Ya (≥2)' : 'Tidak'}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded uppercase shrink-0 ${
+                        paCompliant
+                          ? 'bg-[var(--ok)]/15 text-[var(--ok)] border border-[var(--ok)]/30'
+                          : 'bg-[var(--danger)]/15 text-[var(--danger)] border border-[var(--danger)]/30'
+                      }`}
+                    >
+                      {paCompliant ? 'Memenuhi Pasal 17' : 'Melanggar Pasal 17'}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {(() => {
+                const pbH1 = Number(pbCredits?.trending_first_half ?? 1);
+                const pbH2 = Number(pbCredits?.trending_second_half ?? 0);
+                const pbCompliant = pbH1 === 1 || pbH2 === 1;
+                return (
+                  <div className="p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-[11px] text-[var(--text-faint)] uppercase tracking-wider block">
+                        Trending Pemain B (Wajib ≥2 Kartu di ≥1 Babak)
+                      </span>
+                      <span className="font-semibold text-sm text-[var(--text)]">
+                        Babak 1: {pbH1 ? 'Ya (≥2)' : 'Tidak'} · Babak 2: {pbH2 ? 'Ya (≥2)' : 'Tidak'}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded uppercase shrink-0 ${
+                        pbCompliant
+                          ? 'bg-[var(--ok)]/15 text-[var(--ok)] border border-[var(--ok)]/30'
+                          : 'bg-[var(--danger)]/15 text-[var(--danger)] border border-[var(--danger)]/30'
+                      }`}
+                    >
+                      {pbCompliant ? 'Memenuhi Pasal 17' : 'Melanggar Pasal 17'}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
           {/* Kuota Indonesia Attestation */}
           <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-5 space-y-4">
             <h2 className="font-[family-name:var(--font-display)] font-bold text-lg uppercase tracking-tight text-[var(--text)] flex items-center gap-2">
               <Flag className="w-4 h-4 text-[var(--text-dim)]" />
-              <span>Kredit Pemain Indonesia (Pasal 19)</span>
+              <span>DSP & Kredit Pemain Indonesia (Pasal 18 & 19)</span>
             </h2>
 
             <div className="space-y-3">
               <div className="p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] flex items-center justify-between">
                 <div>
                   <span className="text-[11px] text-[var(--text-faint)] uppercase tracking-wider block">
-                    Kredit Pemain A
+                    Kredit Pemain A · DSP: {paCredits?.indonesia_in_dsp !== 0 ? 'Tercantum' : 'Tidak Ada'}
                   </span>
                   <span className="font-semibold text-sm text-[var(--text)]">
                     Babak 1: {paCredits?.first_half_credit ? 'Sah (1)' : 'Tidak (0)'} · Babak 2: {paCredits?.second_half_credit ? 'Sah (1)' : 'Tidak (0)'}
@@ -349,7 +413,7 @@ export default async function MatchDetailPage({
               <div className="p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] flex items-center justify-between">
                 <div>
                   <span className="text-[11px] text-[var(--text-faint)] uppercase tracking-wider block">
-                    Kredit Pemain B
+                    Kredit Pemain B · DSP: {pbCredits?.indonesia_in_dsp !== 0 ? 'Tercantum' : 'Tidak Ada'}
                   </span>
                   <span className="font-semibold text-sm text-[var(--text)]">
                     Babak 1: {pbCredits?.first_half_credit ? 'Sah (1)' : 'Tidak (0)'} · Babak 2: {pbCredits?.second_half_credit ? 'Sah (1)' : 'Tidak (0)'}

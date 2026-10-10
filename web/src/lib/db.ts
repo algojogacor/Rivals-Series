@@ -14,6 +14,8 @@ import {
   AwardBallot,
   SeasonSettings,
   ResetRequest,
+  RosterCard,
+  RosterPhaseStatus,
 } from './types';
 
 let cachedClient: Client | null = null;
@@ -199,6 +201,8 @@ export async function getAllGoalEvents(matchId?: string): Promise<MatchGoalEvent
     id: String(r.id),
     match_id: String(r.match_id),
     scoring_participant_id: r.scoring_participant_id as ParticipantId,
+    scorer_card_id: r.scorer_card_id ? String(r.scorer_card_id) : null,
+    scorer_base_player_id: r.scorer_base_player_id ? Number(r.scorer_base_player_id) : null,
     scorer_player_name: String(r.scorer_player_name),
     scorer_card_version: r.scorer_card_version ? String(r.scorer_card_version) : null,
     minute: r.minute !== null ? Number(r.minute) : null,
@@ -220,7 +224,10 @@ export async function getAllGoalkeeperRecords(matchId?: string): Promise<Goalkee
     id: String(r.id),
     match_id: String(r.match_id),
     participant_id: r.participant_id as ParticipantId,
+    goalkeeper_card_id: r.goalkeeper_card_id ? String(r.goalkeeper_card_id) : null,
+    goalkeeper_base_player_id: r.goalkeeper_base_player_id ? Number(r.goalkeeper_base_player_id) : null,
     goalkeeper_name: String(r.goalkeeper_name),
+    goalkeeper_card_version: r.goalkeeper_card_version ? String(r.goalkeeper_card_version) : null,
     is_starter: Number(r.is_starter || 1),
     remained_full_match: Number(r.remained_full_match || 1),
     clean_sheet_eligible: Number(r.clean_sheet_eligible || 0),
@@ -327,25 +334,251 @@ export async function getAllAuditEvents(): Promise<any[]> {
   }));
 }
 
-export async function getAllRosterCards(phase: number = 1): Promise<any[]> {
+export async function getRosterPhaseStatus(phase: number = 1): Promise<RosterPhaseStatus> {
+  try {
+    const db = getDbClient();
+    const [phaseRes, md10Res] = await Promise.all([
+      db.execute({
+        sql: 'SELECT * FROM roster_phases WHERE phase = ?;',
+        args: [phase],
+      }),
+      db.execute({
+        sql: "SELECT status FROM matches WHERE md_number = 10 LIMIT 1;",
+        args: [],
+      }),
+    ]);
+
+    const md10Status = md10Res.rows[0]?.status ? String(md10Res.rows[0].status) : 'scheduled';
+    const md10Completed = ['confirmed', 'reconstructed', 'forfeited', 'technical_win'].includes(md10Status);
+
+    if (phaseRes.rows.length === 0) {
+      return {
+        phase,
+        is_locked: 0,
+        locked_at: null,
+        locked_by: null,
+        pa_locked: 0,
+        pa_locked_at: null,
+        pb_locked: 0,
+        pb_locked_at: null,
+        both_locked: false,
+        md10_completed: md10Completed,
+      };
+    }
+
+    const r = phaseRes.rows[0];
+    const paLocked = Number(r.pa_locked ?? 0);
+    const pbLocked = Number(r.pb_locked ?? 0);
+    const isLocked = Number(r.is_locked ?? 0) === 1 || (paLocked === 1 && pbLocked === 1) ? 1 : 0;
+
+    return {
+      phase: Number(r.phase || phase),
+      is_locked: isLocked,
+      locked_at: r.locked_at ? String(r.locked_at) : null,
+      locked_by: r.locked_by ? String(r.locked_by) : null,
+      pa_locked: paLocked,
+      pa_locked_at: r.pa_locked_at ? String(r.pa_locked_at) : null,
+      pb_locked: pbLocked,
+      pb_locked_at: r.pb_locked_at ? String(r.pb_locked_at) : null,
+      both_locked: paLocked === 1 && pbLocked === 1,
+      md10_completed: md10Completed,
+    };
+  } catch (err) {
+    console.error('getRosterPhaseStatus error:', err);
+    return {
+      phase,
+      is_locked: 0,
+      locked_at: null,
+      locked_by: null,
+      pa_locked: 0,
+      pa_locked_at: null,
+      pb_locked: 0,
+      pb_locked_at: null,
+      both_locked: false,
+      md10_completed: false,
+    };
+  }
+}
+
+export async function getAllRosterCards(phase: number = 1): Promise<RosterCard[]> {
   const db = getDbClient();
-  const res = await db.execute({
-    sql: 'SELECT * FROM roster_cards WHERE roster_phase = ? AND is_active = 1 ORDER BY participant_id ASC, player_name ASC;',
-    args: [phase],
-  });
-  return res.rows.map((r) => ({
-    id: String(r.id),
-    participant_id: r.participant_id as ParticipantId,
-    base_player_id: r.base_player_id ? Number(r.base_player_id) : null,
-    player_name: String(r.player_name),
-    card_version: String(r.card_version),
-    card_category: r.card_category ? String(r.card_category) : null,
-    is_trending: Number(r.is_trending ?? 0),
-    is_indonesian: Number(r.is_indonesian || 0),
-    roster_phase: Number(r.roster_phase || 1),
-    is_active: Number(r.is_active || 1),
-    created_at: r.created_at ? String(r.created_at) : null,
-  }));
+  try {
+    const res = await db.execute({
+      sql: `SELECT
+              rc.*,
+              ep.club_name as ep_club_name,
+              ep.playing_style as ep_playing_style,
+              ep.playing_style_label as ep_playing_style_label,
+              ep.player_type as ep_player_type,
+              ep.player_type_label as ep_player_type_label,
+              ep.top6_lv1 as ep_top6_lv1,
+              ep.top6_max as ep_top6_max,
+              ep.overall_lv1 as ep_overall_lv1,
+              ep.overall_max as ep_overall_max,
+              ep.position as ep_position
+            FROM roster_cards rc
+            LEFT JOIN efootball_players ep ON rc.efootball_card_id = ep.card_id
+            WHERE rc.roster_phase = ? AND rc.is_active = 1
+            ORDER BY rc.participant_id ASC, COALESCE(rc.overall_max, ep.overall_max, 0) DESC, rc.player_name ASC;`,
+      args: [phase],
+    });
+    return res.rows.map((r) => ({
+      id: String(r.id),
+      participant_id: r.participant_id as ParticipantId,
+      roster_phase: Number(r.roster_phase || 1),
+      efootball_card_id: r.efootball_card_id ? String(r.efootball_card_id) : null,
+      base_player_id: r.base_player_id ? Number(r.base_player_id) : null,
+      player_name: String(r.player_name),
+      card_version: String(r.card_version),
+      card_category: r.card_category ? String(r.card_category) : null,
+      is_trending: Number(r.is_trending ?? 0),
+      nationality: r.nationality ? String(r.nationality) : null,
+      is_indonesian: Number(r.is_indonesian || 0),
+      position: r.position ? String(r.position) : r.ep_position ? String(r.ep_position) : null,
+      overall_lv1: r.overall_lv1 !== null && r.overall_lv1 !== undefined ? Number(r.overall_lv1) : r.ep_overall_lv1 ? Number(r.ep_overall_lv1) : null,
+      overall_max: r.overall_max !== null && r.overall_max !== undefined ? Number(r.overall_max) : r.ep_overall_max ? Number(r.ep_overall_max) : null,
+      slot_code: r.slot_code ? String(r.slot_code) : null,
+      is_active: Number(r.is_active || 1),
+      created_at: r.created_at ? String(r.created_at) : null,
+      club_name: r.ep_club_name ? String(r.ep_club_name) : null,
+      playing_style: r.ep_playing_style ? Number(r.ep_playing_style) : null,
+      playing_style_label: r.ep_playing_style_label ? String(r.ep_playing_style_label) : null,
+      player_type: r.ep_player_type ? Number(r.ep_player_type) : null,
+      player_type_label: r.ep_player_type_label ? String(r.ep_player_type_label) : null,
+      top6_lv1: r.ep_top6_lv1 ? JSON.parse(String(r.ep_top6_lv1)) : [],
+      top6_max: r.ep_top6_max ? JSON.parse(String(r.ep_top6_max)) : [],
+    }));
+  } catch {
+    const res = await db.execute({
+      sql: 'SELECT * FROM roster_cards WHERE roster_phase = ? AND is_active = 1 ORDER BY participant_id ASC, player_name ASC;',
+      args: [phase],
+    });
+    return res.rows.map((r) => ({
+      id: String(r.id),
+      participant_id: r.participant_id as ParticipantId,
+      roster_phase: Number(r.roster_phase || 1),
+      efootball_card_id: r.efootball_card_id ? String(r.efootball_card_id) : null,
+      base_player_id: r.base_player_id ? Number(r.base_player_id) : null,
+      player_name: String(r.player_name),
+      card_version: String(r.card_version),
+      card_category: r.card_category ? String(r.card_category) : null,
+      is_trending: Number(r.is_trending ?? 0),
+      nationality: r.nationality ? String(r.nationality) : null,
+      is_indonesian: Number(r.is_indonesian || 0),
+      position: r.position ? String(r.position) : null,
+      overall_lv1: r.overall_lv1 ? Number(r.overall_lv1) : null,
+      overall_max: r.overall_max ? Number(r.overall_max) : null,
+      slot_code: r.slot_code ? String(r.slot_code) : null,
+      is_active: Number(r.is_active || 1),
+      created_at: r.created_at ? String(r.created_at) : null,
+    }));
+  }
+}
+
+/**
+ * Pasal 14: Server-side opponent squad secrecy enforcement.
+ * Until BOTH participants have locked their squads for a given phase,
+ * a participant's squad is NEVER returned to the opponent or anonymous visitors.
+ */
+export async function getVisibleRosterCards(
+  phase: number = 1,
+  viewerParticipantId?: ParticipantId | null
+): Promise<{
+  cards: RosterCard[];
+  phaseStatus: RosterPhaseStatus;
+  paCount: number;
+  pbCount: number;
+  paTrendingCount: number;
+  pbTrendingCount: number;
+  paIndoCount: number;
+  pbIndoCount: number;
+}> {
+  const [allCards, phaseStatus] = await Promise.all([
+    getAllRosterCards(phase),
+    getRosterPhaseStatus(phase),
+  ]);
+
+  const paCards = allCards.filter((c) => c.participant_id === 'participant_a');
+  const pbCards = allCards.filter((c) => c.participant_id === 'participant_b');
+
+  const summary = {
+    phaseStatus,
+    paCount: paCards.length,
+    pbCount: pbCards.length,
+    paTrendingCount: paCards.filter((c) => c.is_trending === 1).length,
+    pbTrendingCount: pbCards.filter((c) => c.is_trending === 1).length,
+    paIndoCount: paCards.filter((c) => c.is_indonesian === 1).length,
+    pbIndoCount: pbCards.filter((c) => c.is_indonesian === 1).length,
+  };
+
+  if (phaseStatus.both_locked) {
+    return { cards: allCards, ...summary };
+  }
+
+  if (!viewerParticipantId) {
+    return { cards: [], ...summary };
+  }
+
+  return {
+    cards: allCards.filter((c) => c.participant_id === viewerParticipantId),
+    ...summary,
+  };
+}
+
+export async function getShortlistCards(participantId: ParticipantId): Promise<any[]> {
+  try {
+    const db = getDbClient();
+    const res = await db.execute({
+      sql: `SELECT
+              ss.id as shortlist_id,
+              ss.created_at as shortlisted_at,
+              ep.card_id,
+              ep.base_player_id,
+              ep.name,
+              ep.position,
+              ep.overall_lv1,
+              ep.overall_max,
+              ep.player_type,
+              ep.player_type_label,
+              ep.variation_name,
+              ep.club_name,
+              ep.nationality_name,
+              ep.is_trending,
+              ep.is_indonesian,
+              ep.playing_style,
+              ep.playing_style_label,
+              ep.top6_lv1,
+              ep.top6_max
+            FROM squad_shortlist ss
+            JOIN efootball_players ep ON ss.card_id = ep.card_id
+            WHERE ss.participant_id = ?
+            ORDER BY ss.created_at DESC;`,
+      args: [participantId],
+    });
+    return res.rows.map((r) => ({
+      shortlist_id: String(r.shortlist_id),
+      card_id: String(r.card_id),
+      base_player_id: Number(r.base_player_id),
+      name: String(r.name),
+      position: String(r.position),
+      overall_lv1: Number(r.overall_lv1),
+      overall_max: Number(r.overall_max),
+      player_type: Number(r.player_type),
+      player_type_label: String(r.player_type_label),
+      variation_name: String(r.variation_name || ''),
+      club_name: String(r.club_name || ''),
+      nationality_name: String(r.nationality_name || ''),
+      is_trending: Number(r.is_trending || 0),
+      is_indonesian: Number(r.is_indonesian || 0),
+      playing_style: Number(r.playing_style || 0),
+      playing_style_label: String(r.playing_style_label || 'None'),
+      top6_lv1: r.top6_lv1 ? JSON.parse(String(r.top6_lv1)) : [],
+      top6_max: r.top6_max ? JSON.parse(String(r.top6_max)) : [],
+    }));
+  } catch (err) {
+    console.error('getShortlistCards error:', err);
+    return [];
+  }
 }
 
 export async function getRegulationsAmendments(): Promise<any[]> {

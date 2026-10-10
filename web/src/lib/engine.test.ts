@@ -1,5 +1,5 @@
 // RIVALS SERIES SEASON 1 (RS S1) - CALCULATION ENGINE TESTS
-// Verifies all 15 calculation acceptance criteria from the specification and rules.md
+// Verifies all calculation acceptance criteria from the specification and rules.md
 
 import { describe, it, expect } from 'vitest';
 import {
@@ -11,6 +11,8 @@ import {
   calculateGoldenGlove,
   calculateWinningStreak,
   calculateGoalOfTheSeason,
+  validateSquadForLock,
+  evaluateMatchTrendingCompliance,
 } from './engine';
 import {
   Participant,
@@ -227,10 +229,6 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
 
   // Test 6: Tiebreakers calculate in specified 6-level order (Pasal 8)
   it('Criterion 6: GD and all tiebreak levels calculate in the specified order', () => {
-    // Both participants have 3 points each.
-    // PA: 1 win, 3-2 (GD +1, GF 3)
-    // PB: 1 win, 2-1 (GD +1, GF 2)
-    // Same points (3), same GD (+1), but PA has higher GF (3 vs 2) -> PA ranks 1st
     const match1: Match = {
       id: 'MD1',
       md_number: 1,
@@ -272,16 +270,13 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
     };
 
     const standings = calculateStandings(mockParticipants, [match1, match2]);
-    expect(standings[0].participant_id).toBe('participant_a'); // Wins on GF (4 vs 4? Wait: PA scored 3+1=4, PB scored 2+2=4... let's check exact)
+    expect(standings[0].participant_id).toBe('participant_a');
     expect(standings[0].points).toBe(3);
     expect(standings[1].points).toBe(3);
   });
 
   // Test 7: Early champion strictly uses credit-risk adjustment and G_adj > 3 * R
   it('Criterion 7: Early champion uses credit-risk adjustment and G_adj > 3 * R strictly', () => {
-    // Scenario A: 3 remaining matches (R=3). Points gap = 12.
-    // Leader has < 5 credits: G_adj = 12 - 3 = 9. Threshold = 3 * 3 = 9.
-    // 9 is NOT > 9 (equality is not enough) -> is_secured must be FALSE!
     const standingsA = [
       { ...mockParticipants[0], rank: 1, participant_id: 'participant_a' as const, points: 30, mp: 17, id_credits: 3 },
       { ...mockParticipants[1], rank: 2, participant_id: 'participant_b' as const, points: 18, mp: 17, id_credits: 5 },
@@ -292,9 +287,8 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
     expect(calcA.points_gap).toBe(12);
     expect(calcA.adjusted_gap).toBe(9);
     expect(calcA.required_threshold).toBe(9);
-    expect(calcA.is_secured).toBe(false); // Equality is not enough!
+    expect(calcA.is_secured).toBe(false);
 
-    // Scenario B: Gap is 13 (G_adj = 10 > 9) -> is_secured must be TRUE!
     const standingsB = [
       { ...mockParticipants[0], rank: 1, participant_id: 'participant_a' as const, points: 31, mp: 17, id_credits: 3 },
       { ...mockParticipants[1], rank: 2, participant_id: 'participant_b' as const, points: 18, mp: 17, id_credits: 5 },
@@ -339,17 +333,13 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
         trending_first_half: 1,
         trending_second_half: 0,
       },
-      // Total 2 credits only (less than 5)
     ];
 
-    // During active season (isSeasonCompleted = false): points NOT deducted yet, but quota at risk is true
     const activeStandings = calculateStandings(mockParticipants, [], [], credits, false);
     const paActive = activeStandings.find(s => s.participant_id === 'participant_a')!;
     expect(paActive.id_quota_at_risk).toBe(true);
     expect(paActive.final_quota_deducted).toBe(false);
 
-    // After season completed (isSeasonCompleted = true): 3 points deducted!
-    // Give PA 10 raw points first
     const matchWin: Match = {
       id: 'MD1',
       md_number: 1,
@@ -374,7 +364,7 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
     const paFinal = finalStandings.find(s => s.participant_id === 'participant_a')!;
     expect(paFinal.raw_points).toBe(3);
     expect(paFinal.final_quota_deducted).toBe(true);
-    expect(paFinal.points).toBe(0); // 3 - 3 = 0
+    expect(paFinal.points).toBe(0);
   });
 
   // Test 10: Reconstruction-only own goals are excluded from real goals and statistics
@@ -387,7 +377,7 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
         scorer_player_name: 'Rafael Struick',
         period: 'regular_first_half',
         is_own_goal: 0,
-        is_reconstruction_only: 0, // Real goal
+        is_reconstruction_only: 0,
       },
       {
         id: 'g2',
@@ -396,7 +386,7 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
         scorer_player_name: 'Van Dijk',
         period: 'regular_first_half',
         is_own_goal: 1,
-        is_reconstruction_only: 1, // Reconstruction own goal!
+        is_reconstruction_only: 1,
       },
     ];
 
@@ -438,7 +428,7 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
         scorer_player_name: 'C. Ronaldo',
         scorer_card_version: 'Show Time',
         period: 'regular_second_half',
-        is_own_goal: 1, // Own goal - must be excluded!
+        is_own_goal: 1,
         is_reconstruction_only: 0,
       },
     ];
@@ -448,7 +438,7 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
 
     expect(boot).toHaveLength(1);
     expect(boot[0].player_name).toBe('C. Ronaldo');
-    expect(boot[0].total_goals).toBe(2); // 2 eligible goals
+    expect(boot[0].total_goals).toBe(2);
     expect(boot[0].card_versions).toContain('Show Time');
     expect(boot[0].card_versions).toContain('Epic 2008');
   });
@@ -465,7 +455,7 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
       away_participant_id: 'participant_b',
       confirmation_status: 'confirmed_both',
       home_score: 2,
-      away_score: 0, // PB conceded 2, PA conceded 0
+      away_score: 0,
       et_played: 0,
       pk_played: 0,
       is_draw: 0,
@@ -475,21 +465,19 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
       lineup_screenshot_shared_wa: 1,
     };
 
-    // Substituted keeper record: started but did not remain until whistle
     const gkSubbed: GoalkeeperMatchRecord = {
       id: 'gk1',
       match_id: 'MD6',
       participant_id: 'participant_a',
       goalkeeper_name: 'Donnarumma',
       is_starter: 1,
-      remained_full_match: 0, // Substituted out!
+      remained_full_match: 0,
       clean_sheet_eligible: 0,
     };
 
     const resSubbed = calculateGoldenGlove([gkSubbed], [match]);
-    expect(resSubbed).toHaveLength(0); // Ineligible!
+    expect(resSubbed).toHaveLength(0);
 
-    // Completed keeper record
     const gkCompleted: GoalkeeperMatchRecord = {
       id: 'gk2',
       match_id: 'MD6',
@@ -508,7 +496,6 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
 
   // Test 13: Birdcaging sanctions escalate (Warning -> -1 pt -> 0-3 forfeit)
   it('Criterion 13: Birdcaging sanctions escalate from warning to -1 point to 0-3 forfeit', () => {
-    // 2nd offence adds -1 point deduction sanction
     const sanction: Sanction = {
       id: 'sanc1',
       participant_id: 'participant_b',
@@ -549,13 +536,6 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
       },
     ];
 
-    // Ballot A: 1st nom1 (4 pts), 2nd nom2 (3 pts)
-    // Ballot B: 1st nom2 (4 pts), 2nd nom1 (3 pts)
-    // Total points: nom1 = 7 pts, nom2 = 7 pts (TIED on total points!)
-    // Opponent points:
-    // nom1 (owned by PA): PB ranked it 2nd -> awarded 3 opponent points
-    // nom2 (owned by PB): PA ranked it 2nd -> awarded 3 opponent points
-    // Opponent points are also equal -> CO-WINNERS!
     const ballots: AwardBallot[] = [
       { participant_id: 'participant_a', is_locked: true, rankings: ['nom1', 'nom2'] },
       { participant_id: 'participant_b', is_locked: true, rankings: ['nom2', 'nom1'] },
@@ -568,11 +548,6 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
     expect(results[0].is_co_winner).toBe(true);
     expect(results[1].is_co_winner).toBe(true);
 
-    // Now test where opponent points break the tie:
-    // Suppose 3 nominations: nom1 (PA), nom2 (PB), nom3 (PA)
-    // nom1: total 6 pts, opponent awarded 4 pts
-    // nom2: total 6 pts, opponent awarded 2 pts
-    // nom1 should win on opponent points tiebreaker!
     const nom3: GoalNomination = {
       id: 'nom3',
       participant_id: 'participant_a',
@@ -584,13 +559,9 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
     };
 
     const ballotsTieBreak: AwardBallot[] = [
-      // PA ranks: nom2 (4 pts), nom1 (2 pts), nom3 (3 pts)
       { participant_id: 'participant_a', is_locked: true, rankings: ['nom2', 'nom3', 'nom1'] },
-      // PB ranks: nom1 (4 pts), nom2 (2 pts), nom3 (3 pts)
       { participant_id: 'participant_b', is_locked: true, rankings: ['nom1', 'nom3', 'nom2'] },
     ];
-    // nom1: PA gave 2 pts (own), PB gave 4 pts (opponent). Total = 6 pts. Opponent pts = 4.
-    // nom2: PA gave 4 pts (opponent), PB gave 2 pts (own). Total = 6 pts. Opponent pts = 4.
     const resTie = calculateGoalOfTheSeason([nominations[0], nominations[1], nom3], ballotsTieBreak);
     expect(resTie).toHaveLength(3);
   });
@@ -615,4 +586,159 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
     const s20 = deriveMatchSettings(20);
     expect(s20.phase).toBe('knockout_stage');
   });
+
+  // Test 16: Golden Boot & Golden Glove merge card versions by virtual player (base_player_id) across Phase 1 & Phase 2
+  it('Criterion 16: Golden Boot & Golden Glove merge statistics by virtual player (base_player_id) across different card versions', () => {
+    const goals: MatchGoalEvent[] = [
+      {
+        id: 'g_md4',
+        match_id: 'MD4',
+        scoring_participant_id: 'participant_a',
+        scorer_card_id: '7511',
+        scorer_base_player_id: 7511,
+        scorer_player_name: 'L. Messi',
+        scorer_card_version: 'Standard',
+        period: 'regular_first_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+      {
+        id: 'g_md12',
+        match_id: 'MD12',
+        scoring_participant_id: 'participant_a',
+        scorer_card_id: '105874433562935',
+        scorer_base_player_id: 7511, // Same virtual player (Messi) upgraded after MD10!
+        scorer_player_name: 'L. Messi',
+        scorer_card_version: 'Trending · Worldwide Sep 2024',
+        period: 'regular_second_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+    ];
+
+    const boot = calculateGoldenBoot(goals, new Set(['MD4', 'MD12']));
+    expect(boot).toHaveLength(1);
+    expect(boot[0].base_player_id).toBe(7511);
+    expect(boot[0].total_goals).toBe(2);
+    expect(boot[0].card_versions).toEqual(['Standard', 'Trending · Worldwide Sep 2024']);
+
+    const matches: Match[] = [
+      {
+        id: 'MD4',
+        md_number: 4,
+        phase: 'group_stage',
+        status: 'confirmed',
+        result_type: 'normal',
+        home_participant_id: 'participant_a',
+        away_participant_id: 'participant_b',
+        confirmation_status: 'confirmed_both',
+        home_score: 1,
+        away_score: 0,
+        et_played: 0,
+        pk_played: 0,
+        is_draw: 0,
+        points_home: 3,
+        points_away: 0,
+        winner_id: 'participant_a',
+        lineup_screenshot_shared_wa: 1,
+      },
+      {
+        id: 'MD12',
+        md_number: 12,
+        phase: 'knockout_stage',
+        status: 'confirmed',
+        result_type: 'normal',
+        home_participant_id: 'participant_b',
+        away_participant_id: 'participant_a',
+        confirmation_status: 'confirmed_both',
+        home_score: 0,
+        away_score: 2,
+        et_played: 0,
+        pk_played: 0,
+        is_draw: 0,
+        points_home: 0,
+        points_away: 3,
+        winner_id: 'participant_a',
+        lineup_screenshot_shared_wa: 1,
+      },
+    ];
+
+    const gkRecords: GoalkeeperMatchRecord[] = [
+      {
+        id: 'gk_md4',
+        match_id: 'MD4',
+        participant_id: 'participant_a',
+        goalkeeper_card_id: '114873',
+        goalkeeper_base_player_id: 114873,
+        goalkeeper_name: 'G. Donnarumma',
+        goalkeeper_card_version: 'Standard',
+        is_starter: 1,
+        remained_full_match: 1,
+        clean_sheet_eligible: 1,
+      },
+      {
+        id: 'gk_md12',
+        match_id: 'MD12',
+        participant_id: 'participant_a',
+        goalkeeper_card_id: '105874433666489',
+        goalkeeper_base_player_id: 114873, // Same virtual goalkeeper upgraded after MD10!
+        goalkeeper_name: 'G. Donnarumma',
+        goalkeeper_card_version: 'Trending ·UCL Oct 2024',
+        is_starter: 1,
+        remained_full_match: 1,
+        clean_sheet_eligible: 1,
+      },
+    ];
+
+    const glove = calculateGoldenGlove(gkRecords, matches);
+    expect(glove).toHaveLength(1);
+    expect(glove[0].base_player_id).toBe(114873);
+    expect(glove[0].clean_sheets).toBe(2);
+    expect(glove[0].card_versions).toEqual(['Standard', 'Trending ·UCL Oct 2024']);
+  });
+
+  // Test 17: Squad lock validation enforces max 26 cards, min 2 Trending cards, and no duplicate base_player_id
+  it('Criterion 17: validateSquadForLock enforces max 26 cards, min 2 Trending cards, and rejects duplicate virtual players', () => {
+    // Case A: Only 1 Trending card -> rejected with exact reason
+    const oneTrending = validateSquadForLock([
+      { player_name: 'K. Mbappé', base_player_id: 110718, is_trending: 1, is_indonesian: 0 },
+      { player_name: 'Marselino Ferdinan', base_player_id: 150001, is_trending: 0, is_indonesian: 1 },
+    ]);
+    expect(oneTrending.valid).toBe(false);
+    expect(oneTrending.errors.join(' ')).toContain('kurang 1 kartu Trending');
+
+    // Case B: Duplicate virtual player (same base_player_id) -> rejected
+    const duplicateVirtual = validateSquadForLock([
+      { player_name: 'L. Messi (Standard)', base_player_id: 7511, is_trending: 0 },
+      { player_name: 'L. Messi (Trending)', base_player_id: 7511, is_trending: 1 },
+      { player_name: 'E. Haaland (Trending)', base_player_id: 133543, is_trending: 1 },
+    ]);
+    expect(duplicateVirtual.valid).toBe(false);
+    expect(duplicateVirtual.duplicatePlayers).toHaveLength(1);
+    expect(duplicateVirtual.errors.join(' ')).toContain('Terdapat kartu kembar dari pemain virtual yang sama');
+
+    // Case C: Valid squad with 2 Trending cards from distinct virtual players
+    const validSquad = validateSquadForLock([
+      { player_name: 'L. Messi (Trending)', base_player_id: 7511, is_trending: 1, is_indonesian: 0 },
+      { player_name: 'E. Haaland (Trending)', base_player_id: 133543, is_trending: 1, is_indonesian: 0 },
+      { player_name: 'Jay Idzes', base_player_id: 137504, is_trending: 0, is_indonesian: 1 },
+    ]);
+    expect(validSquad.valid).toBe(true);
+    expect(validSquad.trendingCount).toBe(2);
+    expect(validSquad.indonesianCount).toBe(1);
+  });
+
+  // Test 18: Per-MD Trending compliance requires at least 1 full regular half with >=2 Trending players
+  it('Criterion 18: evaluateMatchTrendingCompliance checks per-MD Trending card requirement (Pasal 17)', () => {
+    expect(
+      evaluateMatchTrendingCompliance({ trending_first_half: 1, trending_second_half: 0 }).compliant
+    ).toBe(true);
+    expect(
+      evaluateMatchTrendingCompliance({ trending_first_half: 0, trending_second_half: 1 }).compliant
+    ).toBe(true);
+    expect(
+      evaluateMatchTrendingCompliance({ trending_first_half: 0, trending_second_half: 0 }).compliant
+    ).toBe(false);
+  });
 });
+

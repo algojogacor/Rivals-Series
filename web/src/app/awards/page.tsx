@@ -100,20 +100,27 @@ export default async function AwardsPage() {
   const otherAwards = [
     {
       title: 'Golden Boot S1',
-      rule: 'Pemain virtual dengan jumlah gol sah terbanyak (versi kartu digabung).',
+      rule: 'Pemain virtual dengan jumlah gol sah terbanyak (seluruh versi kartu digabung per pemain virtual).',
       ruleRef: 'Pasal 42',
       leaderContent:
         bootLeaders.length > 0 ? (
-          <div className="flex items-center gap-2">
-            <PlayerTag
-              id={bootLeaders[0].participant_id}
-              name={bootLeaders[0].player_name}
-              monogram={pMap.get(bootLeaders[0].participant_id)?.monogram || 'P'}
-              size="sm"
-            />
-            <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--text)]">
-              {bootLeaders[0].total_goals} Gol
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <PlayerTag
+                id={bootLeaders[0].participant_id}
+                name={bootLeaders[0].player_name}
+                monogram={pMap.get(bootLeaders[0].participant_id)?.monogram || 'P'}
+                size="sm"
+              />
+              <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--text)]">
+                {bootLeaders[0].total_goals} Gol
+              </span>
+            </div>
+            {bootLeaders[0].card_versions && bootLeaders[0].card_versions.length > 0 && (
+              <span className="text-[11px] text-[var(--text-faint)] block">
+                Versi kartu: {bootLeaders[0].card_versions.join(' + ')}
+              </span>
+            )}
           </div>
         ) : (
           <span className="text-[13px] text-[var(--text-faint)]">—</span>
@@ -123,20 +130,27 @@ export default async function AwardsPage() {
     },
     {
       title: 'Golden Glove S1',
-      rule: 'Kiper starter bermain 90 menit reguler penuh dengan clean sheet terbanyak.',
+      rule: 'Kiper starter bermain 90 menit reguler penuh dengan clean sheet terbanyak (versi kartu digabung per pemain virtual).',
       ruleRef: 'Pasal 44',
       leaderContent:
         gloveLeaders.length > 0 ? (
-          <div className="flex items-center gap-2">
-            <PlayerTag
-              id={gloveLeaders[0].participant_id}
-              name={gloveLeaders[0].goalkeeper_name}
-              monogram={pMap.get(gloveLeaders[0].participant_id)?.monogram || 'P'}
-              size="sm"
-            />
-            <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--text)]">
-              {gloveLeaders[0].clean_sheets} CS
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <PlayerTag
+                id={gloveLeaders[0].participant_id}
+                name={gloveLeaders[0].goalkeeper_name}
+                monogram={pMap.get(gloveLeaders[0].participant_id)?.monogram || 'P'}
+                size="sm"
+              />
+              <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--text)]">
+                {gloveLeaders[0].clean_sheets} CS
+              </span>
+            </div>
+            {gloveLeaders[0].card_versions && gloveLeaders[0].card_versions.length > 0 && (
+              <span className="text-[11px] text-[var(--text-faint)] block">
+                Versi kartu: {gloveLeaders[0].card_versions.join(' + ')}
+              </span>
+            )}
           </div>
         ) : (
           <span className="text-[13px] text-[var(--text-faint)]">—</span>

@@ -1,36 +1,57 @@
 import { getSession } from '@/lib/auth';
-import { 
-  getParticipants, 
-  getAllMatches, 
-  getAllRosterCards, 
-  getAllDisputes, 
+import {
+  getParticipants,
+  getAllMatches,
+  getVisibleRosterCards,
+  getShortlistCards,
+  getAllDisputes,
   getAllAuditEvents,
   getAllGoalNominations,
-  getPendingResetRequest
+  getPendingResetRequest,
 } from '@/lib/db';
 import { ControlCenterClient } from '@/components/ControlCenterClient';
 
 export const metadata = {
   title: 'Pusat Kontrol Peserta | Rivals Series Season 1',
-  description: 'Konsol operasional mandiri Peserta A dan Peserta B RS S1 untuk pelaporan hasil, konfirmasi, manajemen skuad, dan penyelesaian sengketa.',
+  description:
+    'Konsol operasional mandiri Peserta A dan Peserta B RS S1 untuk pelaporan hasil, konfirmasi, manajemen skuad, dan penyelesaian sengketa.',
 };
+
+export const dynamic = 'force-dynamic';
 
 export default async function ControlCenterPage() {
   const session = await getSession();
-  const participants = await getParticipants();
-  const matches = await getAllMatches();
-  const rosterCards = await getAllRosterCards(1);
-  const disputes = await getAllDisputes();
-  const auditEvents = await getAllAuditEvents();
-  const goalNominations = await getAllGoalNominations();
-  const pendingReset = await getPendingResetRequest();
+  const [
+    participants,
+    matches,
+    visiblePhase1,
+    visiblePhase2,
+    shortlistCards,
+    disputes,
+    auditEvents,
+    goalNominations,
+    pendingReset,
+  ] = await Promise.all([
+    getParticipants(),
+    getAllMatches(),
+    getVisibleRosterCards(1, session?.participantId || null),
+    getVisibleRosterCards(2, session?.participantId || null),
+    session ? getShortlistCards(session.participantId) : Promise.resolve([]),
+    getAllDisputes(),
+    getAllAuditEvents(),
+    getAllGoalNominations(),
+    getPendingResetRequest(),
+  ]);
 
   return (
     <ControlCenterClient
       session={session}
       participants={participants}
       matches={matches}
-      rosterCards={rosterCards}
+      rosterCards={visiblePhase1.cards}
+      phase1Roster={visiblePhase1}
+      phase2Roster={visiblePhase2}
+      shortlistCards={shortlistCards}
       disputes={disputes}
       auditEvents={auditEvents}
       goalNominations={goalNominations}
@@ -38,3 +59,4 @@ export default async function ControlCenterPage() {
     />
   );
 }
+
