@@ -42,6 +42,10 @@ CREATE TABLE IF NOT EXISTS roster_phases (
   phase INTEGER PRIMARY KEY CHECK(phase IN (1, 2)),
   label TEXT NOT NULL,
   is_locked INTEGER NOT NULL DEFAULT 0,
+  pa_locked INTEGER NOT NULL DEFAULT 0,
+  pa_locked_at TEXT,
+  pb_locked INTEGER NOT NULL DEFAULT 0,
+  pb_locked_at TEXT,
   locked_at TEXT,
   locked_by TEXT REFERENCES participants(id),
   snapshot_hash TEXT
@@ -52,6 +56,7 @@ CREATE TABLE IF NOT EXISTS roster_cards (
   id TEXT PRIMARY KEY,
   participant_id TEXT NOT NULL REFERENCES participants(id),
   roster_phase INTEGER NOT NULL CHECK(roster_phase IN (1, 2)),
+  efootball_card_id TEXT,
   base_player_id INTEGER,
   player_name TEXT NOT NULL,
   card_version TEXT NOT NULL,
@@ -60,6 +65,9 @@ CREATE TABLE IF NOT EXISTS roster_cards (
   nationality TEXT NOT NULL,
   is_indonesian INTEGER NOT NULL DEFAULT 0,
   position TEXT,
+  overall_lv1 INTEGER,
+  overall_max INTEGER,
+  slot_code TEXT,
   image_url TEXT,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -106,6 +114,8 @@ CREATE TABLE IF NOT EXISTS match_goal_events (
   id TEXT PRIMARY KEY,
   match_id TEXT NOT NULL REFERENCES matches(id),
   scoring_participant_id TEXT NOT NULL REFERENCES participants(id),
+  scorer_card_id TEXT,
+  scorer_base_player_id INTEGER,
   scorer_player_name TEXT NOT NULL,
   scorer_card_version TEXT,
   minute INTEGER,
@@ -120,6 +130,8 @@ CREATE TABLE IF NOT EXISTS goalkeeper_match_records (
   id TEXT PRIMARY KEY,
   match_id TEXT NOT NULL REFERENCES matches(id),
   participant_id TEXT NOT NULL REFERENCES participants(id),
+  goalkeeper_card_id TEXT,
+  goalkeeper_base_player_id INTEGER,
   goalkeeper_name TEXT NOT NULL,
   is_starter INTEGER NOT NULL DEFAULT 1,
   remained_full_match INTEGER NOT NULL DEFAULT 1,
@@ -256,9 +268,71 @@ CREATE TABLE IF NOT EXISTS reset_requests (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 17. EFOOTBALL PLAYERS LOOKUP TABLE (Populated manually via pnpm sync:players)
+-- Lightweight columns are queried for search/list; heavy JSON columns are fetched only on detail/compare.
+CREATE TABLE IF NOT EXISTS efootball_players (
+  card_id TEXT PRIMARY KEY,
+  base_player_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  accented_name TEXT NOT NULL,
+  name_search TEXT NOT NULL,
+  player_type INTEGER NOT NULL,
+  card_type_label TEXT NOT NULL,
+  variation_name TEXT,
+  registered_position INTEGER NOT NULL,
+  position_label TEXT NOT NULL,
+  playing_style INTEGER NOT NULL DEFAULT 0,
+  playing_style_label TEXT,
+  playing_style_defensive INTEGER NOT NULL DEFAULT 0,
+  playing_style_defensive_label TEXT,
+  overall_lv1 INTEGER NOT NULL,
+  overall_max INTEGER NOT NULL,
+  level_cap INTEGER NOT NULL DEFAULT 1,
+  country_id INTEGER NOT NULL DEFAULT 0,
+  country_name TEXT NOT NULL DEFAULT '-',
+  is_indonesian INTEGER NOT NULL DEFAULT 0,
+  is_trending INTEGER NOT NULL DEFAULT 0,
+  club_id INTEGER NOT NULL DEFAULT 0,
+  team_name TEXT NOT NULL DEFAULT '-',
+  league_name TEXT NOT NULL DEFAULT '-',
+  height INTEGER NOT NULL DEFAULT 0,
+  weight INTEGER NOT NULL DEFAULT 0,
+  age INTEGER NOT NULL DEFAULT 0,
+  stronger_foot INTEGER NOT NULL DEFAULT 0,
+  condition_rating INTEGER NOT NULL DEFAULT 0,
+  stars INTEGER NOT NULL DEFAULT 0,
+  top6_lv1_json TEXT NOT NULL DEFAULT '[]',
+  top6_max_json TEXT NOT NULL DEFAULT '[]',
+  stats_lv1_json TEXT NOT NULL DEFAULT '{}',
+  stats_max_json TEXT NOT NULL DEFAULT '{}',
+  skills_json TEXT NOT NULL DEFAULT '[]',
+  positions_json TEXT NOT NULL DEFAULT '{}',
+  datapack_id INTEGER NOT NULL DEFAULT 0
+);
+
+-- 18. SQUAD SHORTLIST ("My Team" candidate pool per participant)
+CREATE TABLE IF NOT EXISTS squad_shortlist (
+  id TEXT PRIMARY KEY,
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  card_id TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(participant_id, card_id)
+);
+
 -- INDEXES
 CREATE INDEX IF NOT EXISTS idx_matches_md_number ON matches(md_number);
 CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
 CREATE INDEX IF NOT EXISTS idx_roster_cards_participant ON roster_cards(participant_id, roster_phase);
 CREATE INDEX IF NOT EXISTS idx_goal_events_match ON match_goal_events(match_id);
 CREATE INDEX IF NOT EXISTS idx_audit_events_entity ON audit_events(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_ef_players_name_search ON efootball_players(name_search);
+CREATE INDEX IF NOT EXISTS idx_ef_players_base_id ON efootball_players(base_player_id);
+CREATE INDEX IF NOT EXISTS idx_ef_players_pos_ovr ON efootball_players(registered_position, overall_max DESC);
+CREATE INDEX IF NOT EXISTS idx_ef_players_type_ovr ON efootball_players(player_type, overall_max DESC);
+CREATE INDEX IF NOT EXISTS idx_ef_players_indo_ovr ON efootball_players(is_indonesian, overall_max DESC);
+CREATE INDEX IF NOT EXISTS idx_ef_players_trending_ovr ON efootball_players(is_trending, overall_max DESC);
+CREATE INDEX IF NOT EXISTS idx_ef_players_club ON efootball_players(team_name, overall_max DESC);
+CREATE INDEX IF NOT EXISTS idx_ef_players_country ON efootball_players(country_name, overall_max DESC);
+CREATE INDEX IF NOT EXISTS idx_ef_players_ovr_max ON efootball_players(overall_max DESC, overall_lv1 DESC);
+CREATE INDEX IF NOT EXISTS idx_shortlist_participant ON squad_shortlist(participant_id);
+
