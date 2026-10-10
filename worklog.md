@@ -326,3 +326,63 @@ Konfigurasi `vercel.json` akan otomatis mengatur region default untuk deployment
 - **Production Build:** Sukses 100% tanpa error TypeScript (`npm run build`).
 - **Regulasi & Aturan Kompetisi:** Tidak ada perubahan logika skor, tiebreak, atau aturan Pasal 1–50.
 - **UI/UX:** Tampilan, token warna, dan layout tetap sama persis, kini dilengkapi loading skeleton yang responsif dan mulus.
+
+---
+
+## 6. Elevasi Visual & UX — Match-Night Broadcast & Rivalry Experience (RS S1)
+
+### A. Arah Visual & Prinsip Desain
+- **Vibe Siaran Televisi & Atmosfer Stadion:** Nuansa malam pertandingan (*match-night*), papan skor siaran (*broadcast scoreboard*), lampu sorot stadion (*stadium spotlights*), dan motif taktis lapangan yang halus tanpa efek neon/glow AI yang berlebihan.
+- **Bahasa Visual Rivalry (Cyan vs. Ungu):** Mengangkat identitas algojogacor (`#3ec9e6` / Cyan) vs. CHarmed (`#a78bfa` / Ungu) secara konsisten dan berani di seluruh komponen (aksen hero, kartu duel, progress bar H2H, highlight klasemen, dan status laga).
+- **Penyelarasan Token CSS:** Memperbaiki nilai *fallback* di [`web/src/app/globals.css`](file:///d:/Projects/Rivals-Series/web/src/app/globals.css) dan [`web/src/app/layout.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/layout.tsx) agar serasi dengan nilai di database Turso (`player_a_color: #3ec9e6`, `player_b_color: #a78bfa`), menghilangkan *flash of unstyled colors*.
+- **Performa Ringan & Motion Penuh:** Menghilangkan media query `prefers-reduced-motion` sesuai arahan pengguna agar seluruh animasi visual (pulse, target highlight, dsb.) selalu aktif dan hidup tanpa diredam, memastikan target sentuh $\ge 44\text{px}$, tanpa menambah library berat (animasi murni CSS & Lucide icons bawaan).
+
+### B. Perbaikan Bug Kritis: Pemain B Hilang pada Screenshot Full-Page
+- **Penyebab Akar Masalah:** Di [`web/src/components/VersusHero.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/VersusHero.tsx), kolom Pemain B memiliki kelas Tailwind hardcoded `opacity-0` untuk animasi delay 80ms. Tool tangkapan layar penuh (*full-page rasterizer*) mengambil snapshot DOM sebelum animasi selesai dieksekusi, sehingga kartu Pemain B tertangkap dalam kondisi transparan 0%.
+- **Solusi:** Menghapus `opacity-0` hardcoded sehingga konten selalu *renderable* secara instan.
+
+### C. Rincian Peningkatan Per Halaman & Komponen
+
+1. **Beranda (`/`):**
+   - **Hero Panggung Duel ([`VersusHero.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/VersusHero.tsx)):** Menampilkan panggung dual-color dengan sorotan lampu stadion, kartu profil kedua pemain (avatar, monogram, status admin, dan form 5 laga terakhir), serta papan skor agregat sentral.
+   - **Pelacak Musim Taktis ([`SeasonTracker.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/SeasonTracker.tsx)):** Visualisasi 20 Matchday berformat stadion yang memisahkan Fase 1 (MD1–10 Grup) dan Fase 2 (MD11–20 Knockout) dengan indikator laga selesai, laga terkini (*pulse indicator*), dan laga mendatang.
+   - **Komparasi Head-to-Head ([`H2HBars.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/H2HBars.tsx)):** Bilah perbandingan gradien cyan-ke-ungu dengan sorotan nilai unggul, serta badge progres Kuota 5 Kredit Indonesia dilengkapi bendera merah-putih.
+   - **Spotlight Laga Berikutnya ([`web/src/app/page.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/page.tsx)):** Kartu stadion megah untuk laga terdekat lengkap dengan badge Tuan Rumah/Tamu (sesuai Pasal 12), aturan fase (Group vs. Knockout ET+PK), dan tombol aksi "Lapor Hasil Laga Ini".
+
+2. **Match Center (`/matches`):**
+   - **Hierarki Status Pertandingan ([`MatchRow.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/MatchRow.tsx)):** 
+     - Laga berikutnya / sedang berjalan: Ditampilkan sebagai kartu sorotan (*featured card*) dengan batas tegas dan CTA pelaporan cepat.
+     - Laga selesai: Kartu ringkas (*compact scoreboard*) dengan tipografi angka skor tajam, penanda pemenang, dan info babak Trending/Indonesia.
+     - Laga terjadwal: Tampilan tenang agar daftar 20 laga tidak terasa monoton.
+
+3. **Klasemen (`/standings` & [`StandingsView.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/StandingsView.tsx)):**
+   - Mahkota emas `#1` untuk pemuncak klasemen sementara.
+   - Penanda warna halus untuk baris Pemain A (cyan) dan Pemain B (ungu).
+   - *Progressive disclosure* untuk informasi aturan panjang: Modal/popover ringkas untuk Aturan Kuota 5 Indonesia (Pasal 19) dan Urutan Tiebreaker 6 Tingkat (Pasal 8).
+   - Tampilan mobile duel cards yang ramah layar sentuh.
+
+4. **Statistik (`/statistics`):**
+   - Kartu penghargaan Golden Boot & Golden Glove berlatar stadion dengan motif sepatu (*boot*) dan sarung tangan (*glove*).
+   - Penjelasan kriteria tiebreak (menit bermain, gol non-penalti) dengan *tooltip* atau rincian ringkas.
+   - Bilah komparasi *streak* kemenangan dan performa pertahanan.
+
+5. **Penghargaan Musim (`/awards`):**
+   - Banner megah RS Champion piala emas dengan status provisi (sementara musim berjalan).
+   - 6 kartu penghargaan kategori lainnya ditata rapi dengan status kandidat terdepan dan kriteria resmi sesuai BAB X.
+
+6. **Regulasi (`/rules` & [`RulesReaderClient.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/RulesReaderClient.tsx)):**
+   - **Pencarian Cepat & Penyorotan Teks:** Input pencarian di desktop maupun mobile, dengan penyorotan instan kata kunci via `<mark className="search-highlight">` pada seluruh judul bab, nomor pasal, dan isi paragraf.
+   - **Deep-linking & Salin Tautan:** Tombol salin tautan jangkar (`#pasal-x`) di setiap pasal dengan umpan balik visual instan ("Tersalin").
+   - **Sinkronisasi Bab Aktif:** *IntersectionObserver* otomatis menyorot Bab yang sedang dibaca pada daftar isi lengket (*sticky TOC*).
+   - **Preservasi Penuh:** Seluruh teks 52 pasal dan 12 bab tetap 100% utuh tanpa modifikasi kata/redaksi.
+
+7. **Navigasi Global & Shell ([`AppShell.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/AppShell.tsx)):**
+   - Header *frosted glass* dengan indikator halaman aktif ala siaran liga dan tombol CTA "Lapor Hasil" yang selalu siap.
+   - Bilah navigasi bawah (*bottom tab bar*) untuk perangkat seluler dengan tombol tengah kontras tinggi untuk akses pelaporan instan.
+   - Komponen [`EmptyState.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/EmptyState.tsx) dengan 5 motif kontekstual (`pitch`, `whistle`, `boot`, `glove`, `trophy`, `search`) dan teks petunjuk langkah berikutnya.
+
+### D. Verifikasi & Integritas
+- **Unit Tests:** 51/51 lulus (`vitest run`).
+- **Production Build:** 100% sukses tanpa galat tipe atau lint (`next build`).
+- **Logika & Data:** Tidak ada perubahan pada perhitungan skor, poin klasemen, aturan tiebreak, schema database, atau teks regulasi.
+

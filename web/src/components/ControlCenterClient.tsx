@@ -301,10 +301,10 @@ export function ControlCenterClient({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center justify-between px-4 py-3 rounded-[8px] text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-colors ${
+                className={`flex items-center justify-between px-4 py-3 rounded-[8px] text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all border-l-2 ${
                   isActive
-                    ? 'bg-[var(--ink-2)] text-[var(--text)] font-bold'
-                    : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--ink-2)]/50'
+                    ? 'bg-[var(--ink-2)] text-[var(--text)] font-bold border-[var(--accent)] shadow-sm'
+                    : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--ink-2)]/50 border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-2.5">

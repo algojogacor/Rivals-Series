@@ -79,120 +79,132 @@ export function AppShell({ session, children }: AppShellProps) {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--ink-0)] text-[var(--text)] pb-20 md:pb-0">
       {/* 1. TOP STICKY BAR (Desktop & Mobile header) */}
-      <header className="sticky top-0 z-40 w-full h-16 bg-[var(--ink-0)] border-b border-[var(--line)]">
+      <header className="sticky top-0 z-40 w-full h-16 bg-[var(--ink-0)]/90 backdrop-blur-md border-b border-[var(--line)]">
         <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-5 md:px-8">
           {/* Kiri: Logo "RS" (blok persegi) + "Rivals Series" */}
           <Link href="/" className="flex items-center gap-3 group focus:outline-none">
-            <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] p-1.5 transition-colors group-hover:border-[var(--text)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] p-1.5 transition-all group-hover:border-[var(--p-a)] group-hover:shadow-[0_0_12px_var(--p-a-glow)]">
               <MonogramLogo className="w-5 h-5" fill="var(--text)" />
             </div>
             <div className="flex items-center gap-1.5 font-[family-name:var(--font-display)]">
-              <span className="font-extrabold text-xl tracking-tight uppercase text-[var(--text)]">
+              <span className="font-extrabold text-xl tracking-tight uppercase text-[var(--text)] group-hover:text-white transition-colors">
                 Rivals Series
               </span>
-              <span className="text-[13px] font-bold text-[var(--text-dim)] uppercase">
+              <span className="text-[12px] font-bold px-1.5 py-0.5 rounded bg-[var(--ink-2)] border border-[var(--line)] text-[var(--p-a)] uppercase">
                 S1
               </span>
             </div>
           </Link>
 
-          {/* Tengah: Navigasi Desktop (teks 15px, aktif = teks --text + garis bawah 2px warna --text) */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-8 h-full">
+          {/* Tengah: Navigasi Desktop (teks 14px, aktif = teks --text + garis bawah broadcast) */}
+          <nav className="hidden md:flex items-center gap-5 lg:gap-7 h-full">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`relative flex items-center h-full text-[15px] font-medium transition-colors ${
+                  className={`relative flex items-center h-full text-[14px] uppercase tracking-wider font-semibold transition-colors ${
                     isActive
-                      ? 'text-[var(--text)] font-semibold'
+                      ? 'text-[var(--text)]'
                       : 'text-[var(--text-dim)] hover:text-[var(--text)]'
                   }`}
                 >
                   {link.label}
                   {isActive && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--text)]" />
+                    <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-[var(--p-a)] to-[var(--p-b)] shadow-[0_0_8px_var(--p-a-glow)]" />
                   )}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Kanan: Chip pemain yang sedang login */}
-          <div className="relative" ref={menuRef}>
-            {session ? (
-              <button
-                type="button"
-                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="flex items-center gap-2 p-1.5 pr-2.5 rounded-[8px] border border-[var(--line)] bg-[var(--ink-1)] hover:border-[var(--text-dim)] transition-colors focus:outline-none"
-              >
-                <PlayerTag
-                  id={session.participantId}
-                  name={session.participant.display_name}
-                  monogram={session.participant.monogram}
-                  size="sm"
-                  nameClassName="hidden sm:inline text-xs font-semibold"
-                />
-              </button>
-            ) : (
-              <Link
-                href="/control"
-                className="inline-flex items-center justify-center h-9 px-3.5 rounded-[8px] border border-[var(--line)] bg-[var(--ink-1)] text-xs font-semibold text-[var(--text)] hover:border-[var(--text-dim)] transition-colors"
-              >
-                Masuk
-              </Link>
-            )}
+          {/* Kanan: Aksi Utama "Lapor Hasil" + Profil Sesi */}
+          <div className="flex items-center gap-3">
+            {/* Quick Action: Lapor Hasil Button (Always visible on desktop) */}
+            <Link
+              href="/control"
+              className="hidden sm:inline-flex items-center justify-center h-9 px-3.5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-bold uppercase tracking-wider hover:bg-white hover:shadow-[0_0_16px_rgba(255,255,255,0.25)] transition-all"
+            >
+              Lapor Hasil
+            </Link>
 
-            {/* Profile Dropdown Menu */}
-            {profileMenuOpen && session && (
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] shadow-[0_12px_32px_rgb(0_0_0_/_0.45)] py-2 z-50">
-                <div className="px-4 py-2 border-b border-[var(--line)]">
-                  <p className="text-[13px] text-[var(--text-dim)]">Masuk sebagai</p>
-                  <p className="text-[15px] font-bold text-[var(--text)] truncate">
-                    {session.participant.display_name}
-                  </p>
-                </div>
+            {/* Chip pemain / Masuk */}
+            <div className="relative" ref={menuRef}>
+              {session ? (
+                <button
+                  type="button"
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className="flex items-center gap-2 p-1.5 pr-2.5 rounded-[8px] border border-[var(--line)] bg-[var(--ink-1)] hover:border-[var(--text-dim)] transition-colors focus:outline-none"
+                  aria-label="Menu profil peserta"
+                >
+                  <PlayerTag
+                    id={session.participantId}
+                    name={session.participant.display_name}
+                    monogram={session.participant.monogram}
+                    size="sm"
+                    nameClassName="hidden md:inline text-xs font-semibold"
+                  />
+                </button>
+              ) : (
+                <Link
+                  href="/control"
+                  className="inline-flex items-center justify-center h-9 px-3 rounded-[8px] border border-[var(--line)] bg-[var(--ink-1)] text-xs font-semibold text-[var(--text-dim)] hover:text-[var(--text)] hover:border-[var(--text-dim)] transition-colors"
+                >
+                  Masuk
+                </Link>
+              )}
 
-                <div className="py-1">
-                  <Link
-                    href="/control"
-                    className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors"
-                  >
-                    <Sliders className="w-4 h-4 text-[var(--text-dim)]" />
-                    <span>Pusat Kontrol</span>
-                  </Link>
+              {/* Profile Dropdown Menu */}
+              {profileMenuOpen && session && (
+                <div className="absolute right-0 top-full mt-2 w-56 rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] shadow-[0_12px_32px_rgb(0_0_0_/_0.6)] py-2 z-50">
+                  <div className="px-4 py-2 border-b border-[var(--line)]">
+                    <p className="text-[12px] text-[var(--text-faint)] uppercase tracking-wider font-semibold">Masuk sebagai</p>
+                    <p className="text-[15px] font-bold text-[var(--text)] truncate">
+                      {session.participant.display_name}
+                    </p>
+                  </div>
 
-                  <Link
-                    href="/control?tab=profile"
-                    className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors"
-                  >
-                    <User className="w-4 h-4 text-[var(--text-dim)]" />
-                    <span>Ubah Profil & PIN</span>
-                  </Link>
-
-                  <Link
-                    href="/setup/reset"
-                    className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--danger)] hover:bg-[var(--ink-2)] transition-colors"
-                  >
-                    <RotateCcw className="w-4 h-4 text-[var(--danger)]" />
-                    <span>Reset Musim</span>
-                  </Link>
-                </div>
-
-                <div className="border-t border-[var(--line)] pt-1">
-                  <form action={async () => { await logoutParticipantAction(); }}>
-                    <button
-                      type="submit"
-                      className="w-full flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text-dim)] hover:text-[var(--danger)] hover:bg-[var(--ink-2)] transition-colors text-left"
+                  <div className="py-1">
+                    <Link
+                      href="/control"
+                      className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors"
                     >
-                      <LogOut className="w-4 h-4" />
-                      <span>Keluar</span>
-                    </button>
-                  </form>
+                      <Sliders className="w-4 h-4 text-[var(--p-a)]" />
+                      <span>Pusat Kontrol & Lapor</span>
+                    </Link>
+
+                    <Link
+                      href="/control?tab=profile"
+                      className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors"
+                    >
+                      <User className="w-4 h-4 text-[var(--text-dim)]" />
+                      <span>Ubah Profil & PIN</span>
+                    </Link>
+
+                    <Link
+                      href="/setup/reset"
+                      className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--danger)] hover:bg-[var(--ink-2)] transition-colors"
+                    >
+                      <RotateCcw className="w-4 h-4 text-[var(--danger)]" />
+                      <span>Reset Musim</span>
+                    </Link>
+                  </div>
+
+                  <div className="border-t border-[var(--line)] pt-1">
+                    <form action={async () => { await logoutParticipantAction(); }}>
+                      <button
+                        type="submit"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text-dim)] hover:text-[var(--danger)] hover:bg-[var(--ink-2)] transition-colors text-left"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Keluar</span>
+                      </button>
+                    </form>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -202,14 +214,14 @@ export function AppShell({ session, children }: AppShellProps) {
         {children}
       </main>
 
-      {/* 3. MOBILE BOTTOM TAB BAR (5 items, safe-area aware) */}
+      {/* 3. MOBILE BOTTOM TAB BAR (5 items, safe-area aware, high-contrast touch targets) */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--ink-0)] border-t border-[var(--line)] pb-[env(safe-area-inset-bottom,0px)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--ink-0)]/95 backdrop-blur-md border-t border-[var(--line)] pb-[env(safe-area-inset-bottom,0px)]"
       >
         <div className="grid grid-cols-5 h-14">
           <Link
             href="/"
-            className={`flex flex-col items-center justify-center gap-1 ${
+            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
               pathname === '/' ? 'text-[var(--text)] font-semibold' : 'text-[var(--text-dim)]'
             }`}
           >
@@ -219,7 +231,7 @@ export function AppShell({ session, children }: AppShellProps) {
 
           <Link
             href="/standings"
-            className={`flex flex-col items-center justify-center gap-1 ${
+            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
               pathname === '/standings' ? 'text-[var(--text)] font-semibold' : 'text-[var(--text-dim)]'
             }`}
           >
@@ -227,9 +239,20 @@ export function AppShell({ session, children }: AppShellProps) {
             <span className="text-[11px] leading-none">Klasemen</span>
           </Link>
 
+          {/* Central Touch Target: Direct Lapor / Kontrol Action */}
+          <Link
+            href="/control"
+            className="flex flex-col items-center justify-center gap-1 -mt-2 group"
+          >
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[var(--text)] text-[var(--ink-0)] shadow-[0_2px_12px_rgba(255,255,255,0.2)] group-hover:scale-105 transition-transform">
+              <Sliders className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] font-bold text-[var(--text)] leading-none">Lapor</span>
+          </Link>
+
           <Link
             href="/matches"
-            className={`flex flex-col items-center justify-center gap-1 ${
+            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
               pathname.startsWith('/matches') ? 'text-[var(--text)] font-semibold' : 'text-[var(--text-dim)]'
             }`}
           >
@@ -237,21 +260,11 @@ export function AppShell({ session, children }: AppShellProps) {
             <span className="text-[11px] leading-none">Jadwal</span>
           </Link>
 
-          <Link
-            href="/statistics"
-            className={`flex flex-col items-center justify-center gap-1 ${
-              pathname === '/statistics' ? 'text-[var(--text)] font-semibold' : 'text-[var(--text-dim)]'
-            }`}
-          >
-            <BarChart2 className="w-4 h-4" />
-            <span className="text-[11px] leading-none">Statistik</span>
-          </Link>
-
           <button
             type="button"
             onClick={() => setMobileMoreOpen(true)}
-            className={`flex flex-col items-center justify-center gap-1 ${
-              ['/awards', '/rules', '/control'].some((p) => pathname.startsWith(p))
+            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+              ['/statistics', '/awards', '/rules'].some((p) => pathname.startsWith(p))
                 ? 'text-[var(--text)] font-semibold'
                 : 'text-[var(--text-dim)]'
             }`}
@@ -281,11 +294,20 @@ export function AppShell({ session, children }: AppShellProps) {
 
             <div className="space-y-2">
               <Link
+                href="/statistics"
+                onClick={() => setMobileMoreOpen(false)}
+                className="flex items-center gap-3 p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[var(--text)] font-medium text-[15px]"
+              >
+                <BarChart2 className="w-5 h-5 text-[var(--p-a)]" />
+                <span>Statistik Kompetisi</span>
+              </Link>
+
+              <Link
                 href="/awards"
                 onClick={() => setMobileMoreOpen(false)}
                 className="flex items-center gap-3 p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[var(--text)] font-medium text-[15px]"
               >
-                <Award className="w-5 h-5 text-[var(--text-dim)]" />
+                <Award className="w-5 h-5 text-[var(--gold)]" />
                 <span>Penghargaan Resmi</span>
               </Link>
 
@@ -303,7 +325,7 @@ export function AppShell({ session, children }: AppShellProps) {
                 onClick={() => setMobileMoreOpen(false)}
                 className="flex items-center gap-3 p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[var(--text)] font-medium text-[15px]"
               >
-                <Sliders className="w-5 h-5 text-[var(--text-dim)]" />
+                <Sliders className="w-5 h-5 text-[var(--p-b)]" />
                 <span>Pusat Kontrol Peserta</span>
               </Link>
             </div>

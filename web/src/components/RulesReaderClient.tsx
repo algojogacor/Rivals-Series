@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Search, ChevronRight, Scale, BookOpen } from 'lucide-react';
+import { Search, ChevronRight, Scale, BookOpen, Link2, Check, X } from 'lucide-react';
+import { useEffect, useCallback } from 'react';
 
 interface BabItem {
   id: string;
@@ -351,25 +352,104 @@ const BAB_LIST: BabItem[] = [
   },
 ];
 
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query.trim()) return text;
+  const escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  const parts = text.split(regex);
+  return parts.map((part, index) =>
+    part.toLowerCase() === query.trim().toLowerCase() ? (
+      <mark key={index} className="search-highlight">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+}
+
 export function RulesReaderClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeBab, setActiveBab] = useState('bab-1');
+  const [copiedPasal, setCopiedPasal] = useState<string | null>(null);
 
   // Filter content based on search query
   const filteredBabs = useMemo(() => {
     if (!searchQuery.trim()) return BAB_LIST;
-    const q = searchQuery.toLowerCase();
-    return BAB_LIST.filter(
-      (b) =>
-        b.title.toLowerCase().includes(q) ||
-        b.content.some(
-          (c) =>
-            c.pasal.toLowerCase().includes(q) ||
-            c.heading.toLowerCase().includes(q) ||
-            c.body.some((txt) => txt.toLowerCase().includes(q))
-        )
-    );
+    const q = searchQuery.toLowerCase().trim();
+    return BAB_LIST.map((b) => {
+      const babMatches = b.title.toLowerCase().includes(q);
+      const matchingContent = b.content.filter(
+        (c) =>
+          c.pasal.toLowerCase().includes(q) ||
+          c.heading.toLowerCase().includes(q) ||
+          c.body.some((txt) => txt.toLowerCase().includes(q))
+      );
+      if (babMatches) return b;
+      if (matchingContent.length > 0) return { ...b, content: matchingContent };
+      return null;
+    }).filter(Boolean) as BabItem[];
   }, [searchQuery]);
+
+  // Total matching articles count
+  const totalMatches = useMemo(() => {
+    if (!searchQuery.trim()) return 0;
+    return filteredBabs.reduce((acc, b) => acc + b.content.length, 0);
+  }, [filteredBabs, searchQuery]);
+
+  // Deep-linking support on initial load
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) {
+        // Find parent bab
+        for (const b of BAB_LIST) {
+          if (b.content.some((c) => c.pasal.toLowerCase().replace(/\s+/g, '-') === hash)) {
+            setActiveBab(b.id);
+            break;
+          }
+        }
+        const el = document.getElementById(hash);
+        if (el) {
+          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+        }
+      }
+    }
+  }, []);
+
+  // IntersectionObserver for tracking active bab on scroll
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveBab(entry.target.id);
+          }
+        }
+      },
+      { rootMargin: '-20% 0px -70% 0px' }
+    );
+
+    BAB_LIST.forEach((b) => {
+      const el = document.getElementById(b.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const handleCopyLink = useCallback((pasalId: string) => {
+    if (typeof window === 'undefined') return;
+    const url = `${window.location.origin}${window.location.pathname}#${pasalId}`;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedPasal(pasalId);
+        window.history.replaceState(null, '', `#${pasalId}`);
+        setTimeout(() => setCopiedPasal(null), 2200);
+      });
+    }
+  }, []);
 
   return (
     <div className="space-y-10">
@@ -377,36 +457,64 @@ export function RulesReaderClient() {
       <div className="space-y-6 border-b border-[var(--line)] pb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-[var(--ink-2)] border border-[var(--line)] text-[var(--accent)] mb-1">
+              <Scale className="w-3 h-3" />
+              <span>Buku Aturan Otoritatif</span>
+            </div>
             <h1 className="font-[family-name:var(--font-display)] font-extrabold text-[clamp(2.5rem,5vw,3.75rem)] uppercase tracking-tight text-[var(--text)] leading-none">
-              Regulasi
+              Regulasi Liga
             </h1>
             <p className="text-[13px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
-              Regulasi Resmi Rivals Series Season 1 · Versi 1.0
+              Regulasi Resmi Rivals Series Season 1 · Versi 1.0 (52 Pasal)
             </p>
           </div>
 
           <Link
             href="/control"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-semibold uppercase tracking-wider hover:opacity-90 transition-opacity gap-1.5 self-start sm:self-auto shrink-0"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity gap-1.5 self-start sm:self-auto shrink-0"
           >
             <span>Ajukan / Periksa Sengketa</span>
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
 
-        {/* Lead Quote Integritas: Tanpa kotak merah, tipografi lead bersih */}
-        <div className="border-l-2 border-[var(--text)] pl-5 py-1">
-          <p className="text-lg sm:text-xl font-medium text-[var(--text)] italic leading-relaxed">
+        {/* Lead Quote Integritas: Stamped quote with subtle background */}
+        <div className="relative rounded-[10px] bg-[var(--ink-1)]/70 border-l-4 border-[var(--accent)] p-5 backdrop-blur-sm">
+          <p className="text-base sm:text-lg font-medium text-[var(--text)] italic leading-relaxed">
             &ldquo;Beban pembuktian ada pada pihak yang mengajukan klaim. Tidak ada sanksi yang boleh dijatuhkan tanpa bukti rekaman atau tangkapan layar yang sah.&rdquo;
           </p>
-          <span className="text-[13px] text-[var(--text-faint)] block mt-2 font-mono">
-            Pasal 3 ayat (1) Regulasi Resmi RS S1
-          </span>
+          <div className="flex items-center gap-2 mt-2.5 text-[12px] text-[var(--text-faint)] font-mono">
+            <span className="font-semibold text-[var(--text-dim)]">Pasal 3 ayat (1) Regulasi Resmi RS S1</span>
+            <span>·</span>
+            <span>Asas Beban Pembuktian</span>
+          </div>
         </div>
       </div>
 
-      {/* 2. Mobile Horizontal Chips TOC (Menempel di bawah header) */}
-      <div className="block lg:hidden sticky top-16 z-30 -mx-5 px-5 py-3 bg-[var(--ink-0)]/95 backdrop-blur-sm border-b border-[var(--line)]">
+      {/* 2. Mobile Search & Horizontal Chips TOC (Sticky on Mobile) */}
+      <div className="block lg:hidden sticky top-16 z-30 -mx-5 px-5 py-3 bg-[var(--ink-0)]/95 backdrop-blur-md border-b border-[var(--line)] space-y-2.5">
+        {/* Mobile Search Input */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-[var(--text-faint)] absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari kata kunci aturan (e.g. trending, WO, koneksi)..."
+            className="w-full h-10 pl-9 pr-8 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-xs text-[var(--text)] placeholder-[var(--text-faint)] focus:border-[var(--accent)] focus:outline-none transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-faint)] hover:text-[var(--text)]"
+              aria-label="Hapus pencarian"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Mobile Bab Chips */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           {BAB_LIST.map((b) => (
             <a
@@ -415,7 +523,7 @@ export function RulesReaderClient() {
               onClick={() => setActiveBab(b.id)}
               className={`px-3 py-1.5 rounded-[8px] text-xs font-semibold whitespace-nowrap shrink-0 transition-colors border ${
                 activeBab === b.id
-                  ? 'bg-[var(--text)] text-[var(--ink-0)] border-[var(--text)]'
+                  ? 'bg-[var(--accent)] text-[var(--ink-0)] border-[var(--accent)] font-bold shadow-sm'
                   : 'bg-[var(--ink-1)] text-[var(--text-dim)] border-[var(--line)] hover:text-[var(--text)]'
               }`}
             >
@@ -425,24 +533,57 @@ export function RulesReaderClient() {
         </div>
       </div>
 
+      {/* Search Result Feedback Bar */}
+      {searchQuery.trim() && (
+        <div className="rounded-[10px] bg-[var(--ink-1)] border border-[var(--line)] px-4 py-3 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Search className="w-4 h-4 text-[var(--accent)]" />
+            <span className="text-[var(--text-dim)]">
+              Ditemukan <strong className="text-[var(--text)] font-mono">{totalMatches}</strong> pasal untuk kata kunci{' '}
+              <mark className="search-highlight">&ldquo;{searchQuery}&rdquo;</mark>
+            </span>
+          </div>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="text-[11px] font-semibold text-[var(--accent)] hover:underline flex items-center gap-1 shrink-0"
+          >
+            <span>Reset Pencarian</span>
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
       {/* 3. Main Reading Grid: Left TOC (Desktop) + Right Reader Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-12 items-start">
         {/* Desktop Sticky TOC */}
         <aside className="hidden lg:flex flex-col sticky top-24 space-y-4">
           {/* Search Input */}
           <div className="relative">
-            <Search className="w-4 h-4 text-[var(--text-faint)] absolute left-3 top-3.5" />
+            <Search className="w-4 h-4 text-[var(--text-faint)] absolute left-3.5 top-3.5" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari pasal atau kata kunci…"
-              className="w-full h-11 pl-9 pr-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-xs text-[var(--text)] placeholder-[var(--text-faint)] focus:border-[var(--text)] focus:outline-none transition-colors"
+              className="w-full h-11 pl-10 pr-8 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-xs text-[var(--text)] placeholder-[var(--text-faint)] focus:border-[var(--accent)] focus:outline-none transition-colors"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-3.5 text-[var(--text-faint)] hover:text-[var(--text)]"
+                aria-label="Hapus pencarian"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* TOC Links */}
-          <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-3 space-y-1 max-h-[70vh] overflow-y-auto">
+          {/* TOC Links Box */}
+          <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-2 space-y-1 max-h-[calc(100vh-180px)] overflow-y-auto">
+            <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-[var(--text-faint)] border-b border-[var(--line)] mb-1 flex items-center justify-between">
+              <span>Daftar Bab Regulasi</span>
+              <span>12 Bab</span>
+            </div>
             {BAB_LIST.map((b) => {
               const isActive = activeBab === b.id;
               return (
@@ -450,58 +591,112 @@ export function RulesReaderClient() {
                   key={b.id}
                   href={`#${b.id}`}
                   onClick={() => setActiveBab(b.id)}
-                  className={`block px-3 py-2 rounded-[6px] text-xs transition-colors ${
+                  className={`block px-3 py-2.5 rounded-[8px] text-xs transition-all ${
                     isActive
-                      ? 'bg-[var(--ink-2)] text-[var(--text)] font-bold'
-                      : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--ink-2)]/50'
+                      ? 'bg-[var(--ink-2)] text-[var(--text)] font-bold border-l-2 border-[var(--accent)] shadow-sm'
+                      : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--ink-2)]/60'
                   }`}
                 >
                   <div className="font-semibold uppercase tracking-tight truncate">
                     {b.title}
                   </div>
-                  <div className="text-[11px] text-[var(--text-faint)]">{b.pasalRange}</div>
+                  <div className="text-[11px] text-[var(--text-faint)] font-mono mt-0.5">{b.pasalRange}</div>
                 </a>
               );
             })}
           </div>
         </aside>
 
-        {/* Reader Content Column (Lebar maksimum 68ch) */}
-        <main className="max-w-[68ch] space-y-[72px]">
+        {/* Reader Content Column (Max width 72ch for optimal editorial reading line length) */}
+        <main className="max-w-[72ch] space-y-16">
           {filteredBabs.map((b) => (
             <section key={b.id} id={b.id} className="scroll-mt-28 space-y-8">
-              {/* Judul Bab: display h2 */}
-              <div className="border-b border-[var(--line)] pb-3">
-                <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl uppercase tracking-tight text-[var(--text)] leading-tight">
-                  {b.title}
-                </h2>
-                <span className="text-[12px] text-[var(--text-faint)] uppercase tracking-wider font-mono">
-                  {b.pasalRange}
-                </span>
+              {/* Judul Bab: display h2 with accent underline */}
+              <div className="border-b-2 border-[var(--line)] pb-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl uppercase tracking-tight text-[var(--text)] leading-tight">
+                    {highlightMatch(b.title, searchQuery)}
+                  </h2>
+                  <span className="text-[11px] text-[var(--accent)] uppercase tracking-wider font-mono font-bold bg-[var(--ink-1)] px-2.5 py-1 rounded-[6px] border border-[var(--line)] shrink-0 ml-3">
+                    {b.pasalRange}
+                  </span>
+                </div>
               </div>
 
-              {/* Daftar Pasal: Jarak antar pasal 24 */}
-              <div className="space-y-6">
-                {b.content.map((c) => (
-                  <article key={c.pasal} id={c.pasal.toLowerCase().replace(/\s+/g, '-')} className="scroll-mt-28 space-y-2">
-                    <h3 className="text-base font-bold text-[var(--text)]">
-                      <span className="text-[var(--text)] font-extrabold mr-2">{c.pasal}</span>
-                      <span className="text-[var(--text-dim)] font-medium">({c.heading})</span>
-                    </h3>
-                    <div className="space-y-2 text-[15px] text-[var(--text-dim)] leading-[1.65]">
-                      {c.body.map((paragraph, i) => (
-                        <p key={i}>{paragraph}</p>
-                      ))}
-                    </div>
-                  </article>
-                ))}
+              {/* Daftar Pasal */}
+              <div className="space-y-8">
+                {b.content.map((c) => {
+                  const pasalId = c.pasal.toLowerCase().replace(/\s+/g, '-');
+                  const isCopied = copiedPasal === pasalId;
+
+                  return (
+                    <article
+                      key={c.pasal}
+                      id={pasalId}
+                      className="group scroll-mt-28 rounded-[10px] p-4 -mx-4 transition-colors hover:bg-[var(--ink-1)]/40 border border-transparent hover:border-[var(--line)]/50 space-y-2.5"
+                    >
+                      {/* Pasal Heading with Deep-Link Copy Action */}
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-[15px] sm:text-base font-bold text-[var(--text)] flex items-center flex-wrap gap-2">
+                          <span className="font-extrabold text-[var(--accent)] font-mono">
+                            {highlightMatch(c.pasal, searchQuery)}
+                          </span>
+                          <span className="text-[var(--text-dim)] font-medium">
+                            ({highlightMatch(c.heading, searchQuery)})
+                          </span>
+                        </h3>
+
+                        {/* Interactive Deep-Link Button */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isCopied && (
+                            <span className="text-[11px] font-semibold text-[var(--ok)] bg-[var(--ok)]/15 border border-[var(--ok)]/30 px-2 py-0.5 rounded animate-fade-in flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              <span>Tersalin</span>
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(pasalId)}
+                            title={`Salin tautan ke ${c.pasal}`}
+                            className="p-1.5 rounded-[6px] text-[var(--text-faint)] hover:text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors opacity-70 group-hover:opacity-100 focus:opacity-100"
+                            aria-label={`Salin tautan ${c.pasal}`}
+                          >
+                            <Link2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Body Paragraphs */}
+                      <div className="space-y-2 text-[14px] sm:text-[15px] text-[var(--text-dim)] leading-[1.7]">
+                        {c.body.map((paragraph, i) => (
+                          <p key={i}>
+                            {highlightMatch(paragraph, searchQuery)}
+                          </p>
+                        ))}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ))}
 
           {filteredBabs.length === 0 && (
-            <div className="p-8 rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] text-center text-sm text-[var(--text-dim)]">
-              Tidak ada pasal yang cocok dengan kata kunci &ldquo;{searchQuery}&rdquo;.
+            <div className="p-10 rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] text-center space-y-3">
+              <BookOpen className="w-8 h-8 text-[var(--text-faint)] mx-auto" />
+              <p className="text-sm font-semibold text-[var(--text)]">
+                Tidak ada pasal yang cocok dengan kata kunci &ldquo;{searchQuery}&rdquo;.
+              </p>
+              <p className="text-xs text-[var(--text-dim)]">
+                Coba gunakan kata kunci lain seperti &ldquo;trending&rdquo;, &ldquo;indonesia&rdquo;, &ldquo;forfeit&rdquo;, atau &ldquo;koneksi&rdquo;.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="mt-2 h-9 px-4 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs text-[var(--text)] font-semibold hover:border-[var(--text-dim)] transition-colors"
+              >
+                Tampilkan Seluruh Regulasi
+              </button>
             </div>
           )}
         </main>

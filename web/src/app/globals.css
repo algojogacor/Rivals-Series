@@ -26,30 +26,44 @@
 
 :root {
   /* Surface Tokens */
-  --ink-0: #0a1311;   /* background halaman, hijau-hitam malam */
-  --ink-1: #101c19;   /* panel */
-  --ink-2: #172824;   /* panel terangkat, input */
-  --line:  #26403a;   /* garis tipis, 1px */
-  --text:  #f1efe8;   /* teks utama (putih hangat) */
-  --text-dim:   #a7b5ae;   /* teks sekunder */
-  --text-faint: #6f817a;   /* label kecil, placeholder (minimal 13px) */
+  --ink-0: #08110f;   /* background halaman, hijau-hitam malam stadion */
+  --ink-1: #0f1c18;   /* panel kontainer */
+  --ink-2: #162923;   /* panel terangkat, input, hover card */
+  --line:  #203832;   /* garis batas arsitektural */
+  --line-subtle: rgba(38, 64, 58, 0.4);
+  --text:  #f3f1eb;   /* teks utama (ivory hangat) */
+  --text-dim:   #a2b3ab;   /* teks sekunder berdaya baca tinggi */
+  --text-faint: #6c7f77;   /* label kecil, meta info */
 
-  /* Player Colors (Dynamic via season_settings in DB, defaults here) */
-  --p-a: #ffb02e;     /* warna Pemain A (default amber) */
-  --p-b: #3ec9e6;     /* warna Pemain B (default cyan) */
-  --p-a-soft: color-mix(in oklab, var(--p-a) 14%, var(--ink-1));
-  --p-b-soft: color-mix(in oklab, var(--p-b) 14%, var(--ink-1));
+  /* Player Colors (Dynamic via season_settings in DB, defaults aligned with active season: Cyan vs Purple) */
+  --p-a: #3ec9e6;     /* warna Pemain A (Cyan / algojogacor) */
+  --p-b: #a78bfa;     /* warna Pemain B (Ungu / CHarmed) */
+  --p-a-soft: color-mix(in oklab, var(--p-a) 12%, var(--ink-1));
+  --p-b-soft: color-mix(in oklab, var(--p-b) 12%, var(--ink-1));
+  --p-a-glow: color-mix(in oklab, var(--p-a) 15%, transparent);
+  --p-b-glow: color-mix(in oklab, var(--p-b) 15%, transparent);
+  --p-a-border: color-mix(in oklab, var(--p-a) 32%, var(--line));
+  --p-b-border: color-mix(in oklab, var(--p-b) 32%, var(--line));
 
   /* Status Colors */
-  --ok:     #9be564;   /* berhasil / terkonfirmasi */
-  --danger: #ef5b4c;   /* destruktif / sengketa */
+  --ok:     #34d399;   /* berhasil / terkonfirmasi */
+  --danger: #f87171;   /* destruktif / sengketa */
+  --gold:   #fbbf24;   /* juara / penghargaan */
 
   color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html, body {
   overflow-x: clip;
   background-color: var(--ink-0);
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(62, 201, 230, 0.05), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(167, 139, 250, 0.04), transparent 60%);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-barlow), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
@@ -81,6 +95,34 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text);
 }
 
+/* Search Query Highlight <mark> */
+mark.search-highlight {
+  background-color: color-mix(in oklab, var(--p-a) 25%, transparent);
+  color: var(--text);
+  padding: 0.1em 0.25em;
+  border-radius: 4px;
+  font-weight: 600;
+  border-bottom: 2px solid var(--p-a);
+}
+
+/* Targeted Article / Pasal Deep-link Glow */
+:target {
+  animation: targetHighlight 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes targetHighlight {
+  0% {
+    background-color: color-mix(in oklab, var(--p-a) 20%, var(--ink-1));
+    outline: 2px solid var(--p-a);
+    box-shadow: 0 0 20px rgba(62, 201, 230, 0.25);
+  }
+  100% {
+    background-color: transparent;
+    outline: 2px solid transparent;
+    box-shadow: none;
+  }
+}
+
 /* Custom Night Match Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -103,19 +145,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   outline-offset: 2px;
 }
 
+/* Stadium Pitch Line Motifs & Utilities */
+.pitch-pattern {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 60px,
+    rgba(255, 255, 255, 0.015) 60px,
+    rgba(255, 255, 255, 0.015) 120px
+  );
+}
+
+.rivalry-gradient-a {
+  background: linear-gradient(135deg, color-mix(in oklab, var(--p-a) 16%, var(--ink-1)) 0%, var(--ink-1) 100%);
+}
+
+.rivalry-gradient-b {
+  background: linear-gradient(135deg, color-mix(in oklab, var(--p-b) 16%, var(--ink-1)) 0%, var(--ink-1) 100%);
+}
+
 /* Animation: Slow gentle pulse for next match (only looping animation allowed) */
 @keyframes slowPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.98); }
 }
 
 .animate-pulse-slow {
-  animation: slowPulse 1.8s ease-in-out infinite;
+  animation: slowPulse 2.4s ease-in-out infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .animate-pulse-slow {
-    animation: none;
-    opacity: 1;
-  }
-}

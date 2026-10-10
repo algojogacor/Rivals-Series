@@ -38,8 +38,8 @@ export default async function RootLayout({
   const pathname = headersList.get('x-pathname') || '';
 
   let session = null;
-  let playerAColor = '#ffb02e';
-  let playerBColor = '#3ec9e6';
+  let playerAColor = '#3ec9e6';
+  let playerBColor = '#a78bfa';
   let isSetupStatus = false;
 
   // Defensive concurrent database reads: never crash if DB is temporarily unreachable

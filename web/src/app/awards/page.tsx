@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getCachedAwardsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
 import { StatusChip } from '@/components/StatusChip';
-import { Trophy, Award, Shield, Zap, Sparkles, ArrowRight } from 'lucide-react';
+import { Trophy, Award, Shield, Zap, Sparkles, ArrowRight, Crown } from 'lucide-react';
 
 export const metadata = {
   title: 'Penghargaan | Rivals Series Season 1',
@@ -59,7 +59,7 @@ export default async function AwardsPage() {
   const otherAwards = [
     {
       title: 'Golden Boot S1',
-      rule: 'Pemain virtual dengan jumlah gol sah terbanyak (seluruh versi kartu digabung per pemain virtual).',
+      rule: 'Pemain virtual dengan jumlah gol sah terbanyak. Seluruh versi kartu digabung per pemain virtual.',
       ruleRef: 'Pasal 42',
       leaderContent:
         bootLeaders.length > 0 ? (
@@ -71,25 +71,25 @@ export default async function AwardsPage() {
                 monogram={pMap.get(bootLeaders[0].participant_id)?.monogram || 'P'}
                 size="sm"
               />
-              <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--text)]">
+              <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--gold)]">
                 {bootLeaders[0].total_goals} Gol
               </span>
             </div>
             {bootLeaders[0].card_versions && bootLeaders[0].card_versions.length > 0 && (
-              <span className="text-[11px] text-[var(--text-faint)] block">
+              <span className="text-xs text-[var(--text-faint)] block font-mono">
                 Versi kartu: {bootLeaders[0].card_versions.join(' + ')}
               </span>
             )}
           </div>
         ) : (
-          <span className="text-[13px] text-[var(--text-faint)]">—</span>
+          <span className="text-xs text-[var(--text-faint)] font-mono">Belum ada gol tercatat</span>
         ),
-      icon: <Award className="w-5 h-5 text-[var(--p-a)]" />,
+      icon: <Award className="w-5 h-5 text-[var(--gold)]" />,
       action: null,
     },
     {
       title: 'Golden Glove S1',
-      rule: 'Kiper starter bermain 90 menit reguler penuh dengan clean sheet terbanyak (versi kartu digabung per pemain virtual).',
+      rule: 'Kiper starter bermain 90 menit reguler penuh dengan clean sheet terbanyak.',
       ruleRef: 'Pasal 44',
       leaderContent:
         gloveLeaders.length > 0 ? (
@@ -101,20 +101,20 @@ export default async function AwardsPage() {
                 monogram={pMap.get(gloveLeaders[0].participant_id)?.monogram || 'P'}
                 size="sm"
               />
-              <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--text)]">
-                {gloveLeaders[0].clean_sheets} CS
+              <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--p-a)]">
+                {gloveLeaders[0].clean_sheets} Clean Sheet
               </span>
             </div>
             {gloveLeaders[0].card_versions && gloveLeaders[0].card_versions.length > 0 && (
-              <span className="text-[11px] text-[var(--text-faint)] block">
+              <span className="text-xs text-[var(--text-faint)] block font-mono">
                 Versi kartu: {gloveLeaders[0].card_versions.join(' + ')}
               </span>
             )}
           </div>
         ) : (
-          <span className="text-[13px] text-[var(--text-faint)]">—</span>
+          <span className="text-xs text-[var(--text-faint)] font-mono">Belum ada clean sheet</span>
         ),
-      icon: <Shield className="w-5 h-5 text-[var(--p-b)]" />,
+      icon: <Shield className="w-5 h-5 text-[var(--p-a)]" />,
       action: null,
     },
     {
@@ -135,7 +135,7 @@ export default async function AwardsPage() {
             </span>
           </div>
         ) : (
-          <span className="text-[13px] text-[var(--text-faint)]">—</span>
+          <span className="text-xs text-[var(--text-faint)] font-mono">—</span>
         ),
       icon: <Shield className="w-5 h-5 text-[var(--text-dim)]" />,
       action: null,
@@ -152,22 +152,22 @@ export default async function AwardsPage() {
             </span>
           </div>
         ) : (
-          <span className="text-[13px] text-[var(--text-faint)]">Menunggu Penguncian Suara</span>
+          <span className="text-xs text-[var(--text-faint)] font-mono">Menunggu Penguncian Suara</span>
         ),
-      icon: <Sparkles className="w-5 h-5 text-[var(--p-a)]" />,
+      icon: <Sparkles className="w-5 h-5 text-[var(--p-b)]" />,
       action: (
         <Link
           href="/awards/goal-of-the-season"
-          className="inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-semibold hover:opacity-90 transition-opacity gap-1.5"
+          className="inline-flex items-center justify-center h-9 px-3.5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-bold uppercase tracking-wider hover:bg-white transition-all gap-1.5"
         >
-          <span>Buka Halaman Voting</span>
+          <span>Voting GotS</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       ),
     },
     {
       title: 'Longest Winning Streak S1',
-      rule: 'Kemenangan pertandingan beruntun terpanjang yang diraih secara sportif di lapangan.',
+      rule: 'Kemenangan pertandingan beruntun terpanjang yang diraih sepanjang musim.',
       ruleRef: 'Pasal 46',
       leaderContent:
         maxStreak > 0 ? (
@@ -183,14 +183,14 @@ export default async function AwardsPage() {
             </span>
           </div>
         ) : (
-          <span className="text-[13px] text-[var(--text-faint)]">—</span>
+          <span className="text-xs text-[var(--text-faint)] font-mono">0 Laga</span>
         ),
       icon: <Zap className="w-5 h-5 text-[var(--p-a)]" />,
       action: null,
     },
     {
       title: 'Most Clean Sheets S1',
-      rule: 'Peserta dengan jumlah pertandingan tanpa kebobolan terbanyak.',
+      rule: 'Peserta dengan jumlah pertandingan tanpa kebobolan terbanyak di seluruh musim.',
       ruleRef: 'Pasal 47',
       leaderContent:
         csLeader && csLeader.clean_sheets > 0 ? (
@@ -202,11 +202,11 @@ export default async function AwardsPage() {
               size="sm"
             />
             <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--text)]">
-              {csLeader.clean_sheets} Laga
+              {csLeader.clean_sheets} Pertandingan
             </span>
           </div>
         ) : (
-          <span className="text-[13px] text-[var(--text-faint)]">—</span>
+          <span className="text-xs text-[var(--text-faint)] font-mono">0 Pertandingan</span>
         ),
       icon: <Shield className="w-5 h-5 text-[var(--ok)]" />,
       action: null,
@@ -217,42 +217,58 @@ export default async function AwardsPage() {
     <div className="space-y-10">
       {/* 1. Header */}
       <div className="space-y-2 border-b border-[var(--line)] pb-6">
-        <h1 className="font-[family-name:var(--font-display)] font-extrabold text-[clamp(2.5rem,5vw,3.75rem)] uppercase tracking-tight text-[var(--text)] leading-none">
-          Penghargaan
-        </h1>
+        <div className="flex items-center gap-2.5">
+          <Trophy className="w-5 h-5 text-[var(--gold)]" />
+          <h1 className="font-[family-name:var(--font-display)] font-extrabold text-[clamp(2.5rem,5vw,3.75rem)] uppercase tracking-tight text-[var(--text)] leading-none">
+            Penghargaan Resmi
+          </h1>
+        </div>
         <p className="text-[15px] text-[var(--text-dim)] max-w-xl">
           Tujuh gelar kehormatan resmi Rivals Series Season 1 yang ditentukan murni dari performa statistik dan voting independen dua pemain.
         </p>
       </div>
 
-      {/* 2. RS CHAMPION (Panel Besar Lebar Penuh) */}
-      <section className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-6 sm:p-10 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--line)] pb-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[var(--p-a)]">
-              <Trophy className="w-6 h-6 stroke-[1.5]" />
+      {/* 2. RS CHAMPION (Championship Trophy Banner) */}
+      <section className="relative overflow-hidden rounded-[16px] bg-[var(--ink-1)] border-2 border-[var(--gold)]/40 p-6 sm:p-10 space-y-6 shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+        {/* Subtle gold ambient glow */}
+        <div
+          className="absolute -top-24 right-0 w-80 h-80 rounded-full pointer-events-none opacity-20 blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)',
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--line)] pb-5">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--gold)]/10 border border-[var(--gold)]/40 text-[var(--gold)]">
+              <Crown className="w-6 h-6 stroke-[2]" />
             </div>
             <div>
-              <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl uppercase tracking-tight text-[var(--text)]">
-                RS Champion Season 1
-              </h2>
-              <p className="text-[13px] text-[var(--text-dim)]">
-                Gelar tertinggi untuk pemuncak klasemen akhir 20 matchday (Pasal 41).
+              <div className="flex items-center gap-2">
+                <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl uppercase tracking-tight text-[var(--text)]">
+                  RS Champion Season 1
+                </h2>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--gold)]/20 text-[var(--gold)] border border-[var(--gold)]/30">
+                  Gelar Utama
+                </span>
+              </div>
+              <p className="text-xs text-[var(--text-dim)] mt-0.5">
+                Peringkat 1 klasemen akhir 20 matchday (Pasal 41 Regulasi).
               </p>
             </div>
           </div>
 
           <StatusChip
             status={isCompleted ? 'confirmed' : 'provisional'}
-            label={isCompleted ? 'Juara Resmi' : 'Provisional'}
+            label={isCompleted ? 'Juara Terkunci' : 'Provisional'}
           />
         </div>
 
         {/* Champion Leader Display */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-2">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-2">
           <div className="space-y-1">
-            <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">
-              Pemimpin Klasemen Saat Ini
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">
+              Pimpinan Klasemen Sementara
             </span>
             <div className="flex items-center gap-4">
               <PlayerTag
@@ -266,10 +282,10 @@ export default async function AwardsPage() {
 
           <div className="flex items-center gap-6 sm:text-right">
             <div>
-              <span className="block text-[12px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">
+              <span className="block text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">
                 Poin Terkumpul
               </span>
-              <span className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl tabular-nums text-[var(--text)]">
+              <span className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl tabular-nums text-[var(--gold)]">
                 {leader?.points ?? 0}
               </span>
             </div>
@@ -277,13 +293,13 @@ export default async function AwardsPage() {
         </div>
       </section>
 
-      {/* 3. Enam Penghargaan Lain sebagai Daftar Baris (Bukan Kartu Kembar) */}
+      {/* 3. Enam Penghargaan Lain sebagai Daftar Baris */}
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight text-[var(--text)]">
-          Gelar Kehormatan Lainnya
+        <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)]">
+          Gelar Kehormatan Lainnya (BAB X)
         </h2>
 
-        <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden">
+        <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm">
           {otherAwards.map((a) => (
             <div
               key={a.title}
@@ -296,19 +312,19 @@ export default async function AwardsPage() {
                   <h3 className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight text-[var(--text)]">
                     {a.title}
                   </h3>
-                  <span className="text-[11px] text-[var(--text-faint)] uppercase font-mono">
+                  <span className="text-[11px] text-[var(--text-faint)] uppercase font-mono px-2 py-0.5 rounded bg-[var(--ink-2)] border border-[var(--line)]">
                     {a.ruleRef}
                   </span>
                 </div>
-                <p className="text-[13px] text-[var(--text-dim)] leading-relaxed">
+                <p className="text-xs text-[var(--text-dim)] leading-relaxed">
                   {a.rule}
                 </p>
               </div>
 
-              {/* Kanan: Pemimpin Saat Ini & Status / Action */}
+              {/* Kanan: Pemegang Saat Ini & Status / Action */}
               <div className="flex flex-wrap items-center gap-4 md:gap-6 self-start md:self-auto">
                 <div>
-                  <span className="text-[11px] text-[var(--text-faint)] uppercase tracking-wider block mb-1">
+                  <span className="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-wider block mb-1">
                     Pemegang Saat Ini
                   </span>
                   {a.leaderContent}
