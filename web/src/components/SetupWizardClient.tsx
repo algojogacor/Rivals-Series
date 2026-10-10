@@ -2,32 +2,49 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Participant, SeasonSettings } from '@/lib/types';
-import { PlayerTag } from './PlayerTag';
-import { 
-  saveSetupStep1Action, 
-  testSystemReadinessAction, 
-  completeSeasonSetupAction 
+import {
+  Participant,
+  ParticipantId,
+  SeasonSettings,
+  RosterCard,
+  RosterPhaseStatus,
+} from '@/lib/types';
+import {
+  saveSetupStep1Action,
+  testSystemReadinessAction,
+  completeSeasonSetupAction,
 } from '@/lib/actions';
-import { 
-  Check, 
-  X, 
-  Loader2, 
-  ArrowRight, 
-  RotateCcw, 
-  Shield, 
-  Trophy, 
-  Calendar, 
+import { SquadBuilderWorkbench } from './SquadBuilderWorkbench';
+import {
+  Check,
+  X,
+  Loader2,
+  ArrowRight,
+  RotateCcw,
+  Shield,
+  Trophy,
+  Calendar,
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Lock,
 } from 'lucide-react';
 
 interface SetupWizardClientProps {
+  session?: {
+    participantId: ParticipantId;
+    participant: Participant;
+    isAdmin: boolean;
+  } | null;
   participantA: Participant;
   participantB: Participant;
   seasonSettings?: SeasonSettings | null;
   isAdmin: boolean;
+  phase1Status: RosterPhaseStatus;
+  visibleCardsPhase1: RosterCard[];
+  shortlistCards?: any[];
+  paSummaryPhase1: { count: number; trending: number; indo: number };
+  pbSummaryPhase1: { count: number; trending: number; indo: number };
 }
 
 const COLOR_SWATCHES = [
@@ -40,10 +57,16 @@ const COLOR_SWATCHES = [
 ];
 
 export function SetupWizardClient({
+  session = null,
   participantA,
   participantB,
   seasonSettings,
   isAdmin,
+  phase1Status,
+  visibleCardsPhase1,
+  shortlistCards = [],
+  paSummaryPhase1,
+  pbSummaryPhase1,
 }: SetupWizardClientProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -66,7 +89,6 @@ export function SetupWizardClient({
   const [editedMonogramA, setEditedMonogramA] = useState(false);
   const [editedMonogramB, setEditedMonogramB] = useState(false);
 
-  // Auto-update monogram from name if not manually edited
   const handleNameAChange = (val: string) => {
     setNameA(val);
     if (!editedMonogramA) {
@@ -81,25 +103,29 @@ export function SetupWizardClient({
     }
   };
 
-  // Step 3 Checklist State
+  // Step 4 Checklist State
   const [checkingSystem, setCheckingSystem] = useState(false);
   const [systemReadiness, setSystemReadiness] = useState<{
     dbConnection: boolean | null;
     tablesCreated: boolean | null;
     matchesSeeded: boolean | null;
     settingsSaved: boolean | null;
+    playersSynced?: boolean | null;
+    playersCount?: number;
     errorMessage: string | null;
   }>({
     dbConnection: null,
     tablesCreated: null,
     matchesSeeded: null,
     settingsSaved: null,
+    playersSynced: null,
+    playersCount: 0,
     errorMessage: null,
   });
 
-  // Run automated system readiness check when entering step 3
+  // Run automated system readiness check when entering step 4
   useEffect(() => {
-    if (currentStep === 3) {
+    if (currentStep === 4) {
       runSystemCheck();
     }
   }, [currentStep]);
@@ -111,6 +137,8 @@ export function SetupWizardClient({
       tablesCreated: null,
       matchesSeeded: null,
       settingsSaved: null,
+      playersSynced: null,
+      playersCount: 0,
       errorMessage: null,
     });
 
@@ -119,12 +147,14 @@ export function SetupWizardClient({
       if (res.results) {
         setSystemReadiness(res.results);
       }
-    } catch (err: any) {
+    } catch {
       setSystemReadiness({
         dbConnection: false,
         tablesCreated: false,
         matchesSeeded: false,
         settingsSaved: false,
+        playersSynced: false,
+        playersCount: 0,
         errorMessage: 'Gagal menghubungi server database. Periksa koneksi atau variabel lingkungan.',
       });
     } finally {
@@ -136,7 +166,8 @@ export function SetupWizardClient({
     systemReadiness.dbConnection === true &&
     systemReadiness.tablesCreated === true &&
     systemReadiness.matchesSeeded === true &&
-    systemReadiness.settingsSaved === true;
+    systemReadiness.settingsSaved === true &&
+    systemReadiness.playersSynced === true;
 
   // Handle Step 1 Save
   const handleSaveStep1 = (e: React.FormEvent) => {
@@ -160,7 +191,6 @@ export function SetupWizardClient({
       if (res?.error) {
         setErrorMessage(res.error);
       } else {
-        // Dynamically update CSS root variables so the rest of the wizard uses selected colors immediately
         document.documentElement.style.setProperty('--p-a', colorA);
         document.documentElement.style.setProperty('--p-b', colorB);
         setCurrentStep(2);
@@ -168,10 +198,17 @@ export function SetupWizardClient({
     });
   };
 
-  // Step 4 Complete Setup & Start Season
+  // Step 5 Complete Setup & Start Season
   const [isStartingSeason, setIsStartingSeason] = useState(false);
   const handleStartSeason = () => {
     setErrorMessage(null);
+    if (!phase1Status.both_locked) {
+      setErrorMessage(
+        'Musim belum dapat dimulai: kedua peserta wajib mengunci skuad Fase 1 masing-masing pada Langkah 3 (Susun Skuad).'
+      );
+      return;
+    }
+
     setIsStartingSeason(true);
 
     startTransition(async () => {
@@ -180,7 +217,6 @@ export function SetupWizardClient({
         setIsStartingSeason(false);
         setErrorMessage(res.error);
       } else {
-        // Dramatic curtain sweep before navigating to home
         setTimeout(() => {
           router.push('/');
           router.refresh();
@@ -192,12 +228,13 @@ export function SetupWizardClient({
   const steps = [
     { num: 1, title: 'Siapa yang bertanding?', desc: 'Identitas & warna pemain' },
     { num: 2, title: 'Format musim', desc: 'Aturan resmi 20 Matchday' },
-    { num: 3, title: 'Siapkan sistem', desc: 'Pemeriksaan otomatis database' },
-    { num: 4, title: 'Siap kick-off', desc: 'Peluit perdana musim' },
+    { num: 3, title: 'Susun skuad', desc: '26 kartu eFHUB & kunci skuad' },
+    { num: 4, title: 'Siapkan sistem', desc: 'Pemeriksaan otomatis database' },
+    { num: 5, title: 'Siap kick-off', desc: 'Peluit perdana musim' },
   ];
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-center items-center bg-[var(--ink-0)] text-[var(--text)] overflow-hidden px-4 py-8 md:p-12">
+    <div className="relative min-h-screen w-full flex flex-col justify-center items-center bg-[var(--ink-0)] text-[var(--text)] overflow-hidden px-4 py-8 md:p-10">
       {/* 1. ATMOSFER HERO: Stadion + Garis Lapangan + Pita Rumput Samar */}
       <div
         className="absolute inset-0 pointer-events-none opacity-20"
@@ -230,7 +267,7 @@ export function SetupWizardClient({
       )}
 
       {/* Content Container */}
-      <div className="relative z-10 w-full max-w-[1100px] flex flex-col space-y-8">
+      <div className="relative z-10 w-full max-w-[1240px] flex flex-col space-y-8">
         {/* Header Title */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-[13px] font-semibold tracking-wider uppercase text-[var(--text-dim)]">
@@ -243,14 +280,16 @@ export function SetupWizardClient({
           </h1>
         </div>
 
-        {/* Mobile Stepper: 4 Dots Indicator */}
+        {/* Mobile Stepper: 5 Dots Indicator */}
         <div className="flex md:hidden items-center justify-center gap-3">
           {steps.map((s) => {
             const isCompleted = currentStep > s.num;
             const isCurrent = currentStep === s.num;
             return (
-              <div
+              <button
                 key={s.num}
+                type="button"
+                onClick={() => setCurrentStep(s.num)}
                 className={`h-2.5 rounded-full transition-all ${
                   isCurrent
                     ? 'w-8 bg-[var(--text)]'
@@ -264,22 +303,27 @@ export function SetupWizardClient({
         </div>
 
         {/* Wizard Main Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-8 rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-6 md:p-10 shadow-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-8 rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-6 md:p-8 shadow-2xl">
           {/* Stepper Kiri (Desktop) */}
-          <div className="hidden md:flex flex-col justify-between border-r border-[var(--line)] pr-8 space-y-8">
+          <div className="hidden md:flex flex-col justify-between border-r border-[var(--line)] pr-6 space-y-8">
             <div className="space-y-6">
               {steps.map((s) => {
                 const isCompleted = currentStep > s.num;
                 const isCurrent = currentStep === s.num;
                 return (
-                  <div key={s.num} className="flex items-start gap-4">
+                  <button
+                    key={s.num}
+                    type="button"
+                    onClick={() => setCurrentStep(s.num)}
+                    className="flex items-start gap-4 text-left w-full group"
+                  >
                     <div
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border text-sm font-bold transition-colors ${
                         isCompleted
                           ? 'border-[var(--ok)] bg-[var(--ok)]/15 text-[var(--ok)]'
                           : isCurrent
                           ? 'border-[var(--text)] bg-[var(--ink-2)] text-[var(--text)] ring-2 ring-[var(--text)] ring-offset-2 ring-offset-[var(--ink-1)]'
-                          : 'border-[var(--line)] bg-[var(--ink-2)] text-[var(--text-faint)]'
+                          : 'border-[var(--line)] bg-[var(--ink-2)] text-[var(--text-faint)] group-hover:border-[var(--text-dim)]'
                       }`}
                     >
                       {isCompleted ? <Check className="w-4 h-4" /> : s.num}
@@ -294,7 +338,7 @@ export function SetupWizardClient({
                       </div>
                       <div className="text-[12px] text-[var(--text-faint)]">{s.desc}</div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -306,7 +350,7 @@ export function SetupWizardClient({
           </div>
 
           {/* Konten Kanan (Active Step) */}
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center min-w-0">
             {errorMessage && (
               <div className="mb-6 rounded-[8px] bg-[var(--danger)]/15 border border-[var(--danger)]/40 p-4 text-[13px] text-[var(--danger)] flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -330,7 +374,10 @@ export function SetupWizardClient({
                   {/* KOLOM PEMAIN A (Kiri) */}
                   <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 space-y-5">
                     <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
-                      <span className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight text-[var(--text)]" style={{ color: colorA }}>
+                      <span
+                        className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight text-[var(--text)]"
+                        style={{ color: colorA }}
+                      >
                         Pemain A
                       </span>
                       <label className="flex items-center gap-2 cursor-pointer text-[12px] font-medium text-[var(--text-dim)]">
@@ -392,7 +439,10 @@ export function SetupWizardClient({
                                 type="button"
                                 disabled={isOpponentSelected}
                                 onClick={() => setColorA(swatch.hex)}
-                                title={swatch.name + (isOpponentSelected ? ' (Dipakai Pemain B)' : '')}
+                                title={
+                                  swatch.name +
+                                  (isOpponentSelected ? ' (Dipakai Pemain B)' : '')
+                                }
                                 className={`relative h-10 w-10 rounded-full transition-transform flex items-center justify-center ${
                                   isSelected
                                     ? 'ring-2 ring-[var(--text)] ring-offset-2 ring-offset-[var(--ink-2)] scale-110'
@@ -434,7 +484,10 @@ export function SetupWizardClient({
                   {/* KOLOM PEMAIN B (Kanan) */}
                   <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 space-y-5">
                     <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
-                      <span className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight text-[var(--text)]" style={{ color: colorB }}>
+                      <span
+                        className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight text-[var(--text)]"
+                        style={{ color: colorB }}
+                      >
                         Pemain B
                       </span>
                       <label className="flex items-center gap-2 cursor-pointer text-[12px] font-medium text-[var(--text-dim)]">
@@ -496,7 +549,10 @@ export function SetupWizardClient({
                                 type="button"
                                 disabled={isOpponentSelected}
                                 onClick={() => setColorB(swatch.hex)}
-                                title={swatch.name + (isOpponentSelected ? ' (Dipakai Pemain A)' : '')}
+                                title={
+                                  swatch.name +
+                                  (isOpponentSelected ? ' (Dipakai Pemain A)' : '')
+                                }
                                 className={`relative h-10 w-10 rounded-full transition-transform flex items-center justify-center ${
                                   isSelected
                                     ? 'ring-2 ring-[var(--text)] ring-offset-2 ring-offset-[var(--ink-2)] scale-110'
@@ -586,20 +642,20 @@ export function SetupWizardClient({
                   <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 space-y-2">
                     <div className="flex items-center gap-2 text-[var(--p-b)] font-semibold text-sm">
                       <Sparkles className="w-4 h-4" />
-                      <span>Kuota Indonesia</span>
+                      <span>Kartu Trending & Kuota Indonesia</span>
                     </div>
                     <p className="text-[13px] text-[var(--text-dim)] leading-relaxed">
-                      Wajib minimal 1 pemain Indonesia di DSP tiap laga. Target 5 kredit per pemain sepanjang musim untuk menghindari penalti 3 poin.
+                      Wajib minimal 2 pemain <strong>Trending</strong> bermain bersamaan 1 babak reguler penuh di tiap MD (Pasal 17), serta 1 pemain <strong>Indonesia</strong> di DSP tiap laga dan target 5 kredit musiman (Pasal 18–19).
                     </p>
                   </div>
 
                   <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 space-y-2">
                     <div className="flex items-center gap-2 text-[var(--text)] font-semibold text-sm">
                       <Calendar className="w-4 h-4" />
-                      <span>Batas Waktu Pelaporan</span>
+                      <span>Skuad 26 Kartu Tanpa Kembar</span>
                     </div>
                     <p className="text-[13px] text-[var(--text-dim)] leading-relaxed">
-                      Hasil pertandingan wajib dikonfirmasi oleh lawan dalam waktu 24 jam setelah dilaporkan. Setelah itu auto-confirm sistem aktif.
+                      Maksimal 26 kartu per peserta tanpa kartu kembar dari pemain virtual yang sama (Pasal 14). Terkunci sampai MD10 selesai dan skuad lawan dirahasiakan sampai keduanya mengunci.
                     </p>
                   </div>
 
@@ -628,6 +684,54 @@ export function SetupWizardClient({
                     onClick={() => setCurrentStep(3)}
                     className="h-12 px-8 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center gap-2"
                   >
+                    <span>Lanjut ke Susun Skuad</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: SUSUN SKUAD (eFHUB WORKBENCH) */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-3xl uppercase tracking-tight text-[var(--text)]">
+                    Langkah 3: Susun Skuad Musim (Fase 1)
+                  </h2>
+                  <p className="text-[13px] text-[var(--text-dim)] mt-1">
+                    Masing-masing peserta masuk ke akunnya sendiri untuk memilih dan mengunci skuadnya (maksimal 26 kartu, minimal 2 kartu Trending, tanpa kartu kembar).
+                  </p>
+                </div>
+
+                <SquadBuilderWorkbench
+                  session={session || null}
+                  participants={[
+                    { ...participantA, display_name: nameA, monogram: monogramA },
+                    { ...participantB, display_name: nameB, monogram: monogramB },
+                  ]}
+                  initialPhase={1}
+                  phase1Status={phase1Status}
+                  visibleCardsPhase1={visibleCardsPhase1}
+                  shortlistCards={shortlistCards}
+                  paSummaryPhase1={paSummaryPhase1}
+                  pbSummaryPhase1={pbSummaryPhase1}
+                  onSquadLockedChange={() => router.refresh()}
+                />
+
+                <div className="flex items-center justify-between pt-4 border-t border-[var(--line)]">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    className="h-12 px-6 rounded-[8px] border border-[var(--line)] text-[var(--text)] font-medium text-sm hover:bg-[var(--ink-2)] transition-colors"
+                  >
+                    Kembali
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(4)}
+                    className="h-12 px-8 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center gap-2"
+                  >
                     <span>Lanjut ke Pemeriksaan Sistem</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
@@ -635,15 +739,15 @@ export function SetupWizardClient({
               </div>
             )}
 
-            {/* STEP 3: SIAPKAN SISTEM */}
-            {currentStep === 3 && (
+            {/* STEP 4: SIAPKAN SISTEM */}
+            {currentStep === 4 && (
               <div className="space-y-8">
                 <div>
                   <h2 className="font-[family-name:var(--font-display)] font-extrabold text-3xl uppercase tracking-tight text-[var(--text)]">
-                    Langkah 3: Siapkan Sistem
+                    Langkah 4: Siapkan Sistem
                   </h2>
                   <p className="text-[13px] text-[var(--text-dim)] mt-1">
-                    Pemeriksaan otomatis kesiapan koneksi database, struktur tabel, dan data matchday sebelum kick-off.
+                    Pemeriksaan otomatis kesiapan koneksi database, struktur tabel, katalog pemain eFHUB, dan data matchday sebelum kick-off.
                   </p>
                 </div>
 
@@ -682,7 +786,7 @@ export function SetupWizardClient({
                         2. Tabel-tabel Sistem Terverifikasi
                       </div>
                       <div className="text-[12px] text-[var(--text-faint)]">
-                        Peserta, jadwal, jejak audit, dan kuota
+                        Peserta, jadwal, jejak audit, kuota, dan indeks skuad
                       </div>
                     </div>
                     <div>
@@ -706,7 +810,36 @@ export function SetupWizardClient({
                   <div className="p-4 flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-sm text-[var(--text)]">
-                        3. 20 Matchday Disiapkan
+                        3. Katalog Pemain eFootball™ (eFHUB) Terindeks
+                      </div>
+                      <div className="text-[12px] text-[var(--text-faint)]">
+                        Tabel lookup pemain eFootball™ dengan indeks FTS5
+                      </div>
+                    </div>
+                    <div>
+                      {checkingSystem && systemReadiness.playersSynced === null ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-[var(--text-dim)]" />
+                      ) : systemReadiness.playersSynced ? (
+                        <div className="flex items-center gap-1.5 text-[var(--ok)] text-xs font-semibold">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span>
+                            {(systemReadiness.playersCount || 0).toLocaleString('id-ID')} Kartu Siap
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-[var(--danger)] text-xs font-semibold">
+                          <X className="w-5 h-5" />
+                          <span>Belum Disinkronkan (pnpm sync:players)</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Item 4 */}
+                  <div className="p-4 flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-sm text-[var(--text)]">
+                        4. 20 Matchday Disiapkan
                       </div>
                       <div className="text-[12px] text-[var(--text-faint)]">
                         Jadwal MD1 sampai MD20 siap dimainkan
@@ -729,11 +862,11 @@ export function SetupWizardClient({
                     </div>
                   </div>
 
-                  {/* Item 4 */}
+                  {/* Item 5 */}
                   <div className="p-4 flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-sm text-[var(--text)]">
-                        4. Pengaturan Musim Tersimpan
+                        5. Pengaturan Musim Tersimpan
                       </div>
                       <div className="text-[12px] text-[var(--text-faint)]">
                         Warna pemain dan durasi 8 menit disahkan
@@ -767,10 +900,10 @@ export function SetupWizardClient({
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => setCurrentStep(2)}
+                      onClick={() => setCurrentStep(3)}
                       className="h-12 px-6 rounded-[8px] border border-[var(--line)] text-[var(--text)] font-medium text-sm hover:bg-[var(--ink-2)] transition-colors"
                     >
-                      Kembali
+                      Kembali ke Skuad
                     </button>
 
                     <button
@@ -787,7 +920,7 @@ export function SetupWizardClient({
                   <button
                     type="button"
                     disabled={!allSystemChecksPassed || checkingSystem}
-                    onClick={() => setCurrentStep(4)}
+                    onClick={() => setCurrentStep(5)}
                     className="h-12 px-8 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center gap-2"
                   >
                     <span>Lanjut ke Kick-off</span>
@@ -797,22 +930,22 @@ export function SetupWizardClient({
               </div>
             )}
 
-            {/* STEP 4: SIAP KICK-OFF */}
-            {currentStep === 4 && (
+            {/* STEP 5: SIAP KICK-OFF */}
+            {currentStep === 5 && (
               <div className="space-y-8">
                 <div>
                   <h2 className="font-[family-name:var(--font-display)] font-extrabold text-3xl uppercase tracking-tight text-[var(--text)]">
-                    Langkah 4: Siap Kick-off
+                    Langkah 5: Siap Kick-off
                   </h2>
                   <p className="text-[13px] text-[var(--text-dim)] mt-1">
-                    Semua persiapan telah tuntas. Tekan tombol di bawah untuk meluncurkan kompetisi.
+                    Musim baru dapat dimulai (&ldquo;Berjalan&rdquo;) setelah kedua skuad peserta dikunci pada Langkah 3 (Pasal 14 ayat 2).
                   </p>
                 </div>
 
-                {/* Big VS View with Player Colors */}
+                {/* Big VS View with Player Colors & Squad Lock Status */}
                 <div className="rounded-[12px] bg-[var(--ink-2)] border border-[var(--line)] p-8 sm:p-12 text-center space-y-6">
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12">
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div
                         className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl uppercase tracking-tight"
                         style={{ color: colorA }}
@@ -822,13 +955,25 @@ export function SetupWizardClient({
                       <div className="text-[13px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
                         Pemain A {adminId === 'participant_a' ? '(Admin)' : ''}
                       </div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold border border-[var(--line)] bg-[var(--ink-1)]">
+                        <Lock
+                          className={`w-3.5 h-3.5 ${
+                            phase1Status.pa_locked === 1 ? 'text-[var(--ok)]' : 'text-[var(--p-a)]'
+                          }`}
+                        />
+                        <span>
+                          {phase1Status.pa_locked === 1
+                            ? `Skuad Terkunci (${paSummaryPhase1.count}/26)`
+                            : 'Skuad Belum Dikunci'}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="font-[family-name:var(--font-display)] font-black text-4xl text-[var(--text-faint)]">
                       VS
                     </div>
 
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div
                         className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl uppercase tracking-tight"
                         style={{ color: colorB }}
@@ -838,21 +983,52 @@ export function SetupWizardClient({
                       <div className="text-[13px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
                         Pemain B {adminId === 'participant_b' ? '(Admin)' : ''}
                       </div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold border border-[var(--line)] bg-[var(--ink-1)]">
+                        <Lock
+                          className={`w-3.5 h-3.5 ${
+                            phase1Status.pb_locked === 1 ? 'text-[var(--ok)]' : 'text-[var(--p-b)]'
+                          }`}
+                        />
+                        <span>
+                          {phase1Status.pb_locked === 1
+                            ? `Skuad Terkunci (${pbSummaryPhase1.count}/26)`
+                            : 'Skuad Belum Dikunci'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* 1-Line Summary */}
                   <div className="pt-4 border-t border-[var(--line)] max-w-lg mx-auto">
-                    <p className="text-sm text-[var(--text-dim)] font-medium">
-                      20 matchday siap dimainkan. Mulai dari <strong>MD1: {nameA} vs {nameB}</strong>.
-                    </p>
+                    {phase1Status.both_locked ? (
+                      <p className="text-sm text-[var(--ok)] font-semibold">
+                        Kedua skuad Fase 1 telah terkunci! 20 matchday siap dimainkan mulai dari{' '}
+                        <strong>
+                          MD1: {nameA} vs {nameB}
+                        </strong>
+                        .
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-sm text-[var(--p-a)] font-semibold">
+                          Menunggu penguncian skuad Fase 1 dari kedua peserta sebelum musim dapat dimulai.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(3)}
+                          className="text-xs font-bold underline text-[var(--text)]"
+                        >
+                          Kembali ke Langkah 3 (Susun Skuad)
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-[var(--line)]">
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(3)}
+                    onClick={() => setCurrentStep(4)}
                     disabled={isPending || isStartingSeason}
                     className="h-12 px-6 rounded-[8px] border border-[var(--line)] text-[var(--text)] font-medium text-sm hover:bg-[var(--ink-2)] transition-colors"
                   >
@@ -862,8 +1038,8 @@ export function SetupWizardClient({
                   <button
                     type="button"
                     onClick={handleStartSeason}
-                    disabled={isPending || isStartingSeason}
-                    className="h-14 px-10 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-extrabold text-base uppercase tracking-wider font-[family-name:var(--font-display)] hover:opacity-90 disabled:opacity-40 transition-opacity flex items-center gap-3 shadow-xl"
+                    disabled={isPending || isStartingSeason || !phase1Status.both_locked}
+                    className="h-14 px-10 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-extrabold text-base uppercase tracking-wider font-[family-name:var(--font-display)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center gap-3 shadow-xl"
                   >
                     {isStartingSeason ? (
                       <>

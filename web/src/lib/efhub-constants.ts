@@ -82,13 +82,23 @@ export const PLAYSTYLE_MAP: Record<number, string> = {
   35: 'High Line GK',
 };
 
-export const OFFENSIVE_PLAYSTYLES = [
+export const OFFENSIVE_PLAYSTYLE_IDS = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 35,
-].map((id) => ({ id, label: PLAYSTYLE_MAP[id] }));
+];
 
-export const DEFENSIVE_PLAYSTYLES = [
+export const DEFENSIVE_PLAYSTYLE_IDS = [
   9, 16, 17, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34,
-].map((id) => ({ id, label: PLAYSTYLE_MAP[id] }));
+];
+
+export const OFFENSIVE_PLAYSTYLES = OFFENSIVE_PLAYSTYLE_IDS.map((id) => ({
+  id,
+  label: PLAYSTYLE_MAP[id],
+}));
+
+export const DEFENSIVE_PLAYSTYLES = DEFENSIVE_PLAYSTYLE_IDS.map((id) => ({
+  id,
+  label: PLAYSTYLE_MAP[id],
+}));
 
 export const STAT_DEFINITIONS = [
   // Attacking
@@ -182,10 +192,17 @@ export interface EfootballPlayerDetail extends EfootballPlayerSummary {
  */
 export function getPlayerImageCandidateUrls(
   cardId: string | number,
-  basePlayerId?: number | null
+  basePlayerId?: string | number | null
 ): string[] {
   const cid = String(cardId);
-  const bid = basePlayerId ? String(basePlayerId) : String(Number(BigInt(cid) & 0xffffffn));
+  let bid = basePlayerId ? String(basePlayerId) : cid;
+  if (!basePlayerId && /^\d+$/.test(cid)) {
+    try {
+      bid = String(Number(BigInt(cid) & BigInt(0xffffff)));
+    } catch {
+      bid = cid;
+    }
+  }
   const envBase = (process.env.NEXT_PUBLIC_PLAYER_IMAGE_BASE_URL || '').trim().replace(/\/+$/, '');
   const upstreamBase = 'https://efimg.com/efootballhub22/images/Player';
 
