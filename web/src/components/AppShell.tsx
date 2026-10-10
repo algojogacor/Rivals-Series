@@ -119,7 +119,7 @@ export function AppShell({ session, children }: AppShellProps) {
             })}
           </nav>
 
-          {/* Kanan: Chip pemain yang sedang login (PlayerTag sm + "Admin") */}
+          {/* Kanan: Chip pemain yang sedang login */}
           <div className="relative" ref={menuRef}>
             {session ? (
               <button
@@ -134,11 +134,6 @@ export function AppShell({ session, children }: AppShellProps) {
                   size="sm"
                   nameClassName="hidden sm:inline text-xs font-semibold"
                 />
-                {session.isAdmin && (
-                  <span className="text-[11px] font-bold font-[family-name:var(--font-display)] uppercase px-1.5 py-0.5 rounded-[4px] bg-[var(--ink-2)] text-[var(--text)] border border-[var(--line)]">
-                    Admin
-                  </span>
-                )}
               </button>
             ) : (
               <Link
@@ -173,18 +168,16 @@ export function AppShell({ session, children }: AppShellProps) {
                     className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors"
                   >
                     <User className="w-4 h-4 text-[var(--text-dim)]" />
-                    <span>Ubah Profil</span>
+                    <span>Ubah Profil & PIN</span>
                   </Link>
 
-                  {session.isAdmin && (
-                    <Link
-                      href="/setup/reset"
-                      className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--danger)] hover:bg-[var(--ink-2)] transition-colors"
-                    >
-                      <RotateCcw className="w-4 h-4 text-[var(--danger)]" />
-                      <span>Reset Musim</span>
-                    </Link>
-                  )}
+                  <Link
+                    href="/setup/reset"
+                    className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--danger)] hover:bg-[var(--ink-2)] transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4 text-[var(--danger)]" />
+                    <span>Reset Musim</span>
+                  </Link>
                 </div>
 
                 <div className="border-t border-[var(--line)] pt-1">

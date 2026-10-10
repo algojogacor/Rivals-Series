@@ -13,9 +13,9 @@ export const dynamic = 'force-dynamic';
 export default async function ResetSetupPage() {
   const session = await getSession();
 
-  // Strict Admin Protection
-  if (!session || !session.isAdmin) {
-    redirect('/login?redirect=/setup/reset&error=' + encodeURIComponent('Halaman reset musim hanya dapat diakses oleh administrator resmi.'));
+  // Both participants have equal rights to propose a season reset (requires opponent approval)
+  if (!session) {
+    redirect('/login?redirect=/setup/reset&error=' + encodeURIComponent('Halaman reset musim hanya dapat diakses oleh peserta yang sedang login.'));
   }
 
   const pendingReset = await getPendingResetRequest();

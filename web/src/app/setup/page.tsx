@@ -5,13 +5,15 @@ import {
   getSeasonSettings,
   getVisibleRosterCards,
   getShortlistCards,
+  getLatestSeasonInvite,
 } from '@/lib/db';
+import { validateInviteTokenServer } from '@/lib/actions';
 import { SetupWizardClient } from '@/components/SetupWizardClient';
 
 export const metadata = {
   title: 'Setup Musim | Rivals Series Season 1',
   description:
-    'Konfigurasi awal peserta, identitas visual, penyusunan skuad eFootball™, dan kesiapan sistem Rivals Series Season 1.',
+    'Konfigurasi awal peserta yang setara, identitas visual, PIN keamanan, undangan sekali pakai, dan penyusunan skuad Rivals Series Season 1.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +21,7 @@ export const dynamic = 'force-dynamic';
 export default async function SetupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ key?: string }>;
+  searchParams: Promise<{ key?: string; invite?: string }>;
 }) {
   const params = await searchParams;
   let session = null;
@@ -43,16 +45,29 @@ export default async function SetupPage({
     pbIndoCount: 0,
   };
   let shortlistCards: any[] = [];
+  let latestInvite = null;
+  let inviteValidation: {
+    valid: boolean;
+    status: 'valid' | 'used' | 'expired' | 'revoked' | 'invalid';
+    error?: string;
+    inviteId?: string;
+    expiresAt?: string;
+    codeHint?: string;
+  } | null = null;
 
   try {
     session = await getSession();
-    [seasonSettings, participants, visibleRosterData] = await Promise.all([
+    [seasonSettings, participants, visibleRosterData, latestInvite] = await Promise.all([
       getSeasonSettings(),
       getParticipants(),
       getVisibleRosterCards(1, session?.participantId || null),
+      getLatestSeasonInvite('participant_b'),
     ]);
     if (session) {
       shortlistCards = await getShortlistCards(session.participantId);
+    }
+    if (params.invite) {
+      inviteValidation = await validateInviteTokenServer(params.invite);
     }
   } catch (err) {
     console.error('SetupPage load error:', err);
@@ -62,25 +77,26 @@ export default async function SetupPage({
   const setupKeyValid = Boolean(
     params.key && process.env.SETUP_KEY && params.key === process.env.SETUP_KEY
   );
-  const isAdmin = Boolean(session?.isAdmin);
 
-  // Protection for public Vercel deployment: If season is NOT in setup mode, only logged-in admin or valid SETUP_KEY can access
-  if (!isSetupMode && !isAdmin && !setupKeyValid) {
+  // If season is already live/completed, redirect to home (squad & profile management happen in /control)
+  if (!isSetupMode) {
     redirect('/');
   }
 
   const participantA = participants.find((p) => p.id === 'participant_a') || {
     id: 'participant_a',
-    display_name: 'Peserta A',
+    display_name: 'Pemain A',
     monogram: 'PA',
-    is_admin: 1,
+    is_admin: 0,
+    profile_completed: 0,
   };
 
   const participantB = participants.find((p) => p.id === 'participant_b') || {
     id: 'participant_b',
-    display_name: 'Peserta B',
+    display_name: 'Pemain B',
     monogram: 'PB',
     is_admin: 0,
+    profile_completed: 0,
   };
 
   return (
@@ -89,7 +105,11 @@ export default async function SetupPage({
       participantA={participantA}
       participantB={participantB}
       seasonSettings={seasonSettings}
-      isAdmin={isAdmin}
+      setupKeyValid={setupKeyValid}
+      setupKeyFromUrl={setupKeyValid ? params.key! : null}
+      inviteTokenFromUrl={params.invite || null}
+      inviteValidation={inviteValidation}
+      latestInvite={latestInvite}
       phase1Status={visibleRosterData.phaseStatus}
       visibleCardsPhase1={visibleRosterData.cards}
       shortlistCards={shortlistCards}

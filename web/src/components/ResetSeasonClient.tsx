@@ -146,7 +146,7 @@ export function ResetSeasonClient({
             <div className="space-y-3 border-b border-[var(--line)] pb-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[8px] bg-[var(--danger)]/15 border border-[var(--danger)]/30 text-[13px] font-bold uppercase tracking-wider text-[var(--danger)]">
                 <AlertTriangle className="w-4 h-4" />
-                <span>Tindakan Destruktif Administratif</span>
+                <span>Tindakan Destruktif Bersama (Butuh Persetujuan Lawan)</span>
               </div>
               <h1 className="font-[family-name:var(--font-display)] font-extrabold text-3xl sm:text-4xl uppercase tracking-tight text-[var(--text)] leading-none">
                 Reset Musim Rivals Series

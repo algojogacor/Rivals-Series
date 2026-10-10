@@ -11,8 +11,9 @@
     "test:watch": "vitest",
     "sync:players": "node --env-file=.env.local scripts/sync-players.mjs --confirm-dev",
     "sync:players:prod": "node scripts/sync-players.mjs --confirm-production",
-    "migrate:dev": "node --env-file=.env.local scripts/migrate-trending-and-squad.mjs --confirm-dev && node --env-file=.env.local scripts/migrate-audit-trail.mjs --confirm-dev",
-    "migrate:prod": "node scripts/migrate-trending-and-squad.mjs --confirm-production && node scripts/migrate-audit-trail.mjs --confirm-production"
+    "migrate:dev": "node --env-file=.env.local scripts/migrate-trending-and-squad.mjs --confirm-dev && node --env-file=.env.local scripts/migrate-audit-trail.mjs --confirm-dev && node --env-file=.env.local scripts/migrate-equal-accounts.mjs --confirm-dev",
+    "migrate:prod": "node scripts/migrate-trending-and-squad.mjs --confirm-production && node scripts/migrate-audit-trail.mjs --confirm-production && node scripts/migrate-equal-accounts.mjs --confirm-production",
+    "reset:dev": "node --env-file=.env.local scripts/reset-dev-season.mjs --confirm-dev"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

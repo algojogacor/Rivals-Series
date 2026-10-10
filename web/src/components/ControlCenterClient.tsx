@@ -48,6 +48,7 @@ import {
   confirmMatchReportAction, 
   disputeMatchAction, 
   updateParticipantSettingsAction,
+  changeParticipantPinAction,
   respondSeasonResetAction
 } from '@/lib/actions';
 import { PlayerTag } from './PlayerTag';
@@ -318,7 +319,7 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                   />
                   <div>
                     <div className="font-semibold text-sm text-[var(--text)]">{pA.display_name}</div>
-                    <div className="text-[11px] text-[var(--text-dim)] uppercase">Pemain A {pA.is_admin ? '(Admin)' : ''}</div>
+                    <div className="text-[11px] text-[var(--text-dim)] uppercase">Pemain A</div>
                   </div>
                 </label>
 
@@ -331,7 +332,7 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                   />
                   <div>
                     <div className="font-semibold text-sm text-[var(--text)]">{pB.display_name}</div>
-                    <div className="text-[11px] text-[var(--text-dim)] uppercase">Pemain B {pB.is_admin ? '(Admin)' : ''}</div>
+                    <div className="text-[11px] text-[var(--text-dim)] uppercase">Pemain B</div>
                   </div>
                 </label>
               </div>
@@ -339,12 +340,13 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
 
             <div>
               <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
-                PIN Akses
+                PIN Akses Pribadi
               </label>
               <input
                 type="password"
                 name="pin"
-                placeholder="Masukkan PIN peserta"
+                required
+                placeholder="Masukkan PIN pribadi Anda"
                 className="w-full h-12 px-4 rounded-[8px] border border-[var(--line)] bg-[var(--ink-2)] font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:border-[var(--text)] focus:outline-none transition-colors"
               />
             </div>
@@ -386,11 +388,9 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
             monogram={session.participant.monogram}
             size="md"
           />
-          {session.isAdmin && (
-            <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[var(--ink-2)] border border-[var(--line)] text-[var(--text-dim)]">
-              Admin Liga
-            </span>
-          )}
+          <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[var(--ink-2)] border border-[var(--line)] text-[var(--text-dim)]">
+            {isA ? 'Pemain A' : 'Pemain B'}
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -399,7 +399,7 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
             className="h-10 px-4 rounded-[8px] border border-[var(--line)] bg-[var(--ink-2)] text-xs font-semibold text-[var(--text)] hover:border-[var(--text-dim)] transition-colors flex items-center gap-2"
           >
             <User className="w-3.5 h-3.5" />
-            <span>Ubah Profil</span>
+            <span>Ubah Profil & PIN</span>
           </button>
 
           <form
@@ -1311,7 +1311,7 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                   {session && session.participantId !== pendingReset.requested_by ? (
                     <div className="space-y-3 pt-2 border-t border-[var(--danger)]/20">
                       <p className="text-xs text-[var(--text)] leading-relaxed">
-                        Administrator mengajukan permohonan reset musim resmi. Berdasarkan Pasal 50 Regulasi Resmi RS S1, reset hanya akan dieksekusi secara permanen dalam satu transaksi database setelah Anda memberikan persetujuan di bawah ini.
+                        Lawan tanding Anda mengajukan permohonan reset musim resmi. Berdasarkan Pasal 50 Regulasi Resmi RS S1, reset hanya akan dieksekusi secara permanen dalam satu transaksi database setelah Anda memberikan persetujuan di bawah ini.
                       </p>
                       <div className="flex items-center gap-3">
                         <button
@@ -1633,66 +1633,162 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
             />
           )}
 
-          {/* TAB 6: PROFIL */}
+          {/* TAB 6: PROFIL & PIN KEAMANAN */}
           {activeTab === 'profile' && (
-            <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-6 sm:p-8 space-y-6">
-              <div>
-                <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)]">
-                  Ubah Profil Tampilan
-                </h2>
-                <p className="text-[13px] text-[var(--text-dim)]">
-                  Nama tampilan dan inisial monogram Anda di situs (Pasal 1 & 50).
-                </p>
+            <div className="space-y-6">
+              {/* Identitas & Warna */}
+              <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-6 sm:p-8 space-y-6">
+                <div>
+                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)]">
+                    Ubah Profil Identitas
+                  </h2>
+                  <p className="text-[13px] text-[var(--text-dim)]">
+                    Nama tampilan, inisial monogram, dan warna identitas Anda di situs (Pasal 1 & 50).
+                  </p>
+                </div>
+
+                <form
+                  action={(formData) => {
+                    startTransition(async () => {
+                      const res = await updateParticipantSettingsAction(formData);
+                      if (res?.error) {
+                        showMessage('error', res.error);
+                      } else {
+                        showMessage('success', 'Profil identitas berhasil diperbarui.');
+                        router.refresh();
+                      }
+                    });
+                  }}
+                  className="space-y-4 max-w-md"
+                >
+                  <div>
+                    <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
+                      Nama Tampilan
+                    </label>
+                    <input
+                      type="text"
+                      name="display_name"
+                      defaultValue={session.participant.display_name}
+                      required
+                      className="w-full h-11 px-4 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-sm font-semibold text-[var(--text)]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
+                        Monogram (2–3 Huruf)
+                      </label>
+                      <input
+                        type="text"
+                        name="monogram"
+                        maxLength={3}
+                        defaultValue={session.participant.monogram}
+                        required
+                        className="w-full h-11 px-3 text-center rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] font-bold uppercase text-[var(--text)]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
+                        Warna Identitas
+                      </label>
+                      <input
+                        type="color"
+                        name="color"
+                        defaultValue={session.participant.color || (isA ? '#E5A93B' : '#3AB7A0')}
+                        className="w-full h-11 p-1 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="h-11 px-6 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-xs uppercase tracking-wider hover:opacity-90 disabled:opacity-40"
+                  >
+                    Simpan Profil Identitas
+                  </button>
+                </form>
               </div>
 
-              <form
-                action={(formData) => {
-                  startTransition(async () => {
-                    const res = await updateParticipantSettingsAction(formData);
-                    if (res?.error) {
-                      showMessage('error', res.error);
-                    } else {
-                      showMessage('success', 'Profil berhasil diperbarui.');
-                    }
-                  });
-                }}
-                className="space-y-4 max-w-md"
-              >
+              {/* Ubah PIN Pribadi */}
+              <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-6 sm:p-8 space-y-6">
                 <div>
-                  <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
-                    Nama Tampilan
-                  </label>
-                  <input
-                    type="text"
-                    name="display_name"
-                    defaultValue={session.participant.display_name}
-                    required
-                    className="w-full h-11 px-4 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-sm font-semibold text-[var(--text)]"
-                  />
+                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)]">
+                    Ubah PIN Keamanan Pribadi
+                  </h2>
+                  <p className="text-[13px] text-[var(--text-dim)]">
+                    PIN Anda disimpan menggunakan hash kriptografi satu arah (scrypt). Perubahan PIN tercatat di Jejak Audit tanpa menyimpan nilai PIN.
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
-                    Monogram / Inisial (2–3 Huruf)
-                  </label>
-                  <input
-                    type="text"
-                    name="monogram"
-                    maxLength={3}
-                    defaultValue={session.participant.monogram}
-                    required
-                    className="w-24 h-11 px-3 text-center rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] font-bold uppercase text-[var(--text)]"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="h-11 px-6 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-xs uppercase tracking-wider hover:opacity-90 disabled:opacity-40"
+                <form
+                  action={(formData) => {
+                    startTransition(async () => {
+                      const res = await changeParticipantPinAction(formData);
+                      if (res?.error) {
+                        showMessage('error', res.error);
+                      } else {
+                        showMessage('success', 'PIN keamanan pribadi berhasil diperbarui.');
+                        router.refresh();
+                      }
+                    });
+                  }}
+                  className="space-y-4 max-w-md"
                 >
-                  Simpan Perubahan
-                </button>
-              </form>
+                  <div>
+                    <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
+                      PIN Saat Ini
+                    </label>
+                    <input
+                      type="password"
+                      name="current_pin"
+                      required
+                      placeholder="Masukkan PIN saat ini"
+                      className="w-full h-11 px-4 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] font-mono text-sm text-[var(--text)]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
+                        PIN Baru (Min. 4 Karakter)
+                      </label>
+                      <input
+                        type="password"
+                        name="new_pin"
+                        minLength={4}
+                        maxLength={32}
+                        required
+                        placeholder="PIN baru"
+                        className="w-full h-11 px-4 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] font-mono text-sm text-[var(--text)]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
+                        Konfirmasi PIN Baru
+                      </label>
+                      <input
+                        type="password"
+                        name="new_pin_confirm"
+                        minLength={4}
+                        maxLength={32}
+                        required
+                        placeholder="Ulangi PIN baru"
+                        className="w-full h-11 px-4 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] font-mono text-sm text-[var(--text)]"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="h-11 px-6 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-xs uppercase tracking-wider hover:opacity-90 disabled:opacity-40"
+                  >
+                    Perbarui PIN Keamanan
+                  </button>
+                </form>
+              </div>
             </div>
           )}
         </div>

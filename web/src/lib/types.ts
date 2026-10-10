@@ -6,9 +6,14 @@ export interface Participant {
   id: ParticipantId;
   display_name: string;
   monogram: string;
+  color?: string | null;
   auth_email?: string | null;
   avatar_url?: string | null;
   is_admin: number;
+  profile_completed?: number;
+  pin_updated_at?: string | null;
+  failed_login_attempts?: number;
+  locked_until?: string | null;
   last_audit_seen_at?: string | null;
 }
 
@@ -308,4 +313,16 @@ export interface ResetRequest {
   executed_at?: string | null;
   created_at: string;
 }
+
+export interface SeasonInvite {
+  id: string;
+  created_by: ParticipantId;
+  target_participant_id: ParticipantId;
+  code_hint: string;
+  status: 'pending' | 'used' | 'expired' | 'revoked';
+  expires_at: string;
+  used_at?: string | null;
+  created_at: string;
+}
+
 

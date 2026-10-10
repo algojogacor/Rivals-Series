@@ -17,6 +17,15 @@ import {
   getWibDateKey,
   AuditEventRecord,
 } from './audit';
+import {
+  hashPin,
+  verifyPinHash,
+  generateInviteToken,
+  hashInviteToken,
+  createSessionToken,
+  verifySessionToken,
+  checkAccountLockout,
+} from './auth';
 
 describe('Rivals Series Season 1: Jejak Audit Kekal (Pasal 50 & 54) Test Suite', () => {
   it('Criterion 1: Strips PINs, tokens, passwords, and secrets from audit payloads (including nested objects)', () => {
@@ -323,5 +332,143 @@ describe('Rivals Series Season 1: Jejak Audit Kekal (Pasal 50 & 54) Test Suite',
     const check = await client.execute(`SELECT reason FROM audit_events WHERE id = 'audit-immutable-1'`);
     expect(check.rows.length).toBe(1);
     expect(String(check.rows[0].reason)).toBe('yayakgacor berhasil masuk ke Pusat Kontrol');
+  });
+
+  it('Criterion 7: Hashes and verifies participant PINs with scrypt + unique random salt', () => {
+    const hash1 = hashPin('260408');
+    const hash2 = hashPin('260408');
+
+    expect(hash1).toMatch(/^scrypt\$[0-9a-f]{32}\$[0-9a-f]{128}$/);
+    // Two hashes of the same PIN must have different salts
+    expect(hash1).not.toBe(hash2);
+
+    // Correct PIN verifies against both hashes
+    expect(verifyPinHash('260408', hash1)).toBe(true);
+    expect(verifyPinHash('260408', hash2)).toBe(true);
+
+    // Wrong PIN fails
+    expect(verifyPinHash('000000', hash1)).toBe(false);
+    expect(verifyPinHash('260409', hash1)).toBe(false);
+
+    // Malformed / null hashes fail safely
+    expect(verifyPinHash('260408', null)).toBe(false);
+    expect(verifyPinHash('260408', 'plain-text-pin')).toBe(false);
+    expect(verifyPinHash('', hash1)).toBe(false);
+  });
+
+  it('Criterion 8: Signs session tokens with HMAC-SHA256, rejects tampering, and invalidates on PIN update', () => {
+    const activeParticipant = {
+      id: 'participant_a' as const,
+      display_name: 'yayakgacor',
+      monogram: 'YG',
+      color: '#E5A93B',
+      is_admin: 0,
+      profile_completed: 1,
+      pin_updated_at: '2026-10-10 12:00:00',
+    };
+
+    const token = createSessionToken('participant_a', '2026-10-10 12:00:00', 'test-secret');
+    expect(verifySessionToken(token, activeParticipant, 'test-secret')).toBe(true);
+
+    // Forged / unsigned cookie value is rejected
+    expect(verifySessionToken('participant_a', activeParticipant, 'test-secret')).toBe(false);
+    expect(verifySessionToken('participant_b.forgedsignature', activeParticipant, 'test-secret')).toBe(false);
+
+    // Tampered payload with original signature is rejected
+    const [, sig] = token.split('.');
+    const forgedPayload = Buffer.from('participant_b|2026-10-10 12:00:00', 'utf8').toString('base64url');
+    expect(verifySessionToken(`${forgedPayload}.${sig}`, activeParticipant, 'test-secret')).toBe(false);
+
+    // When PIN is updated (pin_updated_at changes), old session token is invalidated
+    const updatedParticipant = {
+      ...activeParticipant,
+      pin_updated_at: '2026-10-10 14:30:00',
+    };
+    expect(verifySessionToken(token, updatedParticipant, 'test-secret')).toBe(false);
+
+    // When season is reset to zero (profile_completed = 0), session token is invalidated
+    const resetParticipant = {
+      ...activeParticipant,
+      profile_completed: 0,
+    };
+    expect(verifySessionToken(token, resetParticipant, 'test-secret')).toBe(false);
+  });
+
+  it('Criterion 9: Enforces login lockout, equal-peer accounts (no permanent admin), and one-time invite lifecycle', async () => {
+    // 1. Check lockout helper
+    const futureLock = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const pastLock = new Date(Date.now() - 60 * 1000).toISOString();
+
+    const activeLockout = checkAccountLockout(futureLock);
+    expect(activeLockout.locked).toBe(true);
+    expect(activeLockout.remainingMinutes).toBeGreaterThanOrEqual(9);
+
+    const expiredLockout = checkAccountLockout(pastLock);
+    expect(expiredLockout.locked).toBe(false);
+    expect(expiredLockout.remainingMinutes).toBe(0);
+
+    // 2. Database-level equal-peer & one-time invite verification
+    const client = createClient({ url: 'file::memory:' });
+    const schemaSql = fs.readFileSync(
+      path.join(process.cwd(), 'scripts', 'schema.sql'),
+      'utf8'
+    );
+    await client.executeMultiple(schemaSql);
+
+    const p1PinHash = hashPin('135790');
+    await client.execute({
+      sql: `INSERT INTO participants (id, display_name, monogram, color, is_admin, pin_hash, profile_completed)
+            VALUES ('participant_a', 'yayakgacor', 'YG', '#E5A93B', 0, ?, 1),
+                   ('participant_b', 'Peserta B', 'PB', '#3AB7A0', 0, NULL, 0)`,
+      args: [p1PinHash],
+    });
+
+    // Both participants have is_admin = 0 (equal peers)
+    const pRows = await client.execute(`SELECT id, is_admin, profile_completed FROM participants ORDER BY id ASC`);
+    expect(Number(pRows.rows[0].is_admin)).toBe(0);
+    expect(Number(pRows.rows[1].is_admin)).toBe(0);
+    expect(Number(pRows.rows[0].profile_completed)).toBe(1);
+    expect(Number(pRows.rows[1].profile_completed)).toBe(0);
+
+    // Generate one-time invite for participant_b
+    const invite = generateInviteToken();
+    expect(invite.rawToken).toMatch(/^RS1-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    expect(hashInviteToken(invite.rawToken.toLowerCase())).toBe(invite.tokenHash);
+
+    await client.execute({
+      sql: `INSERT INTO season_invites (id, created_by, target_participant_id, token_hash, code_hint, status, expires_at)
+            VALUES ('inv-1', 'participant_a', 'participant_b', ?, ?, 'pending', '2099-12-31T23:59:59.000Z')`,
+      args: [invite.tokenHash, invite.codeHint],
+    });
+
+    // Player 2 redeems the invite once
+    const lookup = await client.execute({
+      sql: `SELECT id, status FROM season_invites WHERE token_hash = ?`,
+      args: [hashInviteToken(invite.rawToken)],
+    });
+    expect(lookup.rows.length).toBe(1);
+    expect(String(lookup.rows[0].status)).toBe('pending');
+
+    const p2PinHash = hashPin('246810');
+    await client.batch(
+      [
+        {
+          sql: `UPDATE participants SET display_name = 'algojogacor', monogram = 'AG', pin_hash = ?, profile_completed = 1 WHERE id = 'participant_b'`,
+          args: [p2PinHash],
+        },
+        {
+          sql: `UPDATE season_invites SET status = 'used', used_at = datetime('now') WHERE id = 'inv-1'`,
+          args: [],
+        },
+      ],
+      'write'
+    );
+
+    const usedCheck = await client.execute({
+      sql: `SELECT status, used_at FROM season_invites WHERE id = 'inv-1'`,
+      args: [],
+    });
+    expect(String(usedCheck.rows[0].status)).toBe('used');
+    expect(usedCheck.rows[0].used_at).toBeTruthy();
   });
 });

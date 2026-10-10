@@ -77,7 +77,7 @@ export default async function LoginPage({
                     {pA?.display_name || 'Peserta A'}
                   </div>
                   <div className="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-                    Pemain A {pA?.is_admin ? '(Admin)' : ''}
+                    Pemain A {pA?.profile_completed === 1 ? '· Terdaftar' : '· Belum Setup'}
                   </div>
                 </div>
               </label>
@@ -94,7 +94,7 @@ export default async function LoginPage({
                     {pB?.display_name || 'Peserta B'}
                   </div>
                   <div className="text-[11px] text-[var(--text-dim)] uppercase tracking-wider">
-                    Pemain B {pB?.is_admin ? '(Admin)' : ''}
+                    Pemain B {pB?.profile_completed === 1 ? '· Terdaftar' : '· Belum Setup'}
                   </div>
                 </div>
               </label>
@@ -104,13 +104,14 @@ export default async function LoginPage({
           {/* PIN Input */}
           <div className="space-y-2">
             <label className="block text-[13px] font-semibold text-[var(--text-dim)]" htmlFor="pin">
-              PIN Akses (Opsional jika PIN dev kosong)
+              PIN Akses Pribadi
             </label>
             <input
               id="pin"
               name="pin"
               type="password"
-              placeholder="Masukkan PIN peserta"
+              required
+              placeholder="Masukkan PIN pribadi Anda"
               className="w-full h-12 px-4 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--text)] transition-colors font-mono"
             />
           </div>

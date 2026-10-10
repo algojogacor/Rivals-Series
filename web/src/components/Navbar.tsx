@@ -80,11 +80,6 @@ export function Navbar({ sessionParticipantName, isAdmin }: NavbarProps) {
             >
               <User className="w-3.5 h-3.5 text-emerald-400" />
               <span>{sessionParticipantName}</span>
-              {isAdmin && (
-                <span className="rounded bg-emerald-500/30 px-1 py-0.2 text-[9px] uppercase font-bold text-emerald-200">
-                  Admin
-                </span>
-              )}
             </Link>
           ) : (
             <Link

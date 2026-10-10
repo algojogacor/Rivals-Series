@@ -17,6 +17,7 @@ import {
   ResetRequest,
   RosterCard,
   RosterPhaseStatus,
+  SeasonInvite,
 } from './types';
 import {
   AuditCategory,
@@ -53,21 +54,30 @@ export function getDbClient(): Client {
 export async function getParticipants(): Promise<Participant[]> {
   try {
     const db = getDbClient();
-    const res = await db.execute('SELECT * FROM participants ORDER BY id ASC;');
-    return res.rows.map(r => ({
+    const res = await db.execute(
+      `SELECT id, display_name, monogram, auth_email, avatar_url, is_admin,
+              profile_completed, pin_updated_at, failed_login_attempts, locked_until, last_audit_seen_at
+       FROM participants
+       ORDER BY id ASC;`
+    );
+    return res.rows.map((r) => ({
       id: r.id as ParticipantId,
       display_name: String(r.display_name),
       monogram: String(r.monogram),
       auth_email: r.auth_email ? String(r.auth_email) : null,
       avatar_url: r.avatar_url ? String(r.avatar_url) : null,
-      is_admin: Number(r.is_admin),
+      is_admin: 0,
+      profile_completed: Number(r.profile_completed || 0),
+      pin_updated_at: r.pin_updated_at ? String(r.pin_updated_at) : null,
+      failed_login_attempts: Number(r.failed_login_attempts || 0),
+      locked_until: r.locked_until ? String(r.locked_until) : null,
       last_audit_seen_at: r.last_audit_seen_at ? String(r.last_audit_seen_at) : null,
     }));
   } catch (err) {
     console.error('Failed to load participants from DB, using fallback defaults:', err);
     return [
-      { id: 'participant_a', display_name: 'Peserta A', monogram: 'PA', is_admin: 1, last_audit_seen_at: null },
-      { id: 'participant_b', display_name: 'Peserta B', monogram: 'PB', is_admin: 0, last_audit_seen_at: null },
+      { id: 'participant_a', display_name: 'Pemain A', monogram: 'PA', is_admin: 0, profile_completed: 0, last_audit_seen_at: null },
+      { id: 'participant_b', display_name: 'Pemain B', monogram: 'PB', is_admin: 0, profile_completed: 0, last_audit_seen_at: null },
     ];
   }
 }
@@ -854,4 +864,108 @@ export async function recordAuditEvent(params: RecordAuditParams): Promise<void>
   const auditStmt = await prepareAuditEventStatement(params);
   await db.execute(auditStmt);
 }
+
+/**
+ * Server-only helper to fetch participant record INCLUDING `pin_hash` for authentication and PIN verification.
+ * Never pass the return value of this function directly to Client Components.
+ */
+export async function getParticipantAuthRecord(participantId: ParticipantId): Promise<
+  | (Participant & {
+      pin_hash: string | null;
+    })
+  | null
+> {
+  const db = getDbClient();
+  const res = await db.execute({
+    sql: `SELECT id, display_name, monogram, auth_email, avatar_url, is_admin,
+                 pin_hash, pin_updated_at, profile_completed, failed_login_attempts,
+                 locked_until, last_audit_seen_at
+          FROM participants
+          WHERE id = ?
+          LIMIT 1;`,
+    args: [participantId],
+  });
+  if (res.rows.length === 0) return null;
+  const r = res.rows[0];
+  return {
+    id: r.id as ParticipantId,
+    display_name: String(r.display_name),
+    monogram: String(r.monogram),
+    auth_email: r.auth_email ? String(r.auth_email) : null,
+    avatar_url: r.avatar_url ? String(r.avatar_url) : null,
+    is_admin: 0,
+    pin_hash: r.pin_hash ? String(r.pin_hash) : null,
+    pin_updated_at: r.pin_updated_at ? String(r.pin_updated_at) : null,
+    profile_completed: Number(r.profile_completed || 0),
+    failed_login_attempts: Number(r.failed_login_attempts || 0),
+    locked_until: r.locked_until ? String(r.locked_until) : null,
+    last_audit_seen_at: r.last_audit_seen_at ? String(r.last_audit_seen_at) : null,
+  };
+}
+
+/**
+ * Fetch the latest invite record for target_participant_id (default 'participant_b').
+ */
+export async function getLatestSeasonInvite(
+  targetParticipantId: ParticipantId = 'participant_b'
+): Promise<SeasonInvite | null> {
+  try {
+    const db = getDbClient();
+    const res = await db.execute({
+      sql: `SELECT id, created_by, target_participant_id, code_hint, status, expires_at, used_at, created_at
+            FROM season_invites
+            WHERE target_participant_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1;`,
+      args: [targetParticipantId],
+    });
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      id: String(r.id),
+      created_by: r.created_by as ParticipantId,
+      target_participant_id: r.target_participant_id as ParticipantId,
+      code_hint: String(r.code_hint),
+      status: r.status as SeasonInvite['status'],
+      expires_at: String(r.expires_at),
+      used_at: r.used_at ? String(r.used_at) : null,
+      created_at: String(r.created_at),
+    };
+  } catch (err) {
+    console.error('getLatestSeasonInvite error:', err);
+    return null;
+  }
+}
+
+/**
+ * Fetch a specific season invite by its SHA-256 token hash.
+ */
+export async function getSeasonInviteByTokenHash(tokenHash: string): Promise<SeasonInvite | null> {
+  try {
+    const db = getDbClient();
+    const res = await db.execute({
+      sql: `SELECT id, created_by, target_participant_id, code_hint, status, expires_at, used_at, created_at
+            FROM season_invites
+            WHERE token_hash = ?
+            LIMIT 1;`,
+      args: [tokenHash],
+    });
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      id: String(r.id),
+      created_by: r.created_by as ParticipantId,
+      target_participant_id: r.target_participant_id as ParticipantId,
+      code_hint: String(r.code_hint),
+      status: r.status as SeasonInvite['status'],
+      expires_at: String(r.expires_at),
+      used_at: r.used_at ? String(r.used_at) : null,
+      created_at: String(r.created_at),
+    };
+  } catch (err) {
+    console.error('getSeasonInviteByTokenHash error:', err);
+    return null;
+  }
+}
+
 

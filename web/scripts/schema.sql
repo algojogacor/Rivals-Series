@@ -1,14 +1,20 @@
 -- RIVALS SERIES SEASON 1 (RS S1) DATABASE SCHEMA FOR TURSO (LIBSQL)
 -- Built for 2-participant eFootball 1v1 competition with strict audit integrity
 
--- 1. PARTICIPANTS (Exactly 2 participants)
+-- 1. PARTICIPANTS (Exactly 2 equal-peer participants)
 CREATE TABLE IF NOT EXISTS participants (
   id TEXT PRIMARY KEY CHECK(id IN ('participant_a', 'participant_b')),
   display_name TEXT NOT NULL,
   auth_email TEXT UNIQUE,
   monogram TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#E5A93B',
   avatar_url TEXT,
   is_admin INTEGER NOT NULL DEFAULT 0,
+  pin_hash TEXT,
+  pin_updated_at TEXT,
+  profile_completed INTEGER NOT NULL DEFAULT 0,
+  failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT,
   last_audit_seen_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -337,6 +343,19 @@ CREATE TABLE IF NOT EXISTS squad_shortlist (
   UNIQUE(participant_id, card_id)
 );
 
+-- 19. SEASON INVITES (One-time expiring invite tokens for the second player in /setup)
+CREATE TABLE IF NOT EXISTS season_invites (
+  id TEXT PRIMARY KEY,
+  created_by TEXT NOT NULL REFERENCES participants(id),
+  target_participant_id TEXT NOT NULL REFERENCES participants(id),
+  token_hash TEXT NOT NULL UNIQUE,
+  code_hint TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'used', 'expired', 'revoked')),
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- INDEXES
 CREATE INDEX IF NOT EXISTS idx_matches_md_number ON matches(md_number);
 CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
@@ -353,4 +372,7 @@ CREATE INDEX IF NOT EXISTS idx_ef_players_club ON efootball_players(team_name, o
 CREATE INDEX IF NOT EXISTS idx_ef_players_country ON efootball_players(country_name, overall_max DESC);
 CREATE INDEX IF NOT EXISTS idx_ef_players_ovr_max ON efootball_players(overall_max DESC, overall_lv1 DESC);
 CREATE INDEX IF NOT EXISTS idx_shortlist_participant ON squad_shortlist(participant_id);
+CREATE INDEX IF NOT EXISTS idx_season_invites_token ON season_invites(token_hash);
+CREATE INDEX IF NOT EXISTS idx_season_invites_status ON season_invites(status);
+
 

@@ -56,7 +56,13 @@ export function sanitizeAuditPayload(value: unknown): unknown {
   if (typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (SENSITIVE_KEY_PATTERN.test(k) || k.toLowerCase().includes('pin') || k.toLowerCase().includes('secret') || k.toLowerCase().includes('token')) {
+      if (
+        SENSITIVE_KEY_PATTERN.test(k) ||
+        k.toLowerCase().includes('pin') ||
+        k.toLowerCase().includes('secret') ||
+        k.toLowerCase().includes('token') ||
+        k.toLowerCase().includes('setup_key')
+      ) {
         continue;
       }
       out[k] = sanitizeAuditPayload(v);
@@ -125,6 +131,7 @@ export function inferAuditCategory(action: string, entityType: string): AuditCat
     act.includes('logout') ||
     act.includes('pin') ||
     act.includes('auth') ||
+    act.includes('invite_expired') ||
     ent === 'security' ||
     ent === 'session'
   ) {
