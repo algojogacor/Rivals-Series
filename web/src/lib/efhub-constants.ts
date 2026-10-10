@@ -205,6 +205,9 @@ export function getPlayerImageCandidateUrls(
     }
   }
   const envBase = (process.env.NEXT_PUBLIC_PLAYER_IMAGE_BASE_URL || '').trim().replace(/\/+$/, '');
+  const envRoot = envBase
+    .replace(/\/efootballhub22\/images\/Player$/i, '')
+    .replace(/\/Player$/i, '');
   const upstreamRoot = 'https://efimg.com/efootballhub22/images';
 
   const urls: string[] = [];
@@ -213,14 +216,14 @@ export function getPlayerImageCandidateUrls(
   };
 
   if (variant === 'card') {
-    if (envBase) pushUnique(`${envBase}/player_cards/${cid}_l.png`);
+    if (envRoot) pushUnique(`${envRoot}/player_cards/${cid}_l.png`);
     pushUnique(`${upstreamRoot}/player_cards/${cid}_l.png`);
-    if (envBase) pushUnique(`${envBase}/mini-cards/${cid}_l.png`);
+    if (envRoot) pushUnique(`${envRoot}/mini-cards/${cid}_l.png`);
     pushUnique(`${upstreamRoot}/mini-cards/mini-cards/${cid}_l.png`);
   } else if (variant === 'mini') {
-    if (envBase) pushUnique(`${envBase}/mini-cards/${cid}_l.png`);
+    if (envRoot) pushUnique(`${envRoot}/mini-cards/${cid}_l.png`);
     pushUnique(`${upstreamRoot}/mini-cards/mini-cards/${cid}_l.png`);
-    if (envBase) pushUnique(`${envBase}/player_cards/${cid}_l.png`);
+    if (envRoot) pushUnique(`${envRoot}/player_cards/${cid}_l.png`);
     pushUnique(`${upstreamRoot}/player_cards/${cid}_l.png`);
   }
 

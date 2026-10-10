@@ -57,6 +57,7 @@ import { SquadBuilderWorkbench } from './SquadBuilderWorkbench';
 import { AuditTrailPanel } from './AuditTrailPanel';
 import { SquadPlayerSelect } from './SquadPlayerSelect';
 import { PlayerAvatar } from './PlayerAvatar';
+import { EvidenceUploadInput } from './EvidenceUploadInput';
 import { AuditChainVerification, AuditEventRecord } from '@/lib/audit';
 
 interface DraftGoalEvent {
@@ -1247,16 +1248,14 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                       {stepEvidenceOpen ? <ChevronUp className="w-4 h-4 text-[var(--text-dim)]" /> : <ChevronDown className="w-4 h-4 text-[var(--text-dim)]" />}
                     </button>
                     {stepEvidenceOpen && (
-                      <div className="p-4 pt-3 border-t border-[var(--line)] space-y-3 text-xs">
-                        <div>
-                          <label className="block text-[var(--text-dim)] mb-1">Tautan Screenshot Hasil</label>
-                          <input
-                            type="url"
-                            name="result_screenshot_url"
-                            placeholder="https://..."
-                            className="w-full h-10 px-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-[var(--text)]"
-                          />
-                        </div>
+                      <div className="p-4 pt-3 border-t border-[var(--line)] space-y-4 text-xs">
+                        <EvidenceUploadInput
+                          name="result_screenshot_url"
+                          prefix={`md${selectedMd}_hasil`}
+                          defaultValue={selectedMatch?.result_screenshot_url || ''}
+                          label="Unggah Bukti Screenshot Hasil Pertandingan"
+                          helperText="Pilih foto layar akhir pertandingan, seret & lepas (drag & drop), atau paste (Ctrl+V) langsung."
+                        />
                         <div>
                           <label className="block text-[var(--text-dim)] mb-1">Catatan Tambahan Pertandingan</label>
                           <textarea
@@ -1408,6 +1407,37 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                               <p className="text-xs text-[var(--text-faint)] italic">
                                 &ldquo;{m.match_report_text}&rdquo;
                               </p>
+                            )}
+                            {m.result_screenshot_url && (
+                              <div className="pt-2 flex items-center gap-3">
+                                <a
+                                  href={m.result_screenshot_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group relative h-16 w-28 rounded-[6px] overflow-hidden border border-[var(--line)] bg-[var(--ink-0)] shrink-0 hover:border-[var(--text)] transition-colors"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={m.result_screenshot_url}
+                                    alt="Screenshot Hasil"
+                                    className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                                  />
+                                </a>
+                                <div className="text-[11px] text-[var(--text-dim)] space-y-0.5">
+                                  <span className="font-semibold text-[var(--text)] block">
+                                    Bukti Screenshot Hasil:
+                                  </span>
+                                  <a
+                                    href={m.result_screenshot_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[var(--p-a)] hover:underline inline-flex items-center gap-1 font-mono"
+                                  >
+                                    <span>Lihat Ukuran Penuh</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              </div>
                             )}
                           </div>
 
@@ -1561,15 +1591,12 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[11px] text-[var(--text-dim)] mb-1">Tautan Bukti Video / Gambar</label>
-                  <input
-                    type="url"
-                    name="evidence_url"
-                    placeholder="https://..."
-                    className="w-full h-10 px-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-xs text-[var(--text)]"
-                  />
-                </div>
+                <EvidenceUploadInput
+                  name="evidence_url"
+                  prefix="sengketa"
+                  label="Unggah Bukti Screenshot / Rekaman Sengketa"
+                  helperText="Pilih screenshot keberatan, seret & lepas, atau paste (Ctrl+V) langsung."
+                />
 
                 <button
                   type="submit"
@@ -1598,6 +1625,32 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                         </span>
                       </div>
                       <p className="text-[var(--text-dim)]">{d.claim_summary}</p>
+                      {d.evidence_url && (
+                        <div className="pt-2 flex items-center gap-3">
+                          <a
+                            href={d.evidence_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative h-14 w-24 rounded-[6px] overflow-hidden border border-[var(--line)] bg-[var(--ink-0)] shrink-0 hover:border-[var(--text)] transition-colors"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={d.evidence_url}
+                              alt="Bukti Sengketa"
+                              className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                          </a>
+                          <a
+                            href={d.evidence_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-[var(--p-a)] hover:underline inline-flex items-center gap-1 font-mono"
+                          >
+                            <span>Lihat Bukti Lampiran</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (
