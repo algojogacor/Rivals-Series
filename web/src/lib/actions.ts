@@ -32,9 +32,14 @@ import {
 } from './db';
 import { calculateMatchPoints, deriveMatchSettings, validateSquadForLock } from './engine';
 import { ParticipantId, Match } from './types';
+import {
+  validateMatchReportInput,
+  ValidatedMatchReportPayload,
+  ValidatedGoalEvent,
+} from './match_validator';
 
 /**
- * 1. Submit Match Report
+ * 1. Submit Match Report Action
  */
 export async function submitMatchReportAction(formData: FormData) {
   try {
@@ -43,96 +48,52 @@ export async function submitMatchReportAction(formData: FormData) {
       return { error: 'Anda harus masuk sebagai Peserta A atau Peserta B untuk melapor.' };
     }
 
-  const mdNumber = Number(formData.get('md_number'));
-  if (isNaN(mdNumber) || mdNumber < 1 || mdNumber > 20) {
-    return { error: 'Nomor Matchday tidak valid (harus MD1 sampai MD20).' };
-  }
-
-  const matchSettings = deriveMatchSettings(mdNumber);
-
-  const homeScore = Number(formData.get('home_score'));
-  const awayScore = Number(formData.get('away_score'));
-
-  if (isNaN(homeScore) || isNaN(awayScore) || homeScore < 0 || awayScore < 0) {
-    return { error: 'Skor waktu reguler harus berupa angka positif.' };
-  }
-
-  const etPlayed = formData.get('et_played') === 'true' || formData.get('et_played') === 'on';
-  const homeEtScore = etPlayed ? Number(formData.get('home_et_score') ?? homeScore) : homeScore;
-  const awayEtScore = etPlayed ? Number(formData.get('away_et_score') ?? awayScore) : awayScore;
-
-  const pkPlayed = formData.get('pk_played') === 'true' || formData.get('pk_played') === 'on';
-  const homePkScore = pkPlayed ? Number(formData.get('home_pk_score') ?? 0) : null;
-  const awayPkScore = pkPlayed ? Number(formData.get('away_pk_score') ?? 0) : null;
-
-  // Knockout stage validation: must yield a winner
-  if (matchSettings.phase === 'knockout_stage') {
-    if (homeEtScore === awayEtScore && (!pkPlayed || homePkScore === awayPkScore)) {
-      return { error: 'Pada Knockout Stage (MD11-MD20), pertandingan yang selesai normal wajib menghasilkan pemenang melalui ET atau adu penalti.' };
+    const validation = validateMatchReportInput(formData);
+    if (!validation.success) {
+      return { error: validation.error };
     }
-  }
 
-  const rawReportText = formData.get('match_report_text')?.toString()?.trim();
-  const matchReportText = rawReportText && rawReportText.length > 0 ? rawReportText : null;
+    const {
+      mdNumber,
+      matchId,
+      matchSettings,
+      homeScore,
+      awayScore,
+      etPlayed,
+      homeEtScore,
+      awayEtScore,
+      pkPlayed,
+      homePkScore,
+      awayPkScore,
+      finalHomeGoals,
+      finalAwayGoals,
+      paGkName,
+      paGkCardId,
+      paGkBaseId,
+      paGkCardVersion,
+      paGkFull,
+      pbGkName,
+      pbGkCardId,
+      pbGkBaseId,
+      pbGkCardVersion,
+      pbGkFull,
+      validatedGoals,
+      resultScreenshotUrl,
+      matchReportText,
+      lineupWaShared,
+      paFirstCredit,
+      paSecondCredit,
+      pbFirstCredit,
+      pbSecondCredit,
+      paIndoInDsp,
+      pbIndoInDsp,
+      paTrendingFirst,
+      paTrendingSecond,
+      pbTrendingFirst,
+      pbTrendingSecond,
+    } = validation.data;
 
-  const rawScreenshotUrl = formData.get('result_screenshot_url')?.toString()?.trim();
-  const resultScreenshotUrl = rawScreenshotUrl && rawScreenshotUrl.length > 0 ? rawScreenshotUrl : null;
-  const lineupWaShared = formData.get('lineup_wa_shared') === 'true' || formData.get('lineup_wa_shared') === 'on';
-
-  // Indonesian Player Credits & Trending attestation (Pasal 17, 18, 19)
-  const paFirstCredit = formData.get('pa_first_half_credit') === '1' ? 1 : 0;
-  const paSecondCredit = formData.get('pa_second_half_credit') === '1' ? 1 : 0;
-  const pbFirstCredit = formData.get('pb_first_half_credit') === '1' ? 1 : 0;
-  const pbSecondCredit = formData.get('pb_second_half_credit') === '1' ? 1 : 0;
-
-  const paIndoInDsp = formData.get('pa_indonesia_in_dsp') === '0' ? 0 : 1;
-  const pbIndoInDsp = formData.get('pb_indonesia_in_dsp') === '0' ? 0 : 1;
-
-  const paTrendingFirst = formData.get('pa_trending_first_half') === '1' ? 1 : 0;
-  const paTrendingSecond = formData.get('pa_trending_second_half') === '1' ? 1 : 0;
-  const pbTrendingFirst = formData.get('pb_trending_first_half') === '1' ? 1 : 0;
-  const pbTrendingSecond = formData.get('pb_trending_second_half') === '1' ? 1 : 0;
-
-  const paGkName = formData.get('pa_gk_name')?.toString()?.trim() || 'Kiper Peserta A';
-  const paGkCardId = formData.get('pa_gk_card_id')?.toString() || null;
-  const paGkBaseIdRaw = formData.get('pa_gk_base_player_id')?.toString();
-  const paGkBaseId = paGkBaseIdRaw ? Number(paGkBaseIdRaw) : null;
-  const paGkCardVersion = formData.get('pa_gk_card_version')?.toString() || null;
-  const paGkFull = formData.get('pa_gk_full') === '1' ? 1 : 0;
-
-  const pbGkName = formData.get('pb_gk_name')?.toString()?.trim() || 'Kiper Peserta B';
-  const pbGkCardId = formData.get('pb_gk_card_id')?.toString() || null;
-  const pbGkBaseIdRaw = formData.get('pb_gk_base_player_id')?.toString();
-  const pbGkBaseId = pbGkBaseIdRaw ? Number(pbGkBaseIdRaw) : null;
-  const pbGkCardVersion = formData.get('pb_gk_card_version')?.toString() || null;
-  const pbGkFull = formData.get('pb_gk_full') === '1' ? 1 : 0;
-
-  const goalEventsJsonRaw = formData.get('goal_events_json')?.toString();
-  let parsedGoals: Array<{
-    scoring_participant_id?: ParticipantId;
-    participant_id?: ParticipantId;
-    scorer_card_id?: string | null;
-    scorer_base_player_id?: number | null;
-    scorer_player_name: string;
-    scorer_card_version?: string | null;
-    minute?: number | null;
-    period?: string;
-    is_own_goal?: number;
-  }> = [];
-
-  if (goalEventsJsonRaw) {
-    try {
-      const parsed = JSON.parse(goalEventsJsonRaw);
-      if (Array.isArray(parsed)) {
-        parsedGoals = parsed.filter((g) => g && g.scorer_player_name && g.scorer_player_name.trim());
-      }
-    } catch {
-      parsedGoals = [];
-    }
-  }
-
-  const matchId = `MD${mdNumber}`;
-  const db = getDbClient();
+    const db = getDbClient();
 
   // Check existing match state for before_json (whether this is initial submission or report modification)
   const existingMatchRes = await db.execute({
@@ -167,8 +128,6 @@ export async function submitMatchReportAction(formData: FormData) {
   };
 
   const pointsCalc = calculateMatchPoints(tempMatch);
-  const finalAwayGoals = etPlayed ? awayEtScore : awayScore;
-  const finalHomeGoals = etPlayed ? homeEtScore : homeScore;
 
   const statements: InStatement[] = [];
 
@@ -298,21 +257,9 @@ export async function submitMatchReportAction(formData: FormData) {
     args: [matchId],
   });
 
-  for (let i = 0; i < parsedGoals.length; i++) {
-    const g = parsedGoals[i];
+  for (let i = 0; i < validatedGoals.length; i++) {
+    const g = validatedGoals[i];
     const goalId = `goal_${matchId}_${i + 1}_${Date.now()}`;
-    const validPeriods = [
-      'regular_first_half',
-      'regular_second_half',
-      'extra_time_first_half',
-      'extra_time_second_half',
-    ];
-    let period = validPeriods.includes(g.period || '') ? g.period! : 'regular_first_half';
-    if (g.period === 'first_half') period = 'regular_first_half';
-    else if (g.period === 'second_half') period = 'regular_second_half';
-    else if (g.period === 'et') period = 'extra_time_first_half';
-
-    const scoringPartId: ParticipantId = (g.scoring_participant_id || g.participant_id || 'participant_a') as ParticipantId;
 
     statements.push({
       sql: `INSERT INTO match_goal_events (
@@ -322,20 +269,20 @@ export async function submitMatchReportAction(formData: FormData) {
       args: [
         goalId,
         matchId,
-        scoringPartId,
-        g.scorer_card_id || null,
-        g.scorer_base_player_id ? Number(g.scorer_base_player_id) : null,
-        g.scorer_player_name.trim(),
-        g.scorer_card_version || null,
-        g.minute ? Number(g.minute) : null,
-        period,
-        g.is_own_goal ? 1 : 0,
+        g.scoring_participant_id,
+        g.scorer_card_id,
+        g.scorer_base_player_id,
+        g.scorer_player_name,
+        g.scorer_card_version,
+        g.minute,
+        g.period,
+        g.is_own_goal,
       ],
     });
   }
 
   const scoreSummary = `${homeScore}-${awayScore}${etPlayed ? ` (ET ${homeEtScore}-${awayEtScore})` : ''}${pkPlayed ? ` (PK ${homePkScore}-${awayPkScore})` : ''}`;
-  const scorersSummary = parsedGoals.length > 0 ? parsedGoals.map((g) => g.scorer_player_name).join(', ') : 'Tanpa pencetak gol tercatat';
+  const scorersSummary = validatedGoals.length > 0 ? validatedGoals.map((g) => g.scorer_player_name).join(', ') : 'Tanpa pencetak gol tercatat';
 
   // Execute all match mutations + audit log atomically
   await executeWithAudit(statements, {
@@ -360,10 +307,10 @@ export async function submitMatchReportAction(formData: FormData) {
       awayScore,
       etPlayed,
       pkPlayed,
-      scorers: parsedGoals.map((g) => ({
+      scorers: validatedGoals.map((g) => ({
         player: g.scorer_player_name,
-        minute: g.minute ?? null,
-        team: g.scoring_participant_id || g.participant_id || 'participant_a',
+        minute: g.minute,
+        team: g.scoring_participant_id,
       })),
       goalkeepers: {
         pa: { name: paGkName, fullMatch: Boolean(paGkFull) },
