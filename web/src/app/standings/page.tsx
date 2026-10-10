@@ -1,11 +1,4 @@
-import {
-  getParticipants,
-  getAllMatches,
-  getAllSanctions,
-  getAllQuotaCredits,
-  getSeasonSettings,
-} from '@/lib/db';
-import { calculateStandings } from '@/lib/engine';
+import { getCachedStandingsData } from '@/lib/cached-data';
 import { StandingsView } from '@/components/StandingsView';
 
 export const metadata = {
@@ -13,19 +6,9 @@ export const metadata = {
   description: 'Tabel klasemen otoritatif Rivals Series Season 1 eFootball 1v1 duel competition.',
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function StandingsPage() {
-  const [participants, matches, sanctions, quotaCredits, seasonSettings] = await Promise.all([
-    getParticipants(),
-    getAllMatches(),
-    getAllSanctions(),
-    getAllQuotaCredits(),
-    getSeasonSettings(),
-  ]);
-
-  const isCompleted = seasonSettings?.status === 'completed';
-  const standings = calculateStandings(participants, matches, sanctions, quotaCredits, isCompleted);
-
+  const { standings } = await getCachedStandingsData();
   return <StandingsView standings={standings} />;
 }

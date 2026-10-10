@@ -14,6 +14,7 @@ const bigShoulders = Big_Shoulders({
   weight: ['800', '900'],
   variable: '--font-big-shoulders',
   display: 'swap',
+  adjustFontFallback: false,
 });
 
 const barlow = Barlow({
@@ -28,8 +29,6 @@ export const metadata: Metadata = {
   description: 'Official digital records, standings, match reports, statistics, and awards for Rivals Series Season 1 eFootball 1v1 competition.',
 };
 
-export const dynamic = 'force-dynamic';
-
 export default async function RootLayout({
   children,
 }: {
@@ -43,25 +42,25 @@ export default async function RootLayout({
   let playerBColor = '#3ec9e6';
   let isSetupStatus = false;
 
-  // Defensive database read: never crash if DB is temporarily unreachable
-  try {
-    session = await getSession();
-  } catch (err) {
-    console.error('RootLayout: session read error, defaulting to guest', err);
-  }
+  // Defensive concurrent database reads: never crash if DB is temporarily unreachable
+  const [sessionRes, settingsRes] = await Promise.all([
+    getSession().catch((err) => {
+      console.error('RootLayout: session read error, defaulting to guest', err);
+      return null;
+    }),
+    getSeasonSettings().catch((err) => {
+      console.error('RootLayout: season settings read error, using fallback colors', err);
+      return null;
+    }),
+  ]);
 
-  try {
-    const settings = await getSeasonSettings();
-    if (settings) {
-      if (settings.player_a_color) playerAColor = settings.player_a_color;
-      if (settings.player_b_color) playerBColor = settings.player_b_color;
-      if (settings.status === 'setup') {
-        isSetupStatus = true;
-      }
+  session = sessionRes;
+  if (settingsRes) {
+    if (settingsRes.player_a_color) playerAColor = settingsRes.player_a_color;
+    if (settingsRes.player_b_color) playerBColor = settingsRes.player_b_color;
+    if (settingsRes.status === 'setup') {
+      isSetupStatus = true;
     }
-  } catch (err) {
-    console.error('RootLayout: season settings read error, using fallback colors and skipping redirect', err);
-    isSetupStatus = false; // Never redirect if DB fails
   }
 
   // Safe redirect guard:

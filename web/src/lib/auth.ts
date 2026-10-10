@@ -7,6 +7,7 @@
 // 5. One-time expiring invite tokens for the second participant in /setup
 
 import crypto from 'crypto';
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { ParticipantId, Participant } from './types';
 import { getDbClient, getParticipantAuthRecord, getParticipants } from './db';
@@ -217,8 +218,9 @@ export async function setParticipantSessionCookie(
 
 /**
  * Get the currently logged-in participant from signed cookies.
+ * Memoized per-request with React.cache to avoid duplicate DB/cookie lookups across layout and pages.
  */
-export async function getSession(): Promise<AuthSession | null> {
+export const getSession = cache(async function getSession(): Promise<AuthSession | null> {
   try {
     const cookieStore = await cookies();
     const sessionValue = cookieStore.get(SESSION_COOKIE_NAME)?.value;
@@ -238,7 +240,7 @@ export async function getSession(): Promise<AuthSession | null> {
   } catch {
     return null;
   }
-}
+});
 
 export interface LoginAttemptResult {
   ok: boolean;

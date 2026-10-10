@@ -1,19 +1,5 @@
 import Link from 'next/link';
-import {
-  getAllMatches,
-  getParticipants,
-  getAllGoalEvents,
-  getAllGoalkeeperRecords,
-  getAllSanctions,
-  getAllQuotaCredits,
-  getSeasonSettings,
-} from '@/lib/db';
-import {
-  calculateStandings,
-  calculateGoldenBoot,
-  calculateGoldenGlove,
-  calculateWinningStreak,
-} from '@/lib/engine';
+import { getCachedStatisticsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
 import { EmptyState } from '@/components/EmptyState';
 import { Trophy, Shield, Zap } from 'lucide-react';
@@ -23,26 +9,17 @@ export const metadata = {
   description: 'Statistik resmi pencetak gol Golden Boot, clean sheet Golden Glove, dan rekor performa musim.',
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export default async function StatisticsPage() {
-  const [
-    matches,
+  const {
     participants,
-    goalEvents,
-    gkRecords,
-    sanctions,
-    quotaCredits,
-    seasonSettings,
-  ] = await Promise.all([
-    getAllMatches(),
-    getParticipants(),
-    getAllGoalEvents(),
-    getAllGoalkeeperRecords(),
-    getAllSanctions(),
-    getAllQuotaCredits(),
-    getSeasonSettings(),
-  ]);
+    standings,
+    topScorers,
+    topGoalkeepers,
+    paStreak,
+    pbStreak,
+  } = await getCachedStatisticsData();
 
   const pA = participants.find((p) => p.id === 'participant_a') || {
     id: 'participant_a',
@@ -57,21 +34,8 @@ export default async function StatisticsPage() {
     is_admin: 0,
   };
 
-  const confirmedMatches = matches.filter((m) =>
-    ['confirmed', 'reconstructed', 'forfeited', 'technical_win'].includes(m.status)
-  );
-  const confirmedIds = new Set(confirmedMatches.map((m) => m.id));
-
-  const isCompleted = seasonSettings?.status === 'completed';
-  const standings = calculateStandings(participants, matches, sanctions, quotaCredits, isCompleted);
   const standingA = standings.find((s) => s.participant_id === 'participant_a') || standings[0];
   const standingB = standings.find((s) => s.participant_id === 'participant_b') || standings[1];
-
-  const topScorers = calculateGoldenBoot(goalEvents, confirmedIds);
-  const topGoalkeepers = calculateGoldenGlove(gkRecords, matches);
-
-  const paStreak = calculateWinningStreak(matches, 'participant_a');
-  const pbStreak = calculateWinningStreak(matches, 'participant_b');
 
   // Streak metrics for H2H visual bar
   const streakTotal = paStreak + pbStreak;

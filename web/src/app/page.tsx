@@ -1,13 +1,7 @@
 import Link from 'next/link';
-import {
-  getParticipants,
-  getAllMatches,
-  getAllSanctions,
-  getAllQuotaCredits,
-  getSeasonSettings,
-} from '@/lib/db';
+import { getCachedStandingsData } from '@/lib/cached-data';
 import { getSession } from '@/lib/auth';
-import { calculateStandings, deriveMatchSettings } from '@/lib/engine';
+import { deriveMatchSettings } from '@/lib/engine';
 import { VersusHero } from '@/components/VersusHero';
 import { SeasonTracker } from '@/components/SeasonTracker';
 import { H2HBars } from '@/components/H2HBars';
@@ -15,24 +9,13 @@ import { PlayerTag } from '@/components/PlayerTag';
 import { EmptyState } from '@/components/EmptyState';
 import { ArrowRight, Settings2 } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
-
 export default async function HomePage() {
-  const [
-    participants,
-    matches,
-    sanctions,
-    quotaCredits,
-    seasonSettings,
-    session,
-  ] = await Promise.all([
-    getParticipants(),
-    getAllMatches(),
-    getAllSanctions(),
-    getAllQuotaCredits(),
-    getSeasonSettings(),
+  const [standingsData, session] = await Promise.all([
+    getCachedStandingsData(),
     getSession(),
   ]);
+
+  const { participants, matches, seasonSettings, standings } = standingsData;
 
   const pA = participants.find((p) => p.id === 'participant_a') || {
     id: 'participant_a',
@@ -47,8 +30,6 @@ export default async function HomePage() {
     is_admin: 0,
   };
 
-  const isCompleted = seasonSettings?.status === 'completed';
-  const standings = calculateStandings(participants, matches, sanctions, quotaCredits, isCompleted);
   const standingA = standings.find((s) => s.participant_id === 'participant_a') || standings[0];
   const standingB = standings.find((s) => s.participant_id === 'participant_b') || standings[1];
 

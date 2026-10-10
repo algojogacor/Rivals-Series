@@ -19,27 +19,21 @@ import {
   completeSeasonSetupAction,
   logoutParticipantAction,
 } from '@/lib/actions';
-import { formatWibTimestamp } from '@/lib/audit';
-import { SquadBuilderWorkbench } from './SquadBuilderWorkbench';
 import {
   Check,
-  X,
-  Loader2,
   ArrowRight,
-  RotateCcw,
   Shield,
-  Trophy,
-  Calendar,
-  Sparkles,
-  CheckCircle2,
   AlertCircle,
-  Lock,
-  KeyRound,
-  Copy,
-  UserPlus,
+  CheckCircle2,
   LogIn,
   LogOut,
 } from 'lucide-react';
+import { SETUP_STEPS } from './setup/setup-constants';
+import { SetupStep1Identity } from './setup/SetupStep1Identity';
+import { SetupStep2Format } from './setup/SetupStep2Format';
+import { SetupStep3Squad } from './setup/SetupStep3Squad';
+import { SetupStep4Readiness } from './setup/SetupStep4Readiness';
+import { SetupStep5Kickoff } from './setup/SetupStep5Kickoff';
 
 interface SetupWizardClientProps {
   session?: {
@@ -69,15 +63,6 @@ interface SetupWizardClientProps {
   pbSummaryPhase1: { count: number; trending: number; indo: number };
 }
 
-const COLOR_SWATCHES = [
-  { hex: '#ffb02e', name: 'Amber' },
-  { hex: '#3ec9e6', name: 'Cyan' },
-  { hex: '#ff6b5a', name: 'Koral' },
-  { hex: '#a5e44b', name: 'Lime' },
-  { hex: '#ff5fa2', name: 'Pink' },
-  { hex: '#a78bfa', name: 'Violet' },
-];
-
 export function SetupWizardClient({
   session = null,
   participantA,
@@ -100,13 +85,11 @@ export function SetupWizardClient({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Entry gate state (when user opens /setup without ?key=, without ?invite=, and without being logged in)
+  // Entry gate state
   const [gateSetupKeyInput, setGateSetupKeyInput] = useState(setupKeyFromUrl || '');
   const [gateInviteInput, setGateInviteInput] = useState(inviteTokenFromUrl || '');
 
-  // Determine active setup role:
-  // - 'participant_b' if logged in as participant_b OR holding a valid invite token
-  // - 'participant_a' if logged in as participant_a OR holding a valid SETUP_KEY
+  // Active role determination
   const activeRole: ParticipantId | null =
     session?.participantId === 'participant_b' || inviteValidation?.valid
       ? 'participant_b'
@@ -145,7 +128,7 @@ export function SetupWizardClient({
   const [confirmPinB, setConfirmPinB] = useState('');
   const [editedMonogramB, setEditedMonogramB] = useState(false);
 
-  // Freshly generated invite token state (only visible to Player A right after creation/regeneration)
+  // Freshly generated invite token state
   const [freshInviteToken, setFreshInviteToken] = useState<string | null>(null);
   const [freshInviteExpiresAt, setFreshInviteExpiresAt] = useState<string | null>(
     latestInvite?.expires_at || null
@@ -404,14 +387,6 @@ export function SetupWizardClient({
     });
   };
 
-  const steps = [
-    { num: 1, title: 'Siapa yang bertanding?', desc: 'Identitas, PIN & undangan' },
-    { num: 2, title: 'Format musim', desc: 'Aturan resmi 20 Matchday' },
-    { num: 3, title: 'Susun skuad', desc: '26 kartu eFHUB & kunci skuad' },
-    { num: 4, title: 'Siapkan sistem', desc: 'Pemeriksaan otomatis database' },
-    { num: 5, title: 'Siap kick-off', desc: 'Peluit perdana musim' },
-  ];
-
   const displayNameA = participantA.profile_completed
     ? participantA.display_name
     : nameA || 'Pemain A';
@@ -512,7 +487,7 @@ export function SetupWizardClient({
 
         {/* Mobile Stepper: 5 Dots Indicator */}
         <div className="flex md:hidden items-center justify-center gap-3">
-          {steps.map((s) => {
+          {SETUP_STEPS.map((s) => {
             const isCompleted = currentStep > s.num;
             const isCurrent = currentStep === s.num;
             return (
@@ -537,7 +512,7 @@ export function SetupWizardClient({
           {/* Stepper Kiri (Desktop) */}
           <div className="hidden md:flex flex-col justify-between border-r border-[var(--line)] pr-6 space-y-8">
             <div className="space-y-6">
-              {steps.map((s) => {
+              {SETUP_STEPS.map((s) => {
                 const isCompleted = currentStep > s.num;
                 const isCurrent = currentStep === s.num;
                 return (
@@ -615,1122 +590,118 @@ export function SetupWizardClient({
               </div>
             )}
 
-            {/* STEP 1: SIAPA YANG BERTANDING? (EQUAL PEER ACCOUNTS & ONE-TIME INVITE) */}
+            {/* STEP 1: SIAPA YANG BERTANDING? */}
             {currentStep === 1 && (
-              <div className="space-y-8">
-                <div>
-                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-3xl uppercase tracking-tight text-[var(--text)]">
-                    Langkah 1: Identitas & PIN Peserta
-                  </h2>
-                  <p className="text-[13px] text-[var(--text-dim)] mt-1">
-                    Setiap pemain mendaftarkan nama tampilan, warna identitas, dan PIN buatannya sendiri dari perangkatnya masing-masing.
-                  </p>
-                </div>
-
-                {/* ACCESS GATE: Shown when visitor is not logged in and hasn't provided valid SETUP_KEY or valid Invite Token */}
-                {!activeRole && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Box 1: Player 1 (Setup Initiator with SETUP_KEY) */}
-                    <div className="rounded-[10px] bg-[var(--ink-2)] border border-[var(--line)] p-6 space-y-4">
-                      <div className="flex items-center gap-2.5 text-[var(--p-a)] font-bold text-base uppercase font-[family-name:var(--font-display)]">
-                        <KeyRound className="w-5 h-5" />
-                        <span>Pemain Pertama (Pemulai Setup)</span>
-                      </div>
-                      {participantA.profile_completed ? (
-                        <div className="space-y-3">
-                          <p className="text-xs text-[var(--text-dim)] leading-relaxed">
-                            Pemain A (<strong>{participantA.display_name}</strong>) sudah terdaftar. Silakan masuk menggunakan PIN yang telah Anda buat untuk melanjutkan penyusunan skuad atau melihat tautan undangan Pemain B.
-                          </p>
-                          <Link
-                            href="/login?redirect=/setup"
-                            className="h-11 px-5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-xs uppercase tracking-wider inline-flex items-center gap-2"
-                          >
-                            <LogIn className="w-4 h-4" />
-                            <span>Masuk sebagai {participantA.display_name}</span>
-                          </Link>
-                        </div>
-                      ) : (
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            if (!gateSetupKeyInput.trim()) return;
-                            router.push(`/setup?key=${encodeURIComponent(gateSetupKeyInput.trim())}`);
-                          }}
-                          className="space-y-3"
-                        >
-                          <p className="text-xs text-[var(--text-dim)] leading-relaxed">
-                            Masukkan <code className="text-[var(--text)]">SETUP_KEY</code> untuk memulai pembuatan musim dan mendapatkan tautan undangan sekali pakai bagi lawan Anda.
-                          </p>
-                          <input
-                            type="password"
-                            value={gateSetupKeyInput}
-                            onChange={(e) => setGateSetupKeyInput(e.target.value)}
-                            placeholder="Masukkan SETUP_KEY..."
-                            required
-                            className="w-full h-11 px-4 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-sm font-mono text-[var(--text)] focus:border-[var(--text)] focus:outline-none"
-                          />
-                          <button
-                            type="submit"
-                            className="h-11 px-5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-xs uppercase tracking-wider inline-flex items-center gap-2"
-                          >
-                            <span>Buka Setup Pemain A</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </button>
-                        </form>
-                      )}
-                    </div>
-
-                    {/* Box 2: Player 2 (Joining via One-Time Invite Code) */}
-                    <div className="rounded-[10px] bg-[var(--ink-2)] border border-[var(--line)] p-6 space-y-4">
-                      <div className="flex items-center gap-2.5 text-[var(--p-b)] font-bold text-base uppercase font-[family-name:var(--font-display)]">
-                        <UserPlus className="w-5 h-5" />
-                        <span>Pemain Kedua (Penerima Undangan)</span>
-                      </div>
-                      {participantB.profile_completed ? (
-                        <div className="space-y-3">
-                          <p className="text-xs text-[var(--text-dim)] leading-relaxed">
-                            Pemain B (<strong>{participantB.display_name}</strong>) sudah terdaftar. Silakan masuk menggunakan PIN yang telah Anda buat untuk menyusun dan mengunci skuad Anda.
-                          </p>
-                          <Link
-                            href="/login?redirect=/setup"
-                            className="h-11 px-5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-xs uppercase tracking-wider inline-flex items-center gap-2"
-                          >
-                            <LogIn className="w-4 h-4" />
-                            <span>Masuk sebagai {participantB.display_name}</span>
-                          </Link>
-                        </div>
-                      ) : (
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            if (!gateInviteInput.trim()) return;
-                            router.push(`/setup?invite=${encodeURIComponent(gateInviteInput.trim())}`);
-                          }}
-                          className="space-y-3"
-                        >
-                          <p className="text-xs text-[var(--text-dim)] leading-relaxed">
-                            Masukkan kode undangan sekali pakai (<code className="text-[var(--text)]">RS1-XXXX-XXXX-XXXX</code>) yang dikirimkan oleh Pemain A untuk mendaftarkan akun & PIN Anda.
-                          </p>
-                          <input
-                            type="text"
-                            value={gateInviteInput}
-                            onChange={(e) => setGateInviteInput(e.target.value.toUpperCase())}
-                            placeholder="RS1-XXXX-XXXX-XXXX"
-                            required
-                            className="w-full h-11 px-4 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-sm font-mono uppercase text-[var(--text)] focus:border-[var(--text)] focus:outline-none"
-                          />
-                          <button
-                            type="submit"
-                            className="h-11 px-5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-xs uppercase tracking-wider inline-flex items-center gap-2"
-                          >
-                            <span>Gunakan Kode Undangan</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* ACTIVE ROLE VIEW: Either Player A or Player B */}
-                {activeRole && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* LEFT COLUMN: PEMAIN A */}
-                    <div className="rounded-[10px] bg-[var(--ink-2)] border border-[var(--line)] p-6 space-y-5">
-                      <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
-                        <span
-                          className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight"
-                          style={{ color: colorA }}
-                        >
-                          Pemain A · Pemulai Setup
-                        </span>
-                        <span
-                          className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase ${
-                            participantA.profile_completed
-                              ? 'bg-[var(--ok)]/15 text-[var(--ok)] border border-[var(--ok)]/30'
-                              : 'bg-[var(--ink-1)] text-[var(--text-dim)] border border-[var(--line)]'
-                          }`}
-                        >
-                          {participantA.profile_completed ? 'Akun Terdaftar' : 'Belum Terdaftar'}
-                        </span>
-                      </div>
-
-                      {activeRole === 'participant_a' ? (
-                        <form onSubmit={handleSavePlayerA} className="space-y-4">
-                          <div>
-                            <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
-                              Nama Tampilan Anda
-                            </label>
-                            <input
-                              type="text"
-                              value={nameA}
-                              onChange={(e) => handleNameAChange(e.target.value)}
-                              required
-                              className="w-full h-12 px-4 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-xl font-[family-name:var(--font-display)] uppercase text-[var(--text)] focus:border-[var(--text)] focus:outline-none transition-colors"
-                              placeholder="CONTOH: YAYAKGACOR"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
-                              Inisial / Monogram (2–3 huruf)
-                            </label>
-                            <input
-                              type="text"
-                              maxLength={3}
-                              value={monogramA}
-                              onChange={(e) => {
-                                setEditedMonogramA(true);
-                                setMonogramA(e.target.value.toUpperCase());
-                              }}
-                              required
-                              className="w-24 h-11 px-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] font-[family-name:var(--font-display)] font-bold uppercase text-[var(--text)] focus:border-[var(--text)] focus:outline-none transition-colors text-center"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-2">
-                              Warna Identitas Anda
-                            </label>
-                            <div className="flex items-center gap-3">
-                              {COLOR_SWATCHES.map((swatch) => {
-                                const isSelected = colorA.toLowerCase() === swatch.hex.toLowerCase();
-                                const isOpponentSelected =
-                                  Boolean(participantB.profile_completed) &&
-                                  activeColorB.toLowerCase() === swatch.hex.toLowerCase();
-                                return (
-                                  <button
-                                    key={swatch.hex}
-                                    type="button"
-                                    disabled={isOpponentSelected}
-                                    onClick={() => setColorA(swatch.hex)}
-                                    title={
-                                      swatch.name +
-                                      (isOpponentSelected ? ' (Dipakai Pemain B)' : '')
-                                    }
-                                    className={`relative h-10 w-10 rounded-full transition-transform flex items-center justify-center ${
-                                      isSelected
-                                        ? 'ring-2 ring-[var(--text)] ring-offset-2 ring-offset-[var(--ink-2)] scale-110'
-                                        : isOpponentSelected
-                                        ? 'opacity-25 cursor-not-allowed'
-                                        : 'hover:scale-105'
-                                    }`}
-                                    style={{ backgroundColor: swatch.hex }}
-                                  >
-                                    {isOpponentSelected && (
-                                      <X className="w-5 h-5 text-[var(--ink-0)] stroke-[3]" />
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--line)]">
-                            <div>
-                              <label className="block text-[12px] font-semibold text-[var(--text-dim)] mb-1">
-                                {participantA.profile_completed
-                                  ? 'PIN Baru (Kosongkan jika tetap)'
-                                  : 'Buat PIN Akun Anda (Min. 4 karakter)'}
-                              </label>
-                              <input
-                                type="password"
-                                value={pinA}
-                                onChange={(e) => setPinA(e.target.value)}
-                                required={!participantA.profile_completed}
-                                placeholder="PIN rahasia Anda"
-                                className="w-full h-11 px-3.5 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-sm font-mono text-[var(--text)] focus:border-[var(--text)] focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[12px] font-semibold text-[var(--text-dim)] mb-1">
-                                Konfirmasi PIN
-                              </label>
-                              <input
-                                type="password"
-                                value={confirmPinA}
-                                onChange={(e) => setConfirmPinA(e.target.value)}
-                                required={!participantA.profile_completed || pinA.length > 0}
-                                placeholder="Ulangi PIN"
-                                className="w-full h-11 px-3.5 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-sm font-mono text-[var(--text)] focus:border-[var(--text)] focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Live Preview PlayerTag */}
-                          <div className="pt-1">
-                            <span className="text-[12px] text-[var(--text-faint)] block mb-1.5">
-                              Preview Identitas:
-                            </span>
-                            <div className="flex items-center gap-3 p-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)]">
-                              <div
-                                className="flex h-11 w-11 items-center justify-center rounded-[8px] font-[family-name:var(--font-display)] text-xl font-extrabold uppercase"
-                                style={{ backgroundColor: colorA, color: 'var(--ink-0)' }}
-                              >
-                                {monogramA || 'PA'}
-                              </div>
-                              <span className="font-[family-name:var(--font-display)] text-xl font-bold uppercase text-[var(--text)]">
-                                {nameA || 'Pemain A'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={isPending}
-                            className="w-full h-12 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                          >
-                            {isPending ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>Menyimpan…</span>
-                              </>
-                            ) : participantA.profile_completed ? (
-                              <span>Simpan Perubahan Identitas Saya</span>
-                            ) : (
-                              <>
-                                <span>Simpan Identitas Saya & Buat Undangan Lawan</span>
-                                <ArrowRight className="w-4 h-4" />
-                              </>
-                            )}
-                          </button>
-                        </form>
-                      ) : (
-                        /* Read-only view of Player A when Player B is viewing */
-                        <div className="space-y-4">
-                          <p className="text-xs text-[var(--text-dim)] leading-relaxed">
-                            Identitas ini dikelola langsung oleh Pemain A dari perangkatnya sendiri.
-                          </p>
-                          <div className="flex items-center gap-3 p-4 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)]">
-                            <div
-                              className="flex h-12 w-12 items-center justify-center rounded-[8px] font-[family-name:var(--font-display)] text-2xl font-extrabold uppercase"
-                              style={{ backgroundColor: activeColorA, color: 'var(--ink-0)' }}
-                            >
-                              {participantA.monogram || 'PA'}
-                            </div>
-                            <div>
-                              <div className="font-[family-name:var(--font-display)] text-2xl font-bold uppercase text-[var(--text)]">
-                                {participantA.display_name}
-                              </div>
-                              <div className="text-xs text-[var(--text-dim)]">
-                                Warna: {activeColorA} ·{' '}
-                                {phase1Status.pa_locked === 1
-                                  ? 'Skuad Fase 1 Terkunci'
-                                  : 'Sedang Menyusun Skuad'}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* RIGHT COLUMN: PEMAIN B (INVITE GENERATOR FOR A, OR REGISTRATION FORM FOR B) */}
-                    <div className="rounded-[10px] bg-[var(--ink-2)] border border-[var(--line)] p-6 space-y-5">
-                      <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
-                        <span
-                          className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight"
-                          style={{ color: colorB }}
-                        >
-                          Pemain B · Lawan Tanding
-                        </span>
-                        <span
-                          className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase ${
-                            participantB.profile_completed
-                              ? 'bg-[var(--ok)]/15 text-[var(--ok)] border border-[var(--ok)]/30'
-                              : 'bg-[var(--ink-1)] text-[var(--text-dim)] border border-[var(--line)]'
-                          }`}
-                        >
-                          {participantB.profile_completed ? 'Akun Terdaftar' : 'Menunggu Undangan'}
-                        </span>
-                      </div>
-
-                      {activeRole === 'participant_b' ? (
-                        <form onSubmit={handleSavePlayerB} className="space-y-4">
-                          {inviteValidation?.valid && !participantB.profile_completed && (
-                            <div className="rounded-[8px] bg-[var(--ok)]/10 border border-[var(--ok)]/30 p-3 text-xs text-[var(--ok)] flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 shrink-0" />
-                              <span>
-                                Undangan sekali pakai terverifikasi! Silakan isi identitas, warna, dan PIN rahasia Anda di bawah ini.
-                              </span>
-                            </div>
-                          )}
-
-                          <div>
-                            <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
-                              Nama Tampilan Anda
-                            </label>
-                            <input
-                              type="text"
-                              value={nameB}
-                              onChange={(e) => handleNameBChange(e.target.value)}
-                              required
-                              className="w-full h-12 px-4 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-xl font-[family-name:var(--font-display)] uppercase text-[var(--text)] focus:border-[var(--text)] focus:outline-none transition-colors"
-                              placeholder="CONTOH: ALGOJOGACOR"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-1">
-                              Inisial / Monogram (2–3 huruf)
-                            </label>
-                            <input
-                              type="text"
-                              maxLength={3}
-                              value={monogramB}
-                              onChange={(e) => {
-                                setEditedMonogramB(true);
-                                setMonogramB(e.target.value.toUpperCase());
-                              }}
-                              required
-                              className="w-24 h-11 px-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] font-[family-name:var(--font-display)] font-bold uppercase text-[var(--text)] focus:border-[var(--text)] focus:outline-none transition-colors text-center"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[13px] font-semibold text-[var(--text-dim)] mb-2">
-                              Warna Identitas Anda
-                            </label>
-                            <div className="flex items-center gap-3">
-                              {COLOR_SWATCHES.map((swatch) => {
-                                const isSelected = colorB.toLowerCase() === swatch.hex.toLowerCase();
-                                const isOpponentSelected =
-                                  activeColorA.toLowerCase() === swatch.hex.toLowerCase();
-                                return (
-                                  <button
-                                    key={swatch.hex}
-                                    type="button"
-                                    disabled={isOpponentSelected}
-                                    onClick={() => setColorB(swatch.hex)}
-                                    title={
-                                      swatch.name +
-                                      (isOpponentSelected ? ' (Dipakai Pemain A)' : '')
-                                    }
-                                    className={`relative h-10 w-10 rounded-full transition-transform flex items-center justify-center ${
-                                      isSelected
-                                        ? 'ring-2 ring-[var(--text)] ring-offset-2 ring-offset-[var(--ink-2)] scale-110'
-                                        : isOpponentSelected
-                                        ? 'opacity-25 cursor-not-allowed'
-                                        : 'hover:scale-105'
-                                    }`}
-                                    style={{ backgroundColor: swatch.hex }}
-                                  >
-                                    {isOpponentSelected && (
-                                      <X className="w-5 h-5 text-[var(--ink-0)] stroke-[3]" />
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--line)]">
-                            <div>
-                              <label className="block text-[12px] font-semibold text-[var(--text-dim)] mb-1">
-                                {participantB.profile_completed
-                                  ? 'PIN Baru (Kosongkan jika tetap)'
-                                  : 'Buat PIN Akun Anda (Min. 4 karakter)'}
-                              </label>
-                              <input
-                                type="password"
-                                value={pinB}
-                                onChange={(e) => setPinB(e.target.value)}
-                                required={!participantB.profile_completed}
-                                placeholder="PIN rahasia Anda"
-                                className="w-full h-11 px-3.5 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-sm font-mono text-[var(--text)] focus:border-[var(--text)] focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[12px] font-semibold text-[var(--text-dim)] mb-1">
-                                Konfirmasi PIN
-                              </label>
-                              <input
-                                type="password"
-                                value={confirmPinB}
-                                onChange={(e) => setConfirmPinB(e.target.value)}
-                                required={!participantB.profile_completed || pinB.length > 0}
-                                placeholder="Ulangi PIN"
-                                className="w-full h-11 px-3.5 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-sm font-mono text-[var(--text)] focus:border-[var(--text)] focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Live Preview PlayerTag */}
-                          <div className="pt-1">
-                            <span className="text-[12px] text-[var(--text-faint)] block mb-1.5">
-                              Preview Identitas:
-                            </span>
-                            <div className="flex items-center gap-3 p-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)]">
-                              <div
-                                className="flex h-11 w-11 items-center justify-center rounded-[8px] font-[family-name:var(--font-display)] text-xl font-extrabold uppercase"
-                                style={{ backgroundColor: colorB, color: 'var(--ink-0)' }}
-                              >
-                                {monogramB || 'PB'}
-                              </div>
-                              <span className="font-[family-name:var(--font-display)] text-xl font-bold uppercase text-[var(--text)]">
-                                {nameB || 'Pemain B'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={isPending}
-                            className="w-full h-12 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                          >
-                            {isPending ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>Menyimpan…</span>
-                              </>
-                            ) : participantB.profile_completed ? (
-                              <span>Simpan Perubahan Identitas Saya</span>
-                            ) : (
-                              <>
-                                <span>Simpan Identitas Saya & Bergabung ke Musim</span>
-                                <ArrowRight className="w-4 h-4" />
-                              </>
-                            )}
-                          </button>
-                        </form>
-                      ) : participantB.profile_completed ? (
-                        /* Player B has already joined — show read-only summary to Player A */
-                        <div className="space-y-4">
-                          <div className="rounded-[8px] bg-[var(--ok)]/10 border border-[var(--ok)]/30 p-3.5 text-xs text-[var(--ok)] flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 shrink-0" />
-                            <span>
-                              Pemain B telah menerima undangan dan mengatur akun serta PIN-nya sendiri.
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 p-4 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)]">
-                            <div
-                              className="flex h-12 w-12 items-center justify-center rounded-[8px] font-[family-name:var(--font-display)] text-2xl font-extrabold uppercase"
-                              style={{ backgroundColor: activeColorB, color: 'var(--ink-0)' }}
-                            >
-                              {participantB.monogram || 'PB'}
-                            </div>
-                            <div>
-                              <div className="font-[family-name:var(--font-display)] text-2xl font-bold uppercase text-[var(--text)]">
-                                {participantB.display_name}
-                              </div>
-                              <div className="text-xs text-[var(--text-dim)]">
-                                Warna: {activeColorB} ·{' '}
-                                {phase1Status.pb_locked === 1
-                                  ? 'Skuad Fase 1 Terkunci'
-                                  : 'Sedang Menyusun Skuad'}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        /* Player B has NOT joined yet — show One-Time Invite panel to Player A */
-                        <div className="space-y-4">
-                          <p className="text-xs text-[var(--text-dim)] leading-relaxed">
-                            Pemain B mengisi nama, warna, PIN, dan skuadnya sendiri dari perangkatnya menggunakan <strong>tautan atau kode undangan sekali pakai</strong> di bawah ini.
-                          </p>
-
-                          {!participantA.profile_completed && !freshInviteToken ? (
-                            <div className="rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] p-5 text-center space-y-2">
-                              <UserPlus className="w-6 h-6 mx-auto text-[var(--text-dim)]" />
-                              <div className="text-sm font-semibold text-[var(--text)]">
-                                Simpan Identitas Pemain A Terlebih Dahulu
-                              </div>
-                              <p className="text-xs text-[var(--text-faint)]">
-                                Begitu Anda menyimpan identitas & PIN Pemain A di kolom kiri, kode dan tautan undangan sekali pakai untuk Pemain B akan langsung dibuat.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] p-4 space-y-4">
-                              {freshInviteToken ? (
-                                <>
-                                  <div className="space-y-1.5">
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--ok)]">
-                                      Kode Undangan Sekali Pakai (Aktif)
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                      <code className="flex-1 px-3 py-2.5 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] font-mono text-sm font-bold text-[var(--text)] select-all">
-                                        {freshInviteToken}
-                                      </code>
-                                      <button
-                                        type="button"
-                                        onClick={() => copyToClipboard(freshInviteToken, 'code')}
-                                        className="h-10 px-3 rounded-[6px] border border-[var(--line)] bg-[var(--ink-2)] text-xs font-semibold text-[var(--text)] hover:border-[var(--text-dim)] flex items-center gap-1.5 shrink-0"
-                                      >
-                                        <Copy className="w-3.5 h-3.5" />
-                                        <span>{copiedType === 'code' ? 'Tersalin!' : 'Salin Kode'}</span>
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {fullInviteUrl && (
-                                    <div className="space-y-1.5">
-                                      <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-dim)]">
-                                        Tautan Langsung untuk Pemain B
-                                      </span>
-                                      <div className="flex items-center gap-2">
-                                        <input
-                                          type="text"
-                                          readOnly
-                                          value={fullInviteUrl}
-                                          className="flex-1 px-3 py-2 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] font-mono text-xs text-[var(--text-dim)] select-all"
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() => copyToClipboard(fullInviteUrl, 'link')}
-                                          className="h-9 px-3 rounded-[6px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-semibold hover:opacity-90 flex items-center gap-1.5 shrink-0"
-                                        >
-                                          <Copy className="w-3.5 h-3.5" />
-                                          <span>{copiedType === 'link' ? 'Tersalin!' : 'Salin Link'}</span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </>
-                              ) : latestInvite ? (
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-[var(--text-dim)]">Kode Terakhir:</span>
-                                    <code className="font-mono font-bold text-[var(--text)]">
-                                      {latestInvite.code_hint}
-                                    </code>
-                                  </div>
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-[var(--text-dim)]">Status:</span>
-                                    <span className="uppercase font-bold text-[var(--p-a)]">
-                                      {latestInvite.status}
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] text-[var(--text-faint)]">
-                                    Demi keamanan, kode penuh hanya ditampilkan satu kali saat dibuat. Jika Anda belum menyalinnya, klik tombol di bawah untuk membuat tautan undangan baru.
-                                  </p>
-                                </div>
-                              ) : null}
-
-                              {(freshInviteExpiresAt || latestInvite?.expires_at) && (
-                                <div className="text-[11px] text-[var(--text-faint)] pt-2 border-t border-[var(--line)]">
-                                  Berlaku sampai:{' '}
-                                  <strong className="text-[var(--text-dim)]">
-                                    {formatWibTimestamp(freshInviteExpiresAt || latestInvite?.expires_at)}
-                                  </strong>{' '}
-                                  · Sekali pakai
-                                </div>
-                              )}
-
-                              <button
-                                type="button"
-                                disabled={isPending}
-                                onClick={handleRegenerateInvite}
-                                className="w-full h-10 rounded-[8px] border border-[var(--line)] bg-[var(--ink-2)] text-xs font-semibold text-[var(--text)] hover:border-[var(--text-dim)] transition-colors flex items-center justify-center gap-2"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                                <span>Buat Ulang Tautan Undangan Baru</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {session && (
-                  <div className="flex justify-end pt-4 border-t border-[var(--line)]">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(2)}
-                      className="h-12 px-8 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center gap-2"
-                    >
-                      <span>Lanjut ke Format Musim</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
+              <SetupStep1Identity
+                activeRole={activeRole}
+                session={session}
+                participantA={participantA}
+                participantB={participantB}
+                seasonSettings={seasonSettings}
+                phase1Status={phase1Status}
+                gateSetupKeyInput={gateSetupKeyInput}
+                setGateSetupKeyInput={setGateSetupKeyInput}
+                gateInviteInput={gateInviteInput}
+                setGateInviteInput={setGateInviteInput}
+                nameA={nameA}
+                monogramA={monogramA}
+                colorA={colorA}
+                setColorA={setColorA}
+                pinA={pinA}
+                setPinA={setPinA}
+                confirmPinA={confirmPinA}
+                setConfirmPinA={setConfirmPinA}
+                nameB={nameB}
+                monogramB={monogramB}
+                colorB={colorB}
+                setColorB={setColorB}
+                pinB={pinB}
+                setPinB={setPinB}
+                confirmPinB={confirmPinB}
+                setConfirmPinB={setConfirmPinB}
+                setEditedMonogramA={setEditedMonogramA}
+                setEditedMonogramB={setEditedMonogramB}
+                setMonogramA={setMonogramA}
+                setMonogramB={setMonogramB}
+                handleNameAChange={handleNameAChange}
+                handleNameBChange={handleNameBChange}
+                handleSavePlayerA={handleSavePlayerA}
+                handleSavePlayerB={handleSavePlayerB}
+                handleRegenerateInvite={handleRegenerateInvite}
+                freshInviteToken={freshInviteToken}
+                freshInviteExpiresAt={freshInviteExpiresAt}
+                latestInvite={latestInvite}
+                inviteValidation={inviteValidation}
+                copiedType={copiedType}
+                copyToClipboard={copyToClipboard}
+                fullInviteUrl={fullInviteUrl}
+                activeColorA={activeColorA}
+                activeColorB={activeColorB}
+                isPending={isPending}
+                onNextStep={() => setCurrentStep(2)}
+              />
             )}
 
             {/* STEP 2: FORMAT MUSIM */}
             {currentStep === 2 && (
-              <div className="space-y-8">
-                <div>
-                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-3xl uppercase tracking-tight text-[var(--text)]">
-                    Langkah 2: Format Musim
-                  </h2>
-                  <p className="text-[13px] text-[var(--text-dim)] mt-1">
-                    Ringkasan regulasi resmi dari <code className="text-[var(--text)]">rules.md</code>. Tidak ada yang perlu diisi di langkah ini.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 space-y-2">
-                    <div className="flex items-center gap-2 text-[var(--p-a)] font-semibold text-sm">
-                      <Trophy className="w-4 h-4" />
-                      <span>20 Matchday Duel</span>
-                    </div>
-                    <p className="text-[13px] text-[var(--text-dim)] leading-relaxed">
-                      MD1–MD10: <strong>Group Stage</strong> (Menang 3, Seri 1, Kalah 0).
-                      <br />
-                      MD11–MD20: <strong>Knockout Stage</strong> (ET & Penalti on, tidak ada hasil seri).
-                    </p>
-                  </div>
-
-                  <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 space-y-2">
-                    <div className="flex items-center gap-2 text-[var(--p-b)] font-semibold text-sm">
-                      <Sparkles className="w-4 h-4" />
-                      <span>Kartu Trending & Kuota Indonesia</span>
-                    </div>
-                    <p className="text-[13px] text-[var(--text-dim)] leading-relaxed">
-                      Wajib minimal 2 pemain <strong>Trending</strong> bermain bersamaan 1 babak reguler penuh di tiap MD (Pasal 17), serta 1 pemain <strong>Indonesia</strong> di DSP tiap laga dan target 5 kredit musiman (Pasal 18–19).
-                    </p>
-                  </div>
-
-                  <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 space-y-2">
-                    <div className="flex items-center gap-2 text-[var(--text)] font-semibold text-sm">
-                      <Calendar className="w-4 h-4" />
-                      <span>Skuad 26 Kartu Tanpa Kembar</span>
-                    </div>
-                    <p className="text-[13px] text-[var(--text-dim)] leading-relaxed">
-                      Maksimal 26 kartu per peserta tanpa kartu kembar dari pemain virtual yang sama (Pasal 14). Terkunci sampai MD10 selesai dan skuad lawan dirahasiakan sampai keduanya mengunci.
-                    </p>
-                  </div>
-
-                  <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 space-y-2">
-                    <div className="flex items-center gap-2 text-[var(--text)] font-semibold text-sm">
-                      <Shield className="w-4 h-4" />
-                      <span>Kedudukan Setara & Konsensus</span>
-                    </div>
-                    <p className="text-[13px] text-[var(--text-dim)] leading-relaxed">
-                      Kedua pemain memiliki hak yang setara. Pengesahan hasil, pembukaan sengketa, dan reset musim membutuhkan persetujuan lawan atau verifikasi bukti sesuai regulasi.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-[var(--line)]">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(1)}
-                    className="h-12 px-6 rounded-[8px] border border-[var(--line)] text-[var(--text)] font-medium text-sm hover:bg-[var(--ink-2)] transition-colors"
-                  >
-                    Kembali
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(3)}
-                    className="h-12 px-8 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center gap-2"
-                  >
-                    <span>Lanjut ke Susun Skuad</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              <SetupStep2Format
+                onPrevStep={() => setCurrentStep(1)}
+                onNextStep={() => setCurrentStep(3)}
+              />
             )}
 
             {/* STEP 3: SUSUN SKUAD (eFHUB WORKBENCH) */}
             {currentStep === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-3xl uppercase tracking-tight text-[var(--text)]">
-                    Langkah 3: Susun Skuad Musim (Fase 1)
-                  </h2>
-                  <p className="text-[13px] text-[var(--text-dim)] mt-1">
-                    Setiap pemain menyusun dan mengunci skuadnya sendiri (maksimal 26 kartu, minimal 2 kartu Trending, tanpa kartu kembar). Skuad lawan tersembunyi di server sampai keduanya terkunci.
-                  </p>
-                </div>
-
-                <SquadBuilderWorkbench
-                  session={session ? { ...session, isAdmin: false } : null}
-                  participants={[
-                    { ...participantA, display_name: displayNameA, monogram: monogramA },
-                    { ...participantB, display_name: displayNameB, monogram: monogramB },
-                  ]}
-                  initialPhase={1}
-                  phase1Status={phase1Status}
-                  visibleCardsPhase1={visibleCardsPhase1}
-                  shortlistCards={shortlistCards}
-                  paSummaryPhase1={paSummaryPhase1}
-                  pbSummaryPhase1={pbSummaryPhase1}
-                  onSquadLockedChange={() => router.refresh()}
-                />
-
-                <div className="flex items-center justify-between pt-4 border-t border-[var(--line)]">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(2)}
-                    className="h-12 px-6 rounded-[8px] border border-[var(--line)] text-[var(--text)] font-medium text-sm hover:bg-[var(--ink-2)] transition-colors"
-                  >
-                    Kembali
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(4)}
-                    className="h-12 px-8 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center gap-2"
-                  >
-                    <span>Lanjut ke Pemeriksaan Sistem</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              <SetupStep3Squad
+                session={session}
+                participantA={participantA}
+                participantB={participantB}
+                displayNameA={displayNameA}
+                displayNameB={displayNameB}
+                monogramA={monogramA}
+                monogramB={monogramB}
+                phase1Status={phase1Status}
+                visibleCardsPhase1={visibleCardsPhase1}
+                shortlistCards={shortlistCards}
+                paSummaryPhase1={paSummaryPhase1}
+                pbSummaryPhase1={pbSummaryPhase1}
+                onPrevStep={() => setCurrentStep(2)}
+                onNextStep={() => setCurrentStep(4)}
+              />
             )}
 
             {/* STEP 4: SIAPKAN SISTEM */}
             {currentStep === 4 && (
-              <div className="space-y-8">
-                <div>
-                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-3xl uppercase tracking-tight text-[var(--text)]">
-                    Langkah 4: Siapkan Sistem
-                  </h2>
-                  <p className="text-[13px] text-[var(--text-dim)] mt-1">
-                    Pemeriksaan otomatis kesiapan koneksi database, struktur tabel, katalog pemain eFHUB, dan data matchday sebelum kick-off.
-                  </p>
-                </div>
-
-                <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] divide-y divide-[var(--line)]">
-                  {/* Item 1 */}
-                  <div className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-sm text-[var(--text)]">
-                        1. Koneksi Database Turso LibSQL
-                      </div>
-                      <div className="text-[12px] text-[var(--text-faint)]">
-                        Menghubungkan ke cloud database endpoint
-                      </div>
-                    </div>
-                    <div>
-                      {checkingSystem && systemReadiness.dbConnection === null ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-[var(--text-dim)]" />
-                      ) : systemReadiness.dbConnection ? (
-                        <div className="flex items-center gap-1.5 text-[var(--ok)] text-xs font-semibold">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span>Terhubung</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-[var(--danger)] text-xs font-semibold">
-                          <X className="w-5 h-5" />
-                          <span>Gagal</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Item 2 */}
-                  <div className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-sm text-[var(--text)]">
-                        2. Tabel-tabel Sistem & Undangan Terverifikasi
-                      </div>
-                      <div className="text-[12px] text-[var(--text-faint)]">
-                        Peserta, undangan sekali pakai, jadwal, jejak audit kekal, dan indeks skuad
-                      </div>
-                    </div>
-                    <div>
-                      {checkingSystem && systemReadiness.tablesCreated === null ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-[var(--text-dim)]" />
-                      ) : systemReadiness.tablesCreated ? (
-                        <div className="flex items-center gap-1.5 text-[var(--ok)] text-xs font-semibold">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span>Lengkap</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-[var(--danger)] text-xs font-semibold">
-                          <X className="w-5 h-5" />
-                          <span>Gagal</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Item 3 */}
-                  <div className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-sm text-[var(--text)]">
-                        3. Katalog Pemain eFootball™ (eFHUB) Terindeks
-                      </div>
-                      <div className="text-[12px] text-[var(--text-faint)]">
-                        Tabel lookup pemain eFootball™ dengan indeks FTS5
-                      </div>
-                    </div>
-                    <div>
-                      {checkingSystem && systemReadiness.playersSynced === null ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-[var(--text-dim)]" />
-                      ) : systemReadiness.playersSynced ? (
-                        <div className="flex items-center gap-1.5 text-[var(--ok)] text-xs font-semibold">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span>
-                            {(systemReadiness.playersCount || 0).toLocaleString('id-ID')} Kartu Siap
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-[var(--danger)] text-xs font-semibold">
-                          <X className="w-5 h-5" />
-                          <span>Belum Disinkronkan (pnpm sync:players)</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Item 4 */}
-                  <div className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-sm text-[var(--text)]">
-                        4. 20 Matchday Disiapkan
-                      </div>
-                      <div className="text-[12px] text-[var(--text-faint)]">
-                        Jadwal MD1 sampai MD20 siap dimainkan
-                      </div>
-                    </div>
-                    <div>
-                      {checkingSystem && systemReadiness.matchesSeeded === null ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-[var(--text-dim)]" />
-                      ) : systemReadiness.matchesSeeded ? (
-                        <div className="flex items-center gap-1.5 text-[var(--ok)] text-xs font-semibold">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span>20 Laga Siap</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-[var(--danger)] text-xs font-semibold">
-                          <X className="w-5 h-5" />
-                          <span>Gagal</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Item 5 */}
-                  <div className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-sm text-[var(--text)]">
-                        5. Pengaturan Musim Tersimpan
-                      </div>
-                      <div className="text-[12px] text-[var(--text-faint)]">
-                        Warna pemain dan durasi 8 menit disahkan
-                      </div>
-                    </div>
-                    <div>
-                      {checkingSystem && systemReadiness.settingsSaved === null ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-[var(--text-dim)]" />
-                      ) : systemReadiness.settingsSaved ? (
-                        <div className="flex items-center gap-1.5 text-[var(--ok)] text-xs font-semibold">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span>Tersimpan</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-[var(--danger)] text-xs font-semibold">
-                          <X className="w-5 h-5" />
-                          <span>Gagal</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {systemReadiness.errorMessage && (
-                  <div className="rounded-[8px] bg-[var(--danger)]/15 border border-[var(--danger)]/40 p-4 text-[13px] text-[var(--danger)]">
-                    {systemReadiness.errorMessage}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-4 border-t border-[var(--line)]">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(3)}
-                      className="h-12 px-6 rounded-[8px] border border-[var(--line)] text-[var(--text)] font-medium text-sm hover:bg-[var(--ink-2)] transition-colors"
-                    >
-                      Kembali ke Skuad
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={checkingSystem}
-                      onClick={runSystemCheck}
-                      className="h-12 px-5 rounded-[8px] border border-[var(--line)] text-[var(--text-dim)] font-medium text-sm hover:text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors flex items-center gap-2"
-                    >
-                      <RotateCcw className={`w-4 h-4 ${checkingSystem ? 'animate-spin' : ''}`} />
-                      <span>Coba Lagi</span>
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={!allSystemChecksPassed || checkingSystem}
-                    onClick={() => setCurrentStep(5)}
-                    className="h-12 px-8 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-semibold text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center gap-2"
-                  >
-                    <span>Lanjut ke Kick-off</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              <SetupStep4Readiness
+                checkingSystem={checkingSystem}
+                systemReadiness={systemReadiness}
+                allSystemChecksPassed={allSystemChecksPassed}
+                runSystemCheck={runSystemCheck}
+                onPrevStep={() => setCurrentStep(3)}
+                onNextStep={() => setCurrentStep(5)}
+              />
             )}
 
             {/* STEP 5: SIAP KICK-OFF */}
             {currentStep === 5 && (
-              <div className="space-y-8">
-                <div>
-                  <h2 className="font-[family-name:var(--font-display)] font-extrabold text-3xl uppercase tracking-tight text-[var(--text)]">
-                    Langkah 5: Siap Kick-off
-                  </h2>
-                  <p className="text-[13px] text-[var(--text-dim)] mt-1">
-                    Musim baru dapat berstatus berjalan (&ldquo;Live&rdquo;) setelah kedua pemain selesai mendaftarkan akunnya dan kedua skuad Fase 1 terkunci (Pasal 14 ayat 2).
-                  </p>
-                </div>
-
-                {/* Big VS View with Player Colors, Account Status & Squad Lock Status */}
-                <div className="rounded-[12px] bg-[var(--ink-2)] border border-[var(--line)] p-8 sm:p-12 text-center space-y-6">
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12">
-                    <div className="space-y-2.5">
-                      <div
-                        className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl uppercase tracking-tight"
-                        style={{ color: activeColorA }}
-                      >
-                        {displayNameA}
-                      </div>
-                      <div className="text-[13px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
-                        Pemain A · Pemulai Setup
-                      </div>
-                      <div className="flex flex-col items-center gap-1.5">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold border border-[var(--line)] bg-[var(--ink-1)]">
-                          <CheckCircle2
-                            className={`w-3.5 h-3.5 ${
-                              participantA.profile_completed
-                                ? 'text-[var(--ok)]'
-                                : 'text-[var(--text-faint)]'
-                            }`}
-                          />
-                          <span>
-                            {participantA.profile_completed
-                              ? 'Akun & PIN Terdaftar'
-                              : 'Akun Belum Terdaftar'}
-                          </span>
-                        </div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold border border-[var(--line)] bg-[var(--ink-1)]">
-                          <Lock
-                            className={`w-3.5 h-3.5 ${
-                              phase1Status.pa_locked === 1 ? 'text-[var(--ok)]' : 'text-[var(--p-a)]'
-                            }`}
-                          />
-                          <span>
-                            {phase1Status.pa_locked === 1
-                              ? `Skuad Terkunci (${paSummaryPhase1.count}/26)`
-                              : 'Skuad Belum Dikunci'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="font-[family-name:var(--font-display)] font-black text-4xl text-[var(--text-faint)]">
-                      VS
-                    </div>
-
-                    <div className="space-y-2.5">
-                      <div
-                        className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl uppercase tracking-tight"
-                        style={{ color: activeColorB }}
-                      >
-                        {displayNameB}
-                      </div>
-                      <div className="text-[13px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
-                        Pemain B
-                      </div>
-                      <div className="flex flex-col items-center gap-1.5">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold border border-[var(--line)] bg-[var(--ink-1)]">
-                          <CheckCircle2
-                            className={`w-3.5 h-3.5 ${
-                              participantB.profile_completed
-                                ? 'text-[var(--ok)]'
-                                : 'text-[var(--text-faint)]'
-                            }`}
-                          />
-                          <span>
-                            {participantB.profile_completed
-                              ? 'Akun & PIN Terdaftar'
-                              : 'Belum Bergabung lewat Undangan'}
-                          </span>
-                        </div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold border border-[var(--line)] bg-[var(--ink-1)]">
-                          <Lock
-                            className={`w-3.5 h-3.5 ${
-                              phase1Status.pb_locked === 1 ? 'text-[var(--ok)]' : 'text-[var(--p-b)]'
-                            }`}
-                          />
-                          <span>
-                            {phase1Status.pb_locked === 1
-                              ? `Skuad Terkunci (${pbSummaryPhase1.count}/26)`
-                              : 'Skuad Belum Dikunci'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Summary Status */}
-                  <div className="pt-4 border-t border-[var(--line)] max-w-lg mx-auto">
-                    {bothProfilesReady && phase1Status.both_locked ? (
-                      <p className="text-sm text-[var(--ok)] font-semibold">
-                        Kedua akun telah terdaftar dan kedua skuad Fase 1 telah terkunci! 20 matchday siap dimainkan mulai dari{' '}
-                        <strong>
-                          MD1: {displayNameA} vs {displayNameB}
-                        </strong>
-                        .
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        <p className="text-sm text-[var(--p-a)] font-semibold">
-                          Menunggu kedua pemain menyelesaikan pendaftaran akun/undangan (Langkah 1) dan mengunci skuad Fase 1 masing-masing (Langkah 3).
-                        </p>
-                        <div className="flex items-center justify-center gap-4">
-                          {!bothProfilesReady && (
-                            <button
-                              type="button"
-                              onClick={() => setCurrentStep(1)}
-                              className="text-xs font-bold underline text-[var(--text)]"
-                            >
-                              Ke Langkah 1 (Identitas & Undangan)
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setCurrentStep(3)}
-                            className="text-xs font-bold underline text-[var(--text)]"
-                          >
-                            Ke Langkah 3 (Susun Skuad)
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-[var(--line)]">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(4)}
-                    disabled={isPending || isStartingSeason}
-                    className="h-12 px-6 rounded-[8px] border border-[var(--line)] text-[var(--text)] font-medium text-sm hover:bg-[var(--ink-2)] transition-colors"
-                  >
-                    Kembali
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleStartSeason}
-                    disabled={isPending || isStartingSeason || !canStartSeason}
-                    className="h-14 px-10 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-extrabold text-base uppercase tracking-wider font-[family-name:var(--font-display)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center gap-3 shadow-xl"
-                  >
-                    {isStartingSeason ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Meluncurkan Musim…</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Mulai Musim Rivals Series</span>
-                        <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+              <SetupStep5Kickoff
+                participantA={participantA}
+                participantB={participantB}
+                displayNameA={displayNameA}
+                displayNameB={displayNameB}
+                activeColorA={activeColorA}
+                activeColorB={activeColorB}
+                phase1Status={phase1Status}
+                paSummaryPhase1={paSummaryPhase1}
+                pbSummaryPhase1={pbSummaryPhase1}
+                bothProfilesReady={bothProfilesReady}
+                canStartSeason={canStartSeason}
+                isStartingSeason={isStartingSeason}
+                isPending={isPending}
+                handleStartSeason={handleStartSeason}
+                onPrevStep={() => setCurrentStep(4)}
+                onGoToStep={(step) => setCurrentStep(step)}
+              />
             )}
           </div>
         </div>
@@ -1742,7 +713,7 @@ export function SetupWizardClient({
             clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
           }
           100% {
-            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+            clip-path: polygon(0 0, 100% 0, 100% 0, 0 100%);
           }
         }
       `}</style>

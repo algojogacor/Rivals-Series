@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getAllMatches, getParticipants } from '@/lib/db';
+import { getCachedMatchesData } from '@/lib/cached-data';
 import { getSession } from '@/lib/auth';
 import { MatchRow } from '@/components/MatchRow';
 
@@ -8,19 +8,17 @@ export const metadata = {
   description: 'Jadwal fleksibel 20 matchday, hasil skor resmi, dan status konfirmasi Rivals Series Season 1.',
 };
 
-export const dynamic = 'force-dynamic';
-
 export default async function MatchesPage({
   searchParams,
 }: {
   searchParams: Promise<{ phase?: string }>;
 }) {
-  const params = await searchParams;
-  const [matches, participants, session] = await Promise.all([
-    getAllMatches(),
-    getParticipants(),
+  const [params, matchesData, session] = await Promise.all([
+    searchParams,
+    getCachedMatchesData(),
     getSession(),
   ]);
+  const { matches, participants } = matchesData;
 
   const activePhase = params.phase || 'all';
 

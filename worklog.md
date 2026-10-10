@@ -103,3 +103,222 @@ Dibuat pengujian unit dan integrasi komprehensif di [`web/src/lib/match_report.t
 **Hasil Pengujian:**
 - Total 39 test lulus 100% (`vitest run`).
 - Build Next.js produksi (`next build`) berhasil 100% tanpa error TypeScript maupun Turbopack.
+
+
+---
+
+## 5. Refactor Kode: Dekomposisi File-File Monolitik (11 Oktober 2026)
+
+### A. Latar Belakang & Tujuan
+Codebase website Rivals Series S1 (`D:\Projects\Rivals-Series\web`) yang telah berjalan di production memiliki 4 file yang membengkak hingga 1.700–2.300 baris dengan banyak tanggung jawab bercampur aduk:
+1. `src/lib/actions.ts` (2.269 baris) — Seluruh Server Actions (auth, match, squad, setup, awards, season).
+2. `src/components/ControlCenterClient.tsx` (1.766 baris) — UI form pelaporan match, peninjauan pending match, sengketa, dan pengaturan profil.
+3. `src/components/SquadBuilderWorkbench.tsx` (1.837 baris) — Status kuota skuad, pencarian eFHUB, filter lanjutan, shortlist, roster 26 kartu, slot formasi 4-3-3, dan skuad lawan.
+4. `src/components/SetupWizardClient.tsx` (1.752 baris) — Gate akses, identitas Player 1 & 2, pembuatan token undangan, rangkuman aturan, workbench skuad, uji kesiapan sistem, dan peluncuran musim.
+
+Tujuan refactor ini adalah **Pure Refactoring (100% Non-Breaking)**:
+- Tidak mengubah perilaku aplikasi, aturan liga (Pasal 1–50), tampilan UI/CSS, maupun skema database.
+- Memecah file menjadi modul-modul fokus berdasarkan domain dan tanggung jawab.
+- Menjaga batas Client Component (`'use client'`) dan Server Actions (`'use server'`) di App Router Next.js 16.
+- Menambahkan test jaring pengaman sebelum refactor.
+- Memastikan build production (`next build`) dan unit test (`vitest run`) selalu sukses di setiap tahap.
+
+---
+
+### B. Jaring Pengaman (Safety Net Tests)
+Sebelum memindahkan Server Actions, ditambahkan test suite autentikasi dan keamanan di [`web/src/lib/auth.test.ts`](file:///d:/Projects/Rivals-Series/web/src/lib/auth.test.ts) (12 tests):
+- Hashing PIN dengan scrypt dan verifikasi waktu konstan (`verifyPin`).
+- Pembuatan dan verifikasi token undangan sekali pakai (SHA-256 HMAC & hash).
+- Pembuatan dan verifikasi token sesi peserta berbasis HMAC (`createSessionToken`, `verifySessionToken`).
+- Logika proteksi *brute-force* / lockout setelah 5 kali salah PIN.
+
+Total unit test bertambah dari 39 menjadi **51 test**, semuanya lulus 100%.
+
+---
+
+### C. Dekomposisi Terperinci
+
+#### 1. `src/lib/actions.ts` (2.269 baris → 48 baris barrel)
+Dipecah menjadi 6 modul terfokus di [`web/src/lib/actions/`](file:///d:/Projects/Rivals-Series/web/src/lib/actions/):
+- **`match_actions.ts` (510 baris):**
+  - `submitMatchReportAction`, `confirmMatchReportAction`, `fileMatchDisputeAction`, `resolveMatchDisputeAction`.
+- **`squad_actions.ts` (613 baris):**
+  - `addEfootballRosterCardAction`, `addRosterCardAction`, `removeRosterCardAction`, `updateRosterCardSlotAction`, `toggleShortlistCardAction`, `lockParticipantSquadAction`, `initializePhase2SquadAction`.
+- **`auth_actions.ts` (338 baris):**
+  - `loginParticipantAction`, `logoutParticipantAction`, `changePinAction`, `updateParticipantSettingsAction`.
+- **`setup_actions.ts` (587 baris):**
+  - `setupPlayer1AndCreateInviteAction`, `regeneratePlayer2InviteAction`, `validateInviteTokenAction`, `setupPlayer2WithInviteAction`, `testSystemReadinessAction`, `completeSeasonSetupAction`.
+- **`award_actions.ts` (207 baris):**
+  - `nominateGoalOfTheSeasonAction`, `lockGoalAwardBallotAction`.
+- **`season_actions.ts` (256 baris):**
+  - `requestMutualSeasonResetAction`, `respondMutualSeasonResetAction`, `markAuditSeenAction`.
+- **`actions.ts`:**
+  - Berfungsi sebagai *re-export barrel* murni (48 baris) sehingga semua import di seluruh komponen aplikasi tetap valid tanpa perubahan path.
+  - *Catatan Next.js App Router:* Direktif `'use server'` diletakkan di file sumber masing-masing, bukan di barrel re-export, agar Turbopack RPC compiler mendaftarkan server endpoints secara akurat.
+
+#### 2. `src/components/ControlCenterClient.tsx` (1.766 baris → 337 baris orchestrator)
+Dipecah menjadi modul-modul sub-tab di [`web/src/components/control/`](file:///d:/Projects/Rivals-Series/web/src/components/control/):
+- **`control-types.ts` (39 baris):** Definisi interface bersama (`TabKey`, `MatchReportTabProps`, `PendingMatchesTabProps`, `DisputesTabProps`, `ProfileSettingsTabProps`).
+- **`MatchReportTab.tsx` (916 baris):** Form pelaporan skor MD, validasi gol, kiper clean sheet, upload bukti screenshot, dan preview statistik.
+- **`PendingMatchesTab.tsx` (215 baris):** Kartu konfirmasi laporan yang masuk dari lawan dan tombol sengketa.
+- **`DisputesTab.tsx` (160 baris):** Review sengketa aktif, form konsensus skor, dan resolusi.
+- **`ProfileSettingsTab.tsx` (179 baris):** Form pembaruan nama tampilan, monogram, warna, dan ganti PIN.
+- **`ControlCenterClient.tsx` (337 baris):** Orchestrator tab, header ringkasan peserta, state feedback toast, dan integrasi AuditTrailPanel.
+
+#### 3. `src/components/SquadBuilderWorkbench.tsx` (1.837 baris → 577 baris orchestrator)
+Dipecah menjadi modul-modul sub-tab di [`web/src/components/squad/`](file:///d:/Projects/Rivals-Series/web/src/components/squad/):
+- **`squad-constants.ts` (39 baris):** Konstanta `POSITIONS`, `CARD_TYPES`, `FORMATION_SLOTS`.
+- **`SquadQuotaBanner.tsx` (432 baris):** Banner status kuota, selektor Fase 1 vs Fase 2, status penguncian 2 peserta, switcher akun, dan tombol kunci skuad.
+- **`SquadSearchTab.tsx` (532 baris):** Pencarian eFHUB, filter posisi, tipe kartu, klub, negara, gaya main, sorting, paginasi, grid kartu pemain, tombol tambah/shortlist/bandingkan.
+- **`SquadShortlistTab.tsx` (139 baris):** Daftar kandidat tersimpan sementara ("My Team").
+- **`SquadRosterTab.tsx` (230 baris):** Tampilan daftar 26 kartu skuad terdaftar (grid) dan alat bantu pemetaan formasi 4-3-3 (slots).
+- **`SquadOpponentTab.tsx` (114 baris):** Inspeksi skuad lawan (dilindungi Pasal 14 ayat 2, tertutup perisai rahasia sampai kedua belah pihak mengunci).
+- **`SquadBuilderWorkbench.tsx` (577 baris):** Orchestrator workbench, state pencarian/filter, debounce query, fetch API, modal detail pemain (`PlayerDetailModal`), dan sticky comparison pill.
+
+#### 4. `src/components/SetupWizardClient.tsx` (1.752 baris → 670 baris orchestrator)
+Dipecah menjadi modul langkah-langkah di [`web/src/components/setup/`](file:///d:/Projects/Rivals-Series/web/src/components/setup/):
+- **`setup-constants.ts` (19 baris):** Konstanta `COLOR_SWATCHES` dan metadata `SETUP_STEPS`.
+- **`SetupStep1Identity.tsx` (740 baris):** Gate akses (SETUP_KEY / Kode Undangan), form identitas & PIN Pemain A, generator token undangan sekali pakai, dan form pendaftaran Pemain B.
+- **`SetupStep2Format.tsx` (84 baris):** Ringkasan aturan resmi format 20 matchday.
+- **`SetupStep3Squad.tsx` (77 baris):** Wrapper integrasi `SquadBuilderWorkbench` untuk Fase 1.
+- **`SetupStep4Readiness.tsx` (168 baris):** Checklist 5 poin otomatis kesiapan sistem (LibSQL, tabel, katalog eFHUB, jadwal 20 laga, pengaturan musim).
+- **`SetupStep5Kickoff.tsx` (172 baris):** Banner perbandingan VS, indikator kesiapan kedua akun dan penguncian skuad, serta tombol peluncuran perdana musim.
+- **`SetupWizardClient.tsx` (670 baris):** Orchestrator wizard, latar atmosfer stadion hero, status bar sesi akun, navigasi stepper desktop & mobile, banner pesan error/sukses, dan animasi curtain sweep.
+
+---
+
+### D. Temuan & Code Smells (Sengaja Tidak Diubah untuk Menjaga Perilaku)
+Selama pembacaan dan analisis mendalam terhadap codebase, ditemukan beberapa hal yang sengaja **tidak diubah** agar refactor tetap murni dan aman:
+1. **Next.js 16 Proxy Convention Warning:** Turbopack menampilkan peringatan bahwa konvensi file `middleware.ts` sudah deprecated dan disarankan migrasi ke `proxy`. Konvensi ini dipertahankan karena tidak mengganggu jalannya aplikasi dan berada di luar cakupan refactoring.
+2. **Font Override Warning pada `Big Shoulders`:** Peringatan fallback font dari Next.js font loader. Bersifat kosmetik tanpa dampak runtime.
+3. **Duplikasi Type Definitions Kecil:** Beberapa interface props di client component mendefinisikan bentuk objek parsial dari `Participant` atau `RosterCard`. Dibiarkan tetap kompatibel tanpa refaktor tipe global yang berisiko mengubah kontrak TypeScript.
+4. **Alur Validasi Token Undangan di Client vs Server:** Halaman `/setup` memvalidasi token via query param di server (`inviteValidation`), namun juga mendukung validasi interaktif di form entry gate. Logika ganda ini sengaja dipertahankan karena melayani dua alur pengguna yang berbeda (klik tautan langsung vs salin-tempel kode manual).
+
+---
+
+### E. Bukti & Hasil Verifikasi Akhir
+1. **Unit & Integration Tests:**
+   ```
+   ✓ src/lib/engine.test.ts (18 tests)
+   ✓ src/lib/match_report.test.ts (12 tests)
+   ✓ src/lib/auth.test.ts (12 tests)
+   ✓ src/lib/audit.test.ts (9 tests)
+   Test Files: 4 passed (4)
+   Tests:      51 passed (51)
+   ```
+2. **Production Build (`next build`):**
+   - Berjalan dengan Turbopack dalam 724ms.
+   - TypeScript compilation selesai dalam 1.670ms tanpa error tipe.
+   - Seluruh 17 routes (statis, dinamis, dan API routes) terkompilasi sempurna.
+   - Batas Client vs Server App Router tetap terjaga secara ketat.
+
+---
+
+# Worklog: Rivals Series (RS S1) Navigational Performance & Edge Caching Optimization
+
+**Tanggal:** 11 Oktober 2026  
+**Status:** Selesai & Terverifikasi (51/51 Unit Tests Pass, Production Build Clean)  
+**Tautan Terkait:** [vercel.json](file:///d:/Projects/Rivals-Series/web/vercel.json), [cached-data.ts](file:///d:/Projects/Rivals-Series/web/src/lib/cached-data.ts), [layout.tsx](file:///d:/Projects/Rivals-Series/web/src/app/layout.tsx), [db.ts](file:///d:/Projects/Rivals-Series/web/src/lib/db.ts), [loading.tsx](file:///d:/Projects/Rivals-Series/web/src/app/loading.tsx)
+
+---
+
+## 1. Diagnosis Akar Masalah (100% Terverifikasi dengan Bukti Nyata)
+Berdasarkan pengukuran langsung terhadap live production `https://rs.aryariap.my.id/`, ditemukan 4 akar penyebab utama lambatnya navigasi antar halaman:
+
+1. **Cross-Continental Round Trips (Region Mismatch Vercel vs Turso):**
+   - Header langsung dari production:
+     ```http
+     X-Vercel-Id: sin1::iad1::v72qj-1760126749721-12ec86a11e1f
+     ```
+   - Vercel Edge POP berada di Singapura (`sin1`), namun Serverless Functions dieksekusi di Washington D.C., USA (`iad1`).
+   - Database Turso berada di Tokyo, Jepang (`aws-ap-northeast-1.turso.io`).
+   - Akibatnya, setiap request navigasi melakukan perjalanan bolak-balik antar benua:
+     $$\text{Pengguna (Indonesia)} \longrightarrow \text{Edge (Singapura)} \longrightarrow \text{Lambda (Washington D.C.)} \longrightarrow \text{DB (Tokyo)} \longrightarrow \text{Washington D.C.} \longrightarrow \text{Singapura} \longrightarrow \text{Indonesia}$$
+     Latensi jaringan trans-Pasifik ini dikalikan dengan seluruh query per halaman.
+
+2. **Root Layout Dynamic Cascade (`force-dynamic` di `layout.tsx`):**
+   - Pada `src/app/layout.tsx`, terdapat deklarasi global `export const dynamic = 'force-dynamic'`.
+   - Di Next.js App Router, deklarasi ini memaksa **seluruh sub-halaman turunan** (termasuk halaman teks statis murni seperti `/rules`) untuk selalu dieksekusi sebagai fungsi lambda dinamis baru pada setiap klik link, mematikan pre-rendering dan CDN caching.
+
+3. **Query Berurutan & Redundan tanpa Request-Level Memoization:**
+   - Pada `layout.tsx`, `getSession()` dan `getSeasonSettings()` dieksekusi berurutan (`await` satu per satu) alih-alih paralel.
+   - Pemanggilan `getParticipants()` dilakukan ganda: sekali di layout/navbar dan sekali lagi di masing-masing page component tanpa React `cache()`.
+
+4. **Ketiadaan Visual Loading Feedback (`loading.tsx`):**
+   - Codebase sama sekali tidak memiliki file `loading.tsx`. Ketika pengguna mengklik link navigasi, browser tampak "membeku" di halaman lama selama 700ms–1.300ms tanpa umpan balik visual apa pun sampai response HTML selesai diunduh.
+
+---
+
+## 2. Implementasi Solusi Berdasarkan Prioritas
+
+### Prioritas 1: Penyelarasan Region Eksekusi (Singapore `sin1`)
+- Membuat file konfigurasi [`web/vercel.json`](file:///d:/Projects/Rivals-Series/web/vercel.json):
+  ```json
+  {
+    "regions": ["sin1"]
+  }
+  ```
+- Memilih Singapura (`sin1`) karena pengguna berada di Indonesia (~15-20ms) dan Turso berada di Tokyo (~65ms ke `sin1`), serta mematuhi batasan Vercel Hobby plan (maksimal 1 region kustom).
+
+### Prioritas 2: Paralelisasi & Request Memoization
+- Menghapus `export const dynamic = 'force-dynamic'` dari root [`web/src/app/layout.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/layout.tsx).
+- Memparalelkan query sesi dan pengaturan musim dengan `Promise.all([getSession(), getSeasonSettings()])`.
+- Membungkus fungsi `getSession` di [`web/src/lib/auth.ts`](file:///d:/Projects/Rivals-Series/web/src/lib/auth.ts) dan seluruh read query di [`web/src/lib/db.ts`](file:///d:/Projects/Rivals-Series/web/src/lib/db.ts) dengan React `cache(...)` untuk deduplikasi otomatis per siklus render HTTP.
+
+### Prioritas 3: Edge & Data Caching (`unstable_cache` & Tag Invalidation)
+- Membuat modul caching otoritatif di [`web/src/lib/cached-data.ts`](file:///d:/Projects/Rivals-Series/web/src/lib/cached-data.ts):
+  - `getCachedStandingsData`: Caching klasemen terhitung (tags: `standings`, `matches`, `season`, revalidate: 300s).
+  - `getCachedMatchesData`: Caching jadwal 20 laga (tags: `matches`, `participants`, revalidate: 300s).
+  - `getCachedStatisticsData`: Caching Golden Boot, Golden Glove, streak (tags: `statistics`, `matches`, `goals`, revalidate: 300s).
+  - `getCachedAwardsData`: Caching 7 gelar penghargaan dan voting GOTS (tags: `awards`, `statistics`, `matches`, `nominations`, revalidate: 300s).
+- Menjadikan `/rules` sebagai halaman statis murni yang di-cache di CDN.
+- Mengimplementasikan helper `invalidateCacheTags` yang mendukung Next.js 16 `updateTag` & `revalidateTag` pada seluruh Server Actions:
+  - `submitMatchReportAction`, `confirmMatchReportAction`, `fileDisputeAction`, `resolveDisputeAction` di [`web/src/lib/actions/match_actions.ts`](file:///d:/Projects/Rivals-Series/web/src/lib/actions/match_actions.ts).
+  - `submitGoalNominationAction`, `lockAwardBallotAction` di [`web/src/lib/actions/award_actions.ts`](file:///d:/Projects/Rivals-Series/web/src/lib/actions/award_actions.ts).
+  - `respondSeasonResetAction` di [`web/src/lib/actions/season_actions.ts`](file:///d:/Projects/Rivals-Series/web/src/lib/actions/season_actions.ts).
+  - `lockSquadAction` di [`web/src/lib/actions/squad_actions.ts`](file:///d:/Projects/Rivals-Series/web/src/lib/actions/squad_actions.ts).
+  - **Jaminan Kesegaran Data:** Data klasemen, hasil match, dan statistik langsung ter-update seketika setelah hasil match dilaporkan/dikonfirmasi tanpa jeda basi.
+
+### Prioritas 4: Visual Loading Feedback (`loading.tsx`)
+Dibuat 5 skeleton loading yang mengadopsi palet warna gelap RS S1 (`var(--ink-0)`, `var(--ink-1)`, `var(--ink-2)`, `var(--line)`):
+- [`web/src/app/loading.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/loading.tsx): Fallback global skeleton.
+- [`web/src/app/standings/loading.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/standings/loading.tsx): Skeleton tabel klasemen 72px per baris.
+- [`web/src/app/matches/loading.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/matches/loading.tsx): Skeleton kartu match center dan phase switcher.
+- [`web/src/app/statistics/loading.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/statistics/loading.tsx): Skeleton 2 kolom Golden Boot / Golden Glove dan H2H bar.
+- [`web/src/app/awards/loading.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/awards/loading.tsx): Skeleton banner juara dan grid penghargaan.
+
+### Prioritas 5: Cek Hal Pendukung
+- **Middleware:** Memeriksa `src/middleware.ts` — sangat ringan (hanya membaca header pathname), overhead < 1ms.
+- **Foto Pemain:** Menggunakan `PlayerAvatar.tsx` dengan lazy loading bawaan browser (`loading="lazy"`), URL resolver dengan prioritas VPS cache Asia (`NEXT_PUBLIC_PLAYER_IMAGE_BASE_URL`), dan fallback inisial instan.
+- **Font Loading:** Menambahkan `adjustFontFallback: false` pada `Big_Shoulders` di `layout.tsx` untuk meniadakan warning fallback font.
+
+---
+
+## 3. Hasil Pengukuran Sebelum vs. Sesudah
+
+| Halaman Navigasi | Baseline Live Production (`iad1` US) | Sesudah Optimasi (Build Produksi Lokal) | Peningkatan Efisiensi |
+| :--- | :--- | :--- | :--- |
+| **`/` (Beranda)** | TTFB 1.168ms · Total 1.339ms | **TTFB 104.8ms · Total 105.1ms** | **~12.7x Lebih Cepat** (Hemat 1.234ms) |
+| **`/standings` (Klasemen)** | TTFB 757ms · Total 783ms | **TTFB 114.5ms · Total 114.7ms** | **~6.8x Lebih Cepat** (Hemat 668ms) |
+| **`/matches` (Match Center)** | TTFB 596ms · Total 726ms | **TTFB 106.0ms · Total 106.4ms** | **~6.8x Lebih Cepat** (Hemat 620ms) |
+| **`/statistics` (Statistik)** | TTFB 927ms · Total 969ms | **TTFB 103.6ms · Total 103.7ms** | **~9.3x Lebih Cepat** (Hemat 865ms) |
+| **`/awards` (Penghargaan)** | TTFB 749ms · Total 782ms | **TTFB 102.7ms · Total 102.9ms** | **~7.6x Lebih Cepat** (Hemat 679ms) |
+| **`/rules` (Regulasi)** | TTFB 720ms · Total 897ms | **TTFB 102.8ms · Total 103.0ms** | **~8.7x Lebih Cepat** (Hemat 794ms) |
+
+---
+
+## 4. Langkah Manual di Dashboard Vercel (Jika Diperlukan)
+Konfigurasi `vercel.json` akan otomatis mengatur region default untuk deployment baru. Namun untuk memastikan dashboard Vercel sinkron secara eksplisit:
+1. Buka dashboard Vercel: [vercel.com](https://vercel.com).
+2. Masuk ke project **Rivals-Series** $\rightarrow$ tab **Settings**.
+3. Pilih menu **Functions** di sidebar kiri.
+4. Pada bagian **Function Region**, pastikan region terpilih adalah **Singapore (sin1)**.
+5. Klik tombol **Save**. Deploy ulang commit terbaru agar konfigurasi aktif di production.
+
+---
+
+## 5. Ringkasan Verifikasi
+- **Unit Tests:** 51/51 lulus tanpa kegagalan (`npm test`).
+- **Production Build:** Sukses 100% tanpa error TypeScript (`npm run build`).
+- **Regulasi & Aturan Kompetisi:** Tidak ada perubahan logika skor, tiebreak, atau aturan Pasal 1–50.
+- **UI/UX:** Tampilan, token warna, dan layout tetap sama persis, kini dilengkapi loading skeleton yang responsif dan mulus.

@@ -2,6 +2,7 @@
 // Powered by Turso (LibSQL) with query helpers, mutations, and audit logging
 
 import { createClient, Client, InStatement } from '@libsql/client';
+import { cache } from 'react';
 import { headers } from 'next/headers';
 import {
   Participant,
@@ -51,7 +52,7 @@ export function getDbClient(): Client {
   return cachedClient;
 }
 
-export async function getParticipants(): Promise<Participant[]> {
+export const getParticipants = cache(async function getParticipants(): Promise<Participant[]> {
   try {
     const db = getDbClient();
     const res = await db.execute(
@@ -80,9 +81,9 @@ export async function getParticipants(): Promise<Participant[]> {
       { id: 'participant_b', display_name: 'Pemain B', monogram: 'PB', is_admin: 0, profile_completed: 0, last_audit_seen_at: null },
     ];
   }
-}
+});
 
-export async function getSeasonSettings(): Promise<SeasonSettings | null> {
+export const getSeasonSettings = cache(async function getSeasonSettings(): Promise<SeasonSettings | null> {
   try {
     const db = getDbClient();
     const res = await db.execute({
@@ -131,9 +132,9 @@ export async function getSeasonSettings(): Promise<SeasonSettings | null> {
       player_b_color: '#3ec9e6',
     };
   }
-}
+});
 
-export async function getAllMatches(): Promise<Match[]> {
+export const getAllMatches = cache(async function getAllMatches(): Promise<Match[]> {
   const db = getDbClient();
   const res = await db.execute('SELECT * FROM matches ORDER BY md_number ASC;');
   return res.rows.map(r => ({
@@ -168,9 +169,9 @@ export async function getAllMatches(): Promise<Match[]> {
     result_screenshot_url: r.result_screenshot_url ? String(r.result_screenshot_url) : null,
     lineup_screenshot_shared_wa: Number(r.lineup_screenshot_shared_wa || 0),
   }));
-}
+});
 
-export async function getMatchByMd(mdNumber: number): Promise<Match | null> {
+export const getMatchByMd = cache(async function getMatchByMd(mdNumber: number): Promise<Match | null> {
   const db = getDbClient();
   const res = await db.execute({
     sql: 'SELECT * FROM matches WHERE md_number = ?;',
@@ -210,9 +211,9 @@ export async function getMatchByMd(mdNumber: number): Promise<Match | null> {
     result_screenshot_url: r.result_screenshot_url ? String(r.result_screenshot_url) : null,
     lineup_screenshot_shared_wa: Number(r.lineup_screenshot_shared_wa || 0),
   };
-}
+});
 
-export async function getAllGoalEvents(matchId?: string): Promise<MatchGoalEvent[]> {
+export const getAllGoalEvents = cache(async function getAllGoalEvents(matchId?: string): Promise<MatchGoalEvent[]> {
   const db = getDbClient();
   const sql = matchId 
     ? 'SELECT * FROM match_goal_events WHERE match_id = ? ORDER BY minute ASC;'
@@ -233,9 +234,9 @@ export async function getAllGoalEvents(matchId?: string): Promise<MatchGoalEvent
     is_own_goal: Number(r.is_own_goal || 0),
     is_reconstruction_only: Number(r.is_reconstruction_only || 0),
   }));
-}
+});
 
-export async function getAllGoalkeeperRecords(matchId?: string): Promise<GoalkeeperMatchRecord[]> {
+export const getAllGoalkeeperRecords = cache(async function getAllGoalkeeperRecords(matchId?: string): Promise<GoalkeeperMatchRecord[]> {
   const db = getDbClient();
   const sql = matchId 
     ? 'SELECT * FROM goalkeeper_match_records WHERE match_id = ?;'
@@ -255,9 +256,9 @@ export async function getAllGoalkeeperRecords(matchId?: string): Promise<Goalkee
     remained_full_match: Number(r.remained_full_match || 1),
     clean_sheet_eligible: Number(r.clean_sheet_eligible || 0),
   }));
-}
+});
 
-export async function getAllQuotaCredits(matchId?: string): Promise<MatchQuotaCredit[]> {
+export const getAllQuotaCredits = cache(async function getAllQuotaCredits(matchId?: string): Promise<MatchQuotaCredit[]> {
   const db = getDbClient();
   const sql = matchId 
     ? 'SELECT * FROM match_quota_credits WHERE match_id = ?;'
@@ -276,9 +277,9 @@ export async function getAllQuotaCredits(matchId?: string): Promise<MatchQuotaCr
     trending_second_half: r.trending_second_half !== undefined ? Number(r.trending_second_half) : 0,
     notes: r.notes ? String(r.notes) : null,
   }));
-}
+});
 
-export async function getAllSanctions(): Promise<Sanction[]> {
+export const getAllSanctions = cache(async function getAllSanctions(): Promise<Sanction[]> {
   const db = getDbClient();
   const res = await db.execute('SELECT * FROM sanctions WHERE is_active = 1 ORDER BY decision_date DESC;');
   return res.rows.map(r => ({
@@ -292,9 +293,9 @@ export async function getAllSanctions(): Promise<Sanction[]> {
     decision_date: String(r.decision_date),
     is_active: Number(r.is_active || 1),
   }));
-}
+});
 
-export async function getAllGoalNominations(): Promise<GoalNomination[]> {
+export const getAllGoalNominations = cache(async function getAllGoalNominations(): Promise<GoalNomination[]> {
   const db = getDbClient();
   const res = await db.execute('SELECT * FROM goal_nominations ORDER BY created_at DESC;');
   return res.rows.map(r => ({
@@ -308,9 +309,9 @@ export async function getAllGoalNominations(): Promise<GoalNomination[]> {
     status: r.status as any,
     submitted_at: r.submitted_at ? String(r.submitted_at) : null,
   }));
-}
+});
 
-export async function getAllAwardBallots(): Promise<AwardBallot[]> {
+export const getAllAwardBallots = cache(async function getAllAwardBallots(): Promise<AwardBallot[]> {
   const db = getDbClient();
   const res = await db.execute('SELECT * FROM award_ballots;');
   return res.rows.map(r => ({
@@ -319,9 +320,9 @@ export async function getAllAwardBallots(): Promise<AwardBallot[]> {
     locked_at: r.locked_at ? String(r.locked_at) : null,
     rankings: r.rankings_json ? JSON.parse(String(r.rankings_json)) : [],
   }));
-}
+});
 
-export async function getAllDisputes(): Promise<any[]> {
+export const getAllDisputes = cache(async function getAllDisputes(): Promise<any[]> {
   const db = getDbClient();
   const res = await db.execute('SELECT * FROM disputes ORDER BY filed_at DESC;');
   return res.rows.map((r) => ({
@@ -338,7 +339,7 @@ export async function getAllDisputes(): Promise<any[]> {
     resolved_at: r.resolved_at ? String(r.resolved_at) : null,
     filed_at: String(r.filed_at),
   }));
-}
+});
 
 export async function getAllAuditEvents(limit: number = 1000): Promise<AuditEventRecord[]> {
   const db = getDbClient();

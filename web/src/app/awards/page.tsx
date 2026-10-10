@@ -1,22 +1,5 @@
 import Link from 'next/link';
-import {
-  getParticipants,
-  getAllMatches,
-  getAllSanctions,
-  getAllQuotaCredits,
-  getSeasonSettings,
-  getAllGoalEvents,
-  getAllGoalkeeperRecords,
-  getAllGoalNominations,
-  getAllAwardBallots,
-} from '@/lib/db';
-import {
-  calculateStandings,
-  calculateGoldenBoot,
-  calculateGoldenGlove,
-  calculateWinningStreak,
-  calculateGoalOfTheSeason,
-} from '@/lib/engine';
+import { getCachedAwardsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
 import { StatusChip } from '@/components/StatusChip';
 import { Trophy, Award, Shield, Zap, Sparkles, ArrowRight } from 'lucide-react';
@@ -26,30 +9,19 @@ export const metadata = {
   description: 'Tujuh gelar kehormatan resmi Rivals Series Season 1 ditentukan murni dari performa kompetisi.',
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export default async function AwardsPage() {
-  const [
+  const {
     participants,
-    matches,
-    sanctions,
-    quotaCredits,
-    seasonSettings,
-    goalEvents,
-    gkRecords,
-    goalNominations,
-    awardBallots,
-  ] = await Promise.all([
-    getParticipants(),
-    getAllMatches(),
-    getAllSanctions(),
-    getAllQuotaCredits(),
-    getSeasonSettings(),
-    getAllGoalEvents(),
-    getAllGoalkeeperRecords(),
-    getAllGoalNominations(),
-    getAllAwardBallots(),
-  ]);
+    standings,
+    bootLeaders,
+    gloveLeaders,
+    gotsResults,
+    paStreak,
+    pbStreak,
+    isCompleted,
+  } = await getCachedAwardsData();
 
   const pMap = new Map(participants.map((p) => [p.id, p]));
   const pA = pMap.get('participant_a') || {
@@ -65,22 +37,9 @@ export default async function AwardsPage() {
     is_admin: 0,
   };
 
-  const isCompleted = seasonSettings?.status === 'completed';
-  const standings = calculateStandings(participants, matches, sanctions, quotaCredits, isCompleted);
   const leader = standings[0];
   const leaderParticipant = pMap.get(leader?.participant_id || 'participant_a');
 
-  const confirmedMatches = matches.filter((m) =>
-    ['confirmed', 'reconstructed', 'forfeited', 'technical_win'].includes(m.status)
-  );
-  const confirmedIds = new Set(confirmedMatches.map((m) => m.id));
-
-  const bootLeaders = calculateGoldenBoot(goalEvents, confirmedIds);
-  const gloveLeaders = calculateGoldenGlove(gkRecords, matches);
-  const gotsResults = calculateGoalOfTheSeason(goalNominations, awardBallots);
-
-  const paStreak = calculateWinningStreak(matches, 'participant_a');
-  const pbStreak = calculateWinningStreak(matches, 'participant_b');
   const maxStreak = Math.max(paStreak, pbStreak);
   const streakLeaderId = paStreak >= pbStreak ? 'participant_a' : 'participant_b';
   const streakLeader = pMap.get(streakLeaderId);
