@@ -53,6 +53,8 @@ import {
 import { PlayerTag } from './PlayerTag';
 import { StatusChip } from './StatusChip';
 import { SquadBuilderWorkbench } from './SquadBuilderWorkbench';
+import { AuditTrailPanel } from './AuditTrailPanel';
+import { AuditChainVerification, AuditEventRecord } from '@/lib/audit';
 
 interface DraftGoalEvent {
   id: string;
@@ -99,7 +101,10 @@ interface ControlCenterClientProps {
   };
   shortlistCards?: any[];
   disputes: any[];
-  auditEvents: any[];
+  auditEvents: AuditEventRecord[];
+  auditChainVerification?: AuditChainVerification;
+  unreadOpponentAuditCount?: number;
+  lastAuditSeenAt?: string | null;
   goalNominations: GoalNomination[];
   pendingReset?: ResetRequest | null;
 }
@@ -114,11 +119,15 @@ export function ControlCenterClient({
   shortlistCards = [],
   disputes,
   auditEvents,
+  auditChainVerification,
+  unreadOpponentAuditCount = 0,
+  lastAuditSeenAt = null,
   goalNominations,
   pendingReset,
 }: ControlCenterClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'report' | 'pending' | 'roster' | 'disputes' | 'audit' | 'profile'>('report');
+  const [unreadAuditBadge, setUnreadAuditBadge] = useState<number>(unreadOpponentAuditCount);
   const [isPending, startTransition] = useTransition();
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -442,7 +451,7 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
             },
             { id: 'roster', label: 'Manajemen Skuad', icon: Users },
             { id: 'disputes', label: `Sengketa`, icon: Scale, badge: disputes.length || null },
-            { id: 'audit', label: 'Jejak Audit', icon: FileText },
+            { id: 'audit', label: 'Jejak Audit', icon: FileText, badge: unreadAuditBadge || null },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1604,37 +1613,24 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
 
           {/* TAB 5: JEJAK AUDIT */}
           {activeTab === 'audit' && (
-            <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-6 sm:p-8 space-y-6">
-              <div>
-                <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)]">
-                  Jejak Audit Kekal (Pasal 50)
-                </h2>
-                <p className="text-[13px] text-[var(--text-dim)]">
-                  Daftar kronologis seluruh mutasi data kompetisi. Tidak dapat diubah atau dihapus.
-                </p>
-              </div>
-
-              <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden">
-                {auditEvents.slice(0, 30).map((ev) => (
-                  <div key={ev.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold uppercase tracking-wider text-[var(--text)]">
-                          {ev.action}
-                        </span>
-                        <span className="text-[11px] text-[var(--text-faint)] font-mono">
-                          {ev.actor_id}
-                        </span>
-                      </div>
-                      <p className="text-[var(--text-dim)]">{ev.reason}</p>
-                    </div>
-                    <span className="text-[11px] text-[var(--text-faint)] font-mono shrink-0">
-                      {ev.timestamp ? new Date(ev.timestamp).toLocaleString('id-ID') : '—'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <AuditTrailPanel
+              sessionParticipantId={session.participantId}
+              participants={participants}
+              events={auditEvents}
+              chainVerification={
+                auditChainVerification || {
+                  intact: true,
+                  totalEntries: auditEvents.length,
+                  verifiedCount: auditEvents.length,
+                  brokenAtId: null,
+                  brokenReason: null,
+                  latestHash: 'GENESIS',
+                }
+              }
+              unreadOpponentCount={unreadAuditBadge}
+              lastSeenAt={lastAuditSeenAt}
+              onMarkedSeen={() => setUnreadAuditBadge(0)}
+            />
           )}
 
           {/* TAB 6: PROFIL */}

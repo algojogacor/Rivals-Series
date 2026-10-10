@@ -10,6 +10,7 @@ import {
   getAllSanctions,
   getAllGoalNominations,
   getAllAuditEvents,
+  recordAuditEvent,
 } from '@/lib/db';
 import { calculateStandings } from '@/lib/engine';
 
@@ -24,7 +25,22 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const format = searchParams.get('format') || 'json';
+  const format = (searchParams.get('format') || 'json').toLowerCase();
+
+  await recordAuditEvent({
+    actorId: session.participantId,
+    actorName: session.participant.display_name,
+    category: 'mutual',
+    action: 'export_season_archive',
+    entityType: 'archive',
+    entityId: 'season_1',
+    afterJson: {
+      format: format.toUpperCase(),
+      exportedBy: session.participant.display_name,
+    },
+    reason: `${session.participant.display_name} mengekspor arsip resmi musim dalam format ${format.toUpperCase()}.`,
+    ruleArticle: 'Pasal 50',
+  });
 
   const [
     participants,
@@ -45,7 +61,7 @@ export async function GET(request: NextRequest) {
     getAllQuotaCredits(),
     getAllSanctions(),
     getAllGoalNominations(),
-    getAllAuditEvents(),
+    getAllAuditEvents(1000),
   ]);
 
   const standings = calculateStandings(

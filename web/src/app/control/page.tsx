@@ -5,7 +5,7 @@ import {
   getVisibleRosterCards,
   getShortlistCards,
   getAllDisputes,
-  getAllAuditEvents,
+  getAuditTrailForViewer,
   getAllGoalNominations,
   getPendingResetRequest,
 } from '@/lib/db';
@@ -28,7 +28,7 @@ export default async function ControlCenterPage() {
     visiblePhase2,
     shortlistCards,
     disputes,
-    auditEvents,
+    auditTrail,
     goalNominations,
     pendingReset,
   ] = await Promise.all([
@@ -38,7 +38,7 @@ export default async function ControlCenterPage() {
     getVisibleRosterCards(2, session?.participantId || null),
     session ? getShortlistCards(session.participantId) : Promise.resolve([]),
     getAllDisputes(),
-    getAllAuditEvents(),
+    getAuditTrailForViewer(session?.participantId || null),
     getAllGoalNominations(),
     getPendingResetRequest(),
   ]);
@@ -53,7 +53,10 @@ export default async function ControlCenterPage() {
       phase2Roster={visiblePhase2}
       shortlistCards={shortlistCards}
       disputes={disputes}
-      auditEvents={auditEvents}
+      auditEvents={auditTrail.events}
+      auditChainVerification={auditTrail.chainVerification}
+      unreadOpponentAuditCount={auditTrail.unreadOpponentCount}
+      lastAuditSeenAt={auditTrail.lastSeenAt}
       goalNominations={goalNominations}
       pendingReset={pendingReset}
     />

@@ -9,6 +9,7 @@ export interface Participant {
   auth_email?: string | null;
   avatar_url?: string | null;
   is_admin: number;
+  last_audit_seen_at?: string | null;
 }
 
 export type MatchPhase = 'group_stage' | 'knockout_stage';

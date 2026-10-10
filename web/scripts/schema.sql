@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS participants (
   monogram TEXT NOT NULL,
   avatar_url TEXT,
   is_admin INTEGER NOT NULL DEFAULT 0,
+  last_audit_seen_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -228,10 +229,12 @@ CREATE TABLE IF NOT EXISTS award_ballots (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 14. AUDIT EVENTS (Append-only history)
+-- 14. AUDIT EVENTS (Append-only history with cryptographic hash chain)
 CREATE TABLE IF NOT EXISTS audit_events (
   id TEXT PRIMARY KEY,
   actor_id TEXT NOT NULL REFERENCES participants(id),
+  actor_name TEXT,
+  category TEXT NOT NULL DEFAULT 'setup',
   action TEXT NOT NULL,
   entity_type TEXT NOT NULL,
   entity_id TEXT NOT NULL,
@@ -239,8 +242,23 @@ CREATE TABLE IF NOT EXISTS audit_events (
   after_json TEXT,
   reason TEXT NOT NULL,
   rule_article TEXT,
+  device_info TEXT,
+  prev_hash TEXT,
+  entry_hash TEXT,
   timestamp TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TRIGGER IF NOT EXISTS trg_audit_events_no_update
+BEFORE UPDATE ON audit_events
+BEGIN
+  SELECT RAISE(ABORT, 'Jejak audit bersifat tambah-saja (append-only): perubahan data dilarang');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_audit_events_no_delete
+BEFORE DELETE ON audit_events
+BEGIN
+  SELECT RAISE(ABORT, 'Jejak audit bersifat tambah-saja (append-only): penghapusan data dilarang');
+END;
 
 -- 15. REGULATIONS AMENDMENTS (Appendix E)
 CREATE TABLE IF NOT EXISTS regulations_amendments (

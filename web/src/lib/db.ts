@@ -1,7 +1,8 @@
 // RIVALS SERIES SEASON 1 (RS S1) DATABASE ACCESS LAYER
 // Powered by Turso (LibSQL) with query helpers, mutations, and audit logging
 
-import { createClient, Client } from '@libsql/client';
+import { createClient, Client, InStatement } from '@libsql/client';
+import { headers } from 'next/headers';
 import {
   Participant,
   ParticipantId,
@@ -17,6 +18,17 @@ import {
   RosterCard,
   RosterPhaseStatus,
 } from './types';
+import {
+  AuditCategory,
+  AuditEventRecord,
+  AuditChainVerification,
+  sanitizeAuditPayload,
+  parseCoarseDeviceOrigin,
+  inferAuditCategory,
+  computeAuditEntryHash,
+  verifyAuditChain,
+  redactAuditEventsForViewer,
+} from './audit';
 
 let cachedClient: Client | null = null;
 
@@ -49,12 +61,13 @@ export async function getParticipants(): Promise<Participant[]> {
       auth_email: r.auth_email ? String(r.auth_email) : null,
       avatar_url: r.avatar_url ? String(r.avatar_url) : null,
       is_admin: Number(r.is_admin),
+      last_audit_seen_at: r.last_audit_seen_at ? String(r.last_audit_seen_at) : null,
     }));
   } catch (err) {
     console.error('Failed to load participants from DB, using fallback defaults:', err);
     return [
-      { id: 'participant_a', display_name: 'Peserta A', monogram: 'PA', is_admin: 1 },
-      { id: 'participant_b', display_name: 'Peserta B', monogram: 'PB', is_admin: 0 },
+      { id: 'participant_a', display_name: 'Peserta A', monogram: 'PA', is_admin: 1, last_audit_seen_at: null },
+      { id: 'participant_b', display_name: 'Peserta B', monogram: 'PB', is_admin: 0, last_audit_seen_at: null },
     ];
   }
 }
@@ -317,21 +330,93 @@ export async function getAllDisputes(): Promise<any[]> {
   }));
 }
 
-export async function getAllAuditEvents(): Promise<any[]> {
+export async function getAllAuditEvents(limit: number = 1000): Promise<AuditEventRecord[]> {
   const db = getDbClient();
-  const res = await db.execute('SELECT * FROM audit_events ORDER BY timestamp DESC LIMIT 100;');
-  return res.rows.map((r) => ({
-    id: String(r.id),
-    actor_id: r.actor_id as ParticipantId,
-    action: String(r.action),
-    entity_type: String(r.entity_type),
-    entity_id: String(r.entity_id),
-    before_json: r.before_json ? String(r.before_json) : null,
-    after_json: r.after_json ? String(r.after_json) : null,
-    reason: String(r.reason),
-    rule_article: r.rule_article ? String(r.rule_article) : null,
-    timestamp: String(r.timestamp),
-  }));
+  const res = await db.execute({
+    sql: 'SELECT rowid, * FROM audit_events ORDER BY rowid DESC LIMIT ?;',
+    args: [limit],
+  });
+  return res.rows.map((r) => {
+    const action = String(r.action);
+    const entityType = String(r.entity_type);
+    return {
+      id: String(r.id),
+      actor_id: r.actor_id as ParticipantId,
+      actor_name: r.actor_name ? String(r.actor_name) : null,
+      category: (r.category ? String(r.category) : inferAuditCategory(action, entityType)) as AuditCategory,
+      action,
+      entity_type: entityType,
+      entity_id: String(r.entity_id),
+      before_json: r.before_json ? String(r.before_json) : null,
+      after_json: r.after_json ? String(r.after_json) : null,
+      reason: String(r.reason),
+      rule_article: r.rule_article ? String(r.rule_article) : null,
+      device_info: r.device_info ? String(r.device_info) : null,
+      prev_hash: r.prev_hash ? String(r.prev_hash) : null,
+      entry_hash: r.entry_hash ? String(r.entry_hash) : null,
+      timestamp: String(r.timestamp),
+    };
+  });
+}
+
+export async function getAuditTrailForViewer(viewerId: ParticipantId | null): Promise<{
+  events: AuditEventRecord[];
+  chainVerification: AuditChainVerification;
+  unreadOpponentCount: number;
+  lastSeenAt: string | null;
+}> {
+  const [rawEvents, participants, phase1Status, phase2Status] = await Promise.all([
+    getAllAuditEvents(1000),
+    getParticipants(),
+    getRosterPhaseStatus(1),
+    getRosterPhaseStatus(2),
+  ]);
+
+  // 1. Verify hash chain on raw unredacted events
+  const chainVerification = verifyAuditChain(rawEvents);
+
+  // 2. Build participant display name lookup
+  const participantNames: Record<ParticipantId, string> = {
+    participant_a: 'Pemain A',
+    participant_b: 'Pemain B',
+  };
+  for (const p of participants) {
+    participantNames[p.id] = p.display_name;
+  }
+
+  // 3. Redact opponent squad card details if that phase is not yet locked by both participants
+  const events = redactAuditEventsForViewer({
+    events: rawEvents.map((e) => ({
+      ...e,
+      actor_name: e.actor_name || participantNames[e.actor_id] || e.actor_id,
+    })),
+    viewerId,
+    phase1BothLocked: phase1Status.both_locked,
+    phase2BothLocked: phase2Status.both_locked,
+    participantNames,
+  });
+
+  // 4. Compute unread opponent activity count since viewer's last_audit_seen_at
+  const viewer = viewerId ? participants.find((p) => p.id === viewerId) : null;
+  const lastSeenAt = viewer?.last_audit_seen_at || null;
+  let unreadOpponentCount = 0;
+
+  if (viewerId) {
+    for (const ev of events) {
+      if (ev.actor_id !== viewerId) {
+        if (!lastSeenAt || ev.timestamp > lastSeenAt) {
+          unreadOpponentCount++;
+        }
+      }
+    }
+  }
+
+  return {
+    events,
+    chainVerification,
+    unreadOpponentCount,
+    lastSeenAt,
+  };
 }
 
 export async function getRosterPhaseStatus(phase: number = 1): Promise<RosterPhaseStatus> {
@@ -406,16 +491,16 @@ export async function getAllRosterCards(phase: number = 1): Promise<RosterCard[]
     const res = await db.execute({
       sql: `SELECT
               rc.*,
-              ep.club_name as ep_club_name,
+              ep.team_name as ep_club_name,
               ep.playing_style as ep_playing_style,
               ep.playing_style_label as ep_playing_style_label,
               ep.player_type as ep_player_type,
-              ep.player_type_label as ep_player_type_label,
-              ep.top6_lv1 as ep_top6_lv1,
-              ep.top6_max as ep_top6_max,
+              ep.card_type_label as ep_player_type_label,
+              ep.top6_lv1_json as ep_top6_lv1,
+              ep.top6_max_json as ep_top6_max,
               ep.overall_lv1 as ep_overall_lv1,
               ep.overall_max as ep_overall_max,
-              ep.position as ep_position
+              ep.position_label as ep_position
             FROM roster_cards rc
             LEFT JOIN efootball_players ep ON rc.efootball_card_id = ep.card_id
             WHERE rc.roster_phase = ? AND rc.is_active = 1
@@ -535,20 +620,20 @@ export async function getShortlistCards(participantId: ParticipantId): Promise<a
               ep.card_id,
               ep.base_player_id,
               ep.name,
-              ep.position,
+              ep.position_label as position,
               ep.overall_lv1,
               ep.overall_max,
               ep.player_type,
-              ep.player_type_label,
+              ep.card_type_label as player_type_label,
               ep.variation_name,
-              ep.club_name,
-              ep.nationality_name,
+              ep.team_name as club_name,
+              ep.country_name as nationality_name,
               ep.is_trending,
               ep.is_indonesian,
               ep.playing_style,
               ep.playing_style_label,
-              ep.top6_lv1,
-              ep.top6_max
+              ep.top6_lv1_json as top6_lv1,
+              ep.top6_max_json as top6_max
             FROM squad_shortlist ss
             JOIN efootball_players ep ON ss.card_id = ep.card_id
             WHERE ss.participant_id = ?
@@ -640,34 +725,133 @@ export async function getAllResetRequests(): Promise<ResetRequest[]> {
   }
 }
 
-/**
- * Record an audit log event (Pasal 23 & 50)
- */
-export async function recordAuditEvent(params: {
+export interface RecordAuditParams {
   actorId: ParticipantId;
+  actorName?: string | null;
+  category?: AuditCategory;
   action: string;
   entityType: string;
   entityId: string;
-  beforeJson?: any;
-  afterJson?: any;
+  beforeJson?: unknown;
+  afterJson?: unknown;
   reason: string;
-  ruleArticle?: string;
-}): Promise<void> {
+  ruleArticle?: string | null;
+  deviceInfo?: string | null;
+}
+
+async function resolveCoarseRequestOrigin(explicitDeviceInfo?: string | null): Promise<string> {
+  if (explicitDeviceInfo) return explicitDeviceInfo;
+  try {
+    const reqHeaders = await headers();
+    const ua = reqHeaders.get('user-agent');
+    return parseCoarseDeviceOrigin(ua);
+  } catch {
+    return 'Server / Sistem';
+  }
+}
+
+/**
+ * Prepares an append-only audit event SQL statement with:
+ * - Recursive secret/PIN sanitization on beforeJson & afterJson
+ * - Coarse device origin resolution
+ * - Cryptographic SHA-256 hash chain linkage (prev_hash -> entry_hash)
+ */
+export async function prepareAuditEventStatement(params: RecordAuditParams): Promise<InStatement> {
   const db = getDbClient();
+
+  const [lastHashRes, partRes, deviceInfo] = await Promise.all([
+    db.execute('SELECT entry_hash FROM audit_events ORDER BY rowid DESC LIMIT 1;'),
+    params.actorName
+      ? Promise.resolve(null)
+      : db.execute({
+          sql: 'SELECT display_name FROM participants WHERE id = ? LIMIT 1;',
+          args: [params.actorId],
+        }),
+    resolveCoarseRequestOrigin(params.deviceInfo),
+  ]);
+
+  const prevHash =
+    lastHashRes.rows.length > 0 && lastHashRes.rows[0].entry_hash
+      ? String(lastHashRes.rows[0].entry_hash)
+      : 'GENESIS';
+
+  const actorName =
+    params.actorName ||
+    (partRes && partRes.rows.length > 0 ? String(partRes.rows[0].display_name) : params.actorId);
+
+  const category = params.category || inferAuditCategory(params.action, params.entityType);
+
+  const sanitizedBefore =
+    params.beforeJson !== undefined && params.beforeJson !== null
+      ? JSON.stringify(sanitizeAuditPayload(params.beforeJson))
+      : null;
+  const sanitizedAfter =
+    params.afterJson !== undefined && params.afterJson !== null
+      ? JSON.stringify(sanitizeAuditPayload(params.afterJson))
+      : null;
+
   const id = `audit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  await db.execute({
-    sql: `INSERT INTO audit_events (id, actor_id, action, entity_type, entity_id, before_json, after_json, reason, rule_article, timestamp)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));`,
+  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+  const entryHash = computeAuditEntryHash({
+    id,
+    actor_id: params.actorId,
+    action: params.action,
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+    before_json: sanitizedBefore,
+    after_json: sanitizedAfter,
+    reason: params.reason,
+    timestamp,
+    prev_hash: prevHash,
+  });
+
+  return {
+    sql: `INSERT INTO audit_events (
+            id, actor_id, actor_name, category, action, entity_type, entity_id,
+            before_json, after_json, reason, rule_article, device_info,
+            prev_hash, entry_hash, timestamp
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     args: [
       id,
       params.actorId,
+      actorName,
+      category,
       params.action,
       params.entityType,
       params.entityId,
-      params.beforeJson ? JSON.stringify(params.beforeJson) : null,
-      params.afterJson ? JSON.stringify(params.afterJson) : null,
+      sanitizedBefore,
+      sanitizedAfter,
       params.reason,
       params.ruleArticle || null,
+      deviceInfo,
+      prevHash,
+      entryHash,
+      timestamp,
     ],
-  });
+  };
 }
+
+/**
+ * Executes one or more write statements atomically junto with an audit log entry
+ * inside a single database write transaction (`db.batch(..., 'write')`).
+ * If audit logging fails, the mutation is rolled back and never succeeds silently.
+ */
+export async function executeWithAudit(
+  statements: InStatement[],
+  auditParams: RecordAuditParams
+): Promise<void> {
+  const db = getDbClient();
+  const auditStmt = await prepareAuditEventStatement(auditParams);
+  await db.batch([...statements, auditStmt], 'write');
+}
+
+/**
+ * Record a standalone audit log event (e.g. login success/failure, logout, archive export)
+ */
+export async function recordAuditEvent(params: RecordAuditParams): Promise<void> {
+  const db = getDbClient();
+  const auditStmt = await prepareAuditEventStatement(params);
+  await db.execute(auditStmt);
+}
+
