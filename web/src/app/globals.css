@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+/* Hallmark · genre: atmospheric · macrostructure: TV Broadcast Dual · theme: Night Match */
+/* Impeccable · surface: operate + experience · audience: 2 competitors + referee audit */
+
+@theme {
+  --color-ink-0: var(--ink-0);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-text-faint: var(--text-faint);
+
+  --color-p-a: var(--p-a);
+  --color-p-b: var(--p-b);
+  --color-p-a-soft: var(--p-a-soft);
+  --color-p-b-soft: var(--p-b-soft);
+
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
+
+  --font-display: var(--font-big-shoulders), -apple-system, sans-serif;
+  --font-body: var(--font-barlow), -apple-system, sans-serif;
+}
+
+:root {
+  /* Surface Tokens */
+  --ink-0: #0a1311;   /* background halaman, hijau-hitam malam */
+  --ink-1: #101c19;   /* panel */
+  --ink-2: #172824;   /* panel terangkat, input */
+  --line:  #26403a;   /* garis tipis, 1px */
+  --text:  #f1efe8;   /* teks utama (putih hangat) */
+  --text-dim:   #a7b5ae;   /* teks sekunder */
+  --text-faint: #6f817a;   /* label kecil, placeholder (minimal 13px) */
+
+  /* Player Colors (Dynamic via season_settings in DB, defaults here) */
+  --p-a: #ffb02e;     /* warna Pemain A (default amber) */
+  --p-b: #3ec9e6;     /* warna Pemain B (default cyan) */
+  --p-a-soft: color-mix(in oklab, var(--p-a) 14%, var(--ink-1));
+  --p-b-soft: color-mix(in oklab, var(--p-b) 14%, var(--ink-1));
+
+  /* Status Colors */
+  --ok:     #9be564;   /* berhasil / terkonfirmasi */
+  --danger: #ef5b4c;   /* destruktif / sengketa */
+
+  color-scheme: dark;
+}
+
+html, body {
+  overflow-x: clip;
+  background-color: var(--ink-0);
+  color: var(--text);
+  font-family: var(--font-barlow), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  caret-color: var(--text);
+}
+
+/* Tabular Numerals across scores, stats, tables */
+.tabular-nums, table, [data-tabular="true"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Headings: Strict Roman Discipline, No Italic Headers */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display), sans-serif;
+  font-style: normal !important;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  line-height: 1.05;
+}
+
+/* Browser selection highlight */
+::selection {
+  background-color: color-mix(in oklab, var(--p-a) 35%, transparent);
+  color: var(--text);
+}
+
+/* Custom Night Match Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ink-0);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
+/* Interactive Focus Rings */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* Animation: Slow gentle pulse for next match (only looping animation allowed) */
+@keyframes slowPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-slow {
+  animation: slowPulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-slow {
+    animation: none;
+    opacity: 1;
+  }
+}

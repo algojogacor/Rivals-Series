@@ -1,0 +1,14 @@
+import pymupdf
+
+svg_test = '''<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+<rect width="400" height="300" fill="#0C1728"/>
+<text x="50" y="80" fill="#EEE6DA" font-family="Arial Narrow, sans-serif" font-size="60" font-weight="bold">RIVALS</text>
+<text x="50" y="160" fill="#EEE6DA" font-family="Impact, sans-serif" font-size="60">RIVALS</text>
+<g transform="scale(0.85, 1)"><text x="60" y="240" fill="#EEE6DA" font-family="Arial, sans-serif" font-size="60" font-weight="900">RIVALS</text></g>
+</svg>'''
+
+with open('font_test.svg', 'w') as f:
+    f.write(svg_test)
+doc = pymupdf.open('font_test.svg')
+doc[0].get_pixmap().save('font_test.png')
+print('Saved font_test.png')

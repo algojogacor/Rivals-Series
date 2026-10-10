@@ -1,0 +1,103 @@
+import type { Metadata } from 'next';
+import { Big_Shoulders, Barlow } from 'next/font/google';
+import './globals.css';
+import { AppShell } from '@/components/AppShell';
+import { SiteFooter } from '@/components/SiteFooter';
+import { getSession } from '@/lib/auth';
+import { getSeasonSettings } from '@/lib/db';
+
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+const bigShoulders = Big_Shoulders({
+  subsets: ['latin'],
+  weight: ['800', '900'],
+  variable: '--font-big-shoulders',
+  display: 'swap',
+});
+
+const barlow = Barlow({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-barlow',
+  display: 'swap',
+});
+
+export const metadata: Metadata = {
+  title: 'Rivals Series Season 1 — Official Competition Records',
+  description: 'Official digital records, standings, match reports, statistics, and awards for Rivals Series Season 1 eFootball 1v1 competition.',
+};
+
+export const dynamic = 'force-dynamic';
+
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') || '';
+
+  let session = null;
+  let playerAColor = '#ffb02e';
+  let playerBColor = '#3ec9e6';
+  let isSetupStatus = false;
+
+  // Defensive database read: never crash if DB is temporarily unreachable
+  try {
+    session = await getSession();
+  } catch (err) {
+    console.error('RootLayout: session read error, defaulting to guest', err);
+  }
+
+  try {
+    const settings = await getSeasonSettings();
+    if (settings) {
+      if (settings.player_a_color) playerAColor = settings.player_a_color;
+      if (settings.player_b_color) playerBColor = settings.player_b_color;
+      if (settings.status === 'setup') {
+        isSetupStatus = true;
+      }
+    }
+  } catch (err) {
+    console.error('RootLayout: season settings read error, using fallback colors and skipping redirect', err);
+    isSetupStatus = false; // Never redirect if DB fails
+  }
+
+  // Safe redirect guard:
+  // If season status is 'setup', redirect to /setup
+  // EXEMPT: /setup*, /api*, /login*, static assets
+  if (isSetupStatus) {
+    const isExempt =
+      pathname.startsWith('/setup') ||
+      pathname.startsWith('/api') ||
+      pathname.startsWith('/login');
+
+    if (!isExempt) {
+      redirect('/setup');
+    }
+  }
+
+  return (
+    <html lang="id" className={`${bigShoulders.variable} ${barlow.variable}`}>
+      <head>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `:root {
+  --p-a: ${playerAColor};
+  --p-b: ${playerBColor};
+  --p-a-soft: color-mix(in oklab, var(--p-a) 14%, var(--ink-1));
+  --p-b-soft: color-mix(in oklab, var(--p-b) 14%, var(--ink-1));
+}`,
+          }}
+        />
+      </head>
+      <body className="min-h-screen flex flex-col bg-[var(--ink-0)] text-[var(--text)] antialiased">
+        <AppShell session={session}>
+          {children}
+        </AppShell>
+        <SiteFooter />
+      </body>
+    </html>
+  );
+}

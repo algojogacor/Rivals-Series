@@ -1,0 +1,29 @@
+# Dependencies & build outputs
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment & secrets
+.env*
+**/.env*
+!.env.example
+!**/.env.example
+
+# Local SQLite databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# OS / Office / Python temp files
+.DS_Store
+Thumbs.db
+~$*
+__pycache__/
+*.pyc
+.vercel/
