@@ -294,16 +294,20 @@ Dibuat 5 skeleton loading yang mengadopsi palet warna gelap RS S1 (`var(--ink-0)
 
 ---
 
-## 3. Hasil Pengukuran Sebelum vs. Sesudah
+## 3. Hasil Pengukuran Sebelum vs. Sesudah (Live Production rs.aryariap.my.id)
 
-| Halaman Navigasi | Baseline Live Production (`iad1` US) | Sesudah Optimasi (Build Produksi Lokal) | Peningkatan Efisiensi |
-| :--- | :--- | :--- | :--- |
-| **`/` (Beranda)** | TTFB 1.168ms · Total 1.339ms | **TTFB 104.8ms · Total 105.1ms** | **~12.7x Lebih Cepat** (Hemat 1.234ms) |
-| **`/standings` (Klasemen)** | TTFB 757ms · Total 783ms | **TTFB 114.5ms · Total 114.7ms** | **~6.8x Lebih Cepat** (Hemat 668ms) |
-| **`/matches` (Match Center)** | TTFB 596ms · Total 726ms | **TTFB 106.0ms · Total 106.4ms** | **~6.8x Lebih Cepat** (Hemat 620ms) |
-| **`/statistics` (Statistik)** | TTFB 927ms · Total 969ms | **TTFB 103.6ms · Total 103.7ms** | **~9.3x Lebih Cepat** (Hemat 865ms) |
-| **`/awards` (Penghargaan)** | TTFB 749ms · Total 782ms | **TTFB 102.7ms · Total 102.9ms** | **~7.6x Lebih Cepat** (Hemat 679ms) |
-| **`/rules` (Regulasi)** | TTFB 720ms · Total 897ms | **TTFB 102.8ms · Total 103.0ms** | **~8.7x Lebih Cepat** (Hemat 794ms) |
+| Halaman Navigasi | Baseline Live Awal (`iad1` US) | Live Sesudah Deploy (`sin1` SG) | Build Lokal | Peningkatan Live di Production |
+| :--- | :--- | :--- | :--- | :--- |
+| **`/` (Beranda)** | TTFB 1.168ms · Total 1.339ms | **TTFB 462.9ms · Total 563.7ms** | TTFB 104.8ms | **~2.5x Lebih Cepat** (Hemat 775ms) |
+| **`/standings` (Klasemen)** | TTFB 757ms · Total 783ms | **TTFB 152.9ms · Total 168.5ms** | TTFB 114.5ms | **~5.0x Lebih Cepat** (Hemat 615ms) |
+| **`/matches` (Match Center)** | TTFB 596ms · Total 726ms | **TTFB 170.5ms · Total 227.1ms** | TTFB 106.0ms | **~3.5x Lebih Cepat** (Hemat 499ms) |
+| **`/statistics` (Statistik)** | TTFB 927ms · Total 969ms | **TTFB 153.8ms · Total 176.2ms** | TTFB 103.6ms | **~6.0x Lebih Cepat** (Hemat 793ms) |
+| **`/awards` (Penghargaan)** | TTFB 749ms · Total 782ms | **TTFB 175.5ms · Total 211.9ms** | TTFB 102.7ms | **~4.2x Lebih Cepat** (Hemat 570ms) |
+| **`/rules` (Regulasi)** | TTFB 720ms · Total 897ms | **TTFB 185.2ms · Total 257.9ms** | TTFB 102.8ms | **~3.9x Lebih Cepat** (Hemat 639ms) |
+
+> **Bukti Verifikasi Header Live Production:**  
+> `X-Vercel-Id: sin1::sin1::d8lvz-1791672187673-5906885dad9c`  
+> Edge POP (`sin1` Singapore) dan Serverless Function (`sin1` Singapore) kini 100% selaras di Asia Tenggara tanpa hop lintas benua ke Washington D.C. (`iad1`).
 
 ---
 
