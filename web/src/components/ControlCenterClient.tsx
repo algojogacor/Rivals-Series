@@ -63,6 +63,7 @@ import { AuditChainVerification, AuditEventRecord } from '@/lib/audit';
 interface DraftGoalEvent {
   id: string;
   participant_id: ParticipantId;
+  scoring_participant_id?: ParticipantId;
   scorer_card_id: string | null;
   scorer_base_player_id: number | null;
   scorer_player_name: string;
@@ -218,6 +219,7 @@ export function ControlCenterClient({
     const newGoal: DraftGoalEvent = {
       id: `draft_goal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       participant_id: draftScorerParticipant,
+      scoring_participant_id: draftScorerParticipant,
       scorer_card_id: chosenCard?.efootball_card_id || chosenCard?.id || null,
       scorer_base_player_id: chosenCard?.base_player_id ?? null,
       scorer_player_name: scorerName,
@@ -1242,9 +1244,14 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                       onClick={() => setStepEvidenceOpen(!stepEvidenceOpen)}
                       className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--ink-1)]/50 transition-colors"
                     >
-                      <span className="font-semibold text-xs text-[var(--text)] uppercase">
-                        Bukti Screenshot & Catatan Laporan
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-xs text-[var(--text)] uppercase">
+                          Bukti Screenshot & Catatan Laporan (Opsional)
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ink-1)] text-[var(--text-dim)] border border-[var(--line)]">
+                          Boleh Dilewati
+                        </span>
+                      </div>
                       {stepEvidenceOpen ? <ChevronUp className="w-4 h-4 text-[var(--text-dim)]" /> : <ChevronDown className="w-4 h-4 text-[var(--text-dim)]" />}
                     </button>
                     {stepEvidenceOpen && (
@@ -1253,8 +1260,8 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                           name="result_screenshot_url"
                           prefix={`md${selectedMd}_hasil`}
                           defaultValue={selectedMatch?.result_screenshot_url || ''}
-                          label="Unggah Bukti Screenshot Hasil Pertandingan"
-                          helperText="Pilih foto layar akhir pertandingan, seret & lepas (drag & drop), atau paste (Ctrl+V) langsung."
+                          label="Unggah Bukti Screenshot Hasil Pertandingan (Opsional)"
+                          helperText="Opsional — jika ada foto layar akhir pertandingan, unggah, seret & lepas (drag & drop), atau paste (Ctrl+V) langsung. Jika tidak ada foto, langkah ini boleh dilewati."
                         />
                         <div>
                           <label className="block text-[var(--text-dim)] mb-1">Catatan Tambahan Pertandingan</label>

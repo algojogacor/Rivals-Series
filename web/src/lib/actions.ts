@@ -71,8 +71,11 @@ export async function submitMatchReportAction(formData: FormData) {
     }
   }
 
-  const matchReportText = formData.get('match_report_text')?.toString() || null;
-  const resultScreenshotUrl = formData.get('result_screenshot_url')?.toString() || null;
+  const rawReportText = formData.get('match_report_text')?.toString()?.trim();
+  const matchReportText = rawReportText && rawReportText.length > 0 ? rawReportText : null;
+
+  const rawScreenshotUrl = formData.get('result_screenshot_url')?.toString()?.trim();
+  const resultScreenshotUrl = rawScreenshotUrl && rawScreenshotUrl.length > 0 ? rawScreenshotUrl : null;
   const lineupWaShared = formData.get('lineup_wa_shared') === 'true' || formData.get('lineup_wa_shared') === 'on';
 
   // Indonesian Player Credits & Trending attestation (Pasal 17, 18, 19)
@@ -105,7 +108,8 @@ export async function submitMatchReportAction(formData: FormData) {
 
   const goalEventsJsonRaw = formData.get('goal_events_json')?.toString();
   let parsedGoals: Array<{
-    scoring_participant_id: ParticipantId;
+    scoring_participant_id?: ParticipantId;
+    participant_id?: ParticipantId;
     scorer_card_id?: string | null;
     scorer_base_player_id?: number | null;
     scorer_player_name: string;
@@ -302,7 +306,13 @@ export async function submitMatchReportAction(formData: FormData) {
       'extra_time_first_half',
       'extra_time_second_half',
     ];
-    const period = validPeriods.includes(g.period || '') ? g.period! : 'regular_first_half';
+    let period = validPeriods.includes(g.period || '') ? g.period! : 'regular_first_half';
+    if (g.period === 'first_half') period = 'regular_first_half';
+    else if (g.period === 'second_half') period = 'regular_second_half';
+    else if (g.period === 'et') period = 'extra_time_first_half';
+
+    const scoringPartId: ParticipantId = (g.scoring_participant_id || g.participant_id || 'participant_a') as ParticipantId;
+
     statements.push({
       sql: `INSERT INTO match_goal_events (
               id, match_id, scoring_participant_id, scorer_card_id, scorer_base_player_id,
@@ -311,7 +321,7 @@ export async function submitMatchReportAction(formData: FormData) {
       args: [
         goalId,
         matchId,
-        g.scoring_participant_id,
+        scoringPartId,
         g.scorer_card_id || null,
         g.scorer_base_player_id ? Number(g.scorer_base_player_id) : null,
         g.scorer_player_name.trim(),
@@ -351,8 +361,8 @@ export async function submitMatchReportAction(formData: FormData) {
       pkPlayed,
       scorers: parsedGoals.map((g) => ({
         player: g.scorer_player_name,
-        minute: g.minute,
-        team: g.scoring_participant_id,
+        minute: g.minute ?? null,
+        team: g.scoring_participant_id || g.participant_id || 'participant_a',
       })),
       goalkeepers: {
         pa: { name: paGkName, fullMatch: Boolean(paGkFull) },

@@ -842,6 +842,19 @@ export async function prepareAuditEventStatement(params: RecordAuditParams): Pro
   };
 }
 
+function sanitizeInStatement(statement: InStatement): InStatement {
+  if (typeof statement === 'string') {
+    return statement;
+  }
+  if (Array.isArray(statement.args)) {
+    return {
+      sql: statement.sql,
+      args: statement.args.map((a) => (a === undefined ? null : a)),
+    };
+  }
+  return statement;
+}
+
 /**
  * Executes one or more write statements atomically junto with an audit log entry
  * inside a single database write transaction (`db.batch(..., 'write')`).
@@ -853,7 +866,8 @@ export async function executeWithAudit(
 ): Promise<void> {
   const db = getDbClient();
   const auditStmt = await prepareAuditEventStatement(auditParams);
-  await db.batch([...statements, auditStmt], 'write');
+  const sanitized = [...statements, auditStmt].map(sanitizeInStatement);
+  await db.batch(sanitized, 'write');
 }
 
 /**
@@ -862,7 +876,7 @@ export async function executeWithAudit(
 export async function recordAuditEvent(params: RecordAuditParams): Promise<void> {
   const db = getDbClient();
   const auditStmt = await prepareAuditEventStatement(params);
-  await db.execute(auditStmt);
+  await db.execute(sanitizeInStatement(auditStmt));
 }
 
 /**
