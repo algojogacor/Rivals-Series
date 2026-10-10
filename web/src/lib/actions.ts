@@ -37,10 +37,11 @@ import { ParticipantId, Match } from './types';
  * 1. Submit Match Report
  */
 export async function submitMatchReportAction(formData: FormData) {
-  const session = await getSession();
-  if (!session) {
-    return { error: 'Anda harus masuk sebagai Peserta A atau Peserta B untuk melapor.' };
-  }
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: 'Anda harus masuk sebagai Peserta A atau Peserta B untuk melapor.' };
+    }
 
   const mdNumber = Number(formData.get('md_number'));
   if (isNaN(mdNumber) || mdNumber < 1 || mdNumber > 20) {
@@ -390,89 +391,98 @@ export async function submitMatchReportAction(formData: FormData) {
   revalidatePath('/awards');
   revalidatePath('/control');
 
-  return { success: true, matchId };
+    return { success: true, matchId };
+  } catch (err: any) {
+    console.error('submitMatchReportAction error:', err);
+    return { error: err?.message || 'Gagal mengirimkan laporan hasil pertandingan.' };
+  }
 }
 
 /**
  * 2. Confirm Match Report
  */
 export async function confirmMatchReportAction(matchId: string) {
-  const session = await getSession();
-  if (!session) {
-    return { error: 'Anda harus masuk untuk mengonfirmasi hasil.' };
-  }
-
-  const db = getDbClient();
-  const res = await db.execute({
-    sql: 'SELECT * FROM matches WHERE id = ?;',
-    args: [matchId],
-  });
-
-  if (res.rows.length === 0) {
-    return { error: 'Pertandingan tidak ditemukan.' };
-  }
-
-  const match = res.rows[0];
-  const now = new Date().toISOString();
-
-  let confirmedByPa = match.confirmed_by_pa_at;
-  let confirmedByPb = match.confirmed_by_pb_at;
-
-  if (session.participantId === 'participant_a') {
-    confirmedByPa = now;
-  } else {
-    confirmedByPb = now;
-  }
-
-  // If both confirmed, match becomes 'confirmed' and official
-  const bothConfirmed = Boolean(confirmedByPa && confirmedByPb);
-  const newStatus = bothConfirmed ? 'confirmed' : 'awaiting_confirmation';
-  const confirmationStatus = bothConfirmed ? 'confirmed_both' : 'pending';
-
-  await executeWithAudit(
-    [
-      {
-        sql: `UPDATE matches SET 
-                status = ?,
-                confirmation_status = ?,
-                confirmed_by_pa_at = ?,
-                confirmed_by_pb_at = ?,
-                updated_at = datetime('now')
-              WHERE id = ?;`,
-        args: [newStatus, confirmationStatus, confirmedByPa, confirmedByPb, matchId],
-      },
-    ],
-    {
-      actorId: session.participantId,
-      actorName: session.participant.display_name,
-      category: 'match',
-      action: 'confirm_match_report',
-      entityType: 'match',
-      entityId: matchId,
-      beforeJson: {
-        status: match.status,
-        confirmationStatus: match.confirmation_status,
-        confirmedByPa: match.confirmed_by_pa_at,
-        confirmedByPb: match.confirmed_by_pb_at,
-      },
-      afterJson: {
-        status: newStatus,
-        confirmationStatus,
-        score: `${match.home_score ?? 0}-${match.away_score ?? 0}`,
-        confirmedByPa,
-        confirmedByPb,
-      },
-      reason: `${session.participant.display_name} menyetujui dan mengesahkan laporan hasil ${matchId} (Skor ${match.home_score ?? 0}-${match.away_score ?? 0}).`,
-      ruleArticle: 'Pasal 22 ayat (5)',
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: 'Anda harus masuk untuk mengonfirmasi hasil.' };
     }
-  );
 
-  revalidatePath('/');
-  revalidatePath('/matches');
-  revalidatePath('/standings');
-  revalidatePath('/control');
+    const db = getDbClient();
+    const res = await db.execute({
+      sql: 'SELECT * FROM matches WHERE id = ?;',
+      args: [matchId],
+    });
 
-  return { success: true };
+    if (res.rows.length === 0) {
+      return { error: 'Pertandingan tidak ditemukan.' };
+    }
+
+    const match = res.rows[0];
+    const now = new Date().toISOString();
+
+    let confirmedByPa = match.confirmed_by_pa_at;
+    let confirmedByPb = match.confirmed_by_pb_at;
+
+    if (session.participantId === 'participant_a') {
+      confirmedByPa = now;
+    } else {
+      confirmedByPb = now;
+    }
+
+    // If both confirmed, match becomes 'confirmed' and official
+    const bothConfirmed = Boolean(confirmedByPa && confirmedByPb);
+    const newStatus = bothConfirmed ? 'confirmed' : 'awaiting_confirmation';
+    const confirmationStatus = bothConfirmed ? 'confirmed_both' : 'pending';
+
+    await executeWithAudit(
+      [
+        {
+          sql: `UPDATE matches SET 
+                  status = ?,
+                  confirmation_status = ?,
+                  confirmed_by_pa_at = ?,
+                  confirmed_by_pb_at = ?,
+                  updated_at = datetime('now')
+                WHERE id = ?;`,
+          args: [newStatus, confirmationStatus, confirmedByPa, confirmedByPb, matchId],
+        },
+      ],
+      {
+        actorId: session.participantId,
+        actorName: session.participant.display_name,
+        category: 'match',
+        action: 'confirm_match_report',
+        entityType: 'match',
+        entityId: matchId,
+        beforeJson: {
+          status: match.status,
+          confirmationStatus: match.confirmation_status,
+          confirmedByPa: match.confirmed_by_pa_at,
+          confirmedByPb: match.confirmed_by_pb_at,
+        },
+        afterJson: {
+          status: newStatus,
+          confirmationStatus,
+          score: `${match.home_score ?? 0}-${match.away_score ?? 0}`,
+          confirmedByPa,
+          confirmedByPb,
+        },
+        reason: `${session.participant.display_name} menyetujui dan mengesahkan laporan hasil ${matchId} (Skor ${match.home_score ?? 0}-${match.away_score ?? 0}).`,
+        ruleArticle: 'Pasal 22 ayat (5)',
+      }
+    );
+
+    revalidatePath('/');
+    revalidatePath('/matches');
+    revalidatePath('/standings');
+    revalidatePath('/control');
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('confirmMatchReportAction error:', err);
+    return { error: err?.message || 'Gagal mengonfirmasi hasil pertandingan.' };
+  }
 }
 
 /**

@@ -31,6 +31,27 @@ import {
   redactAuditEventsForViewer,
 } from './audit';
 
+export function sanitizeInStatement(
+  statement: InStatement | { sql: string; args?: unknown[] }
+): InStatement {
+  if (typeof statement === 'string') {
+    return statement;
+  }
+  if (Array.isArray(statement.args)) {
+    return {
+      sql: statement.sql,
+      args: statement.args.map((a) => (a === undefined ? null : a)) as any,
+    };
+  }
+  if (statement && typeof statement === 'object' && 'args' in statement && Array.isArray((statement as any).args)) {
+    return {
+      sql: (statement as any).sql,
+      args: (statement as any).args.map((a: unknown) => (a === undefined ? null : a)),
+    } as InStatement;
+  }
+  return statement as InStatement;
+}
+
 let cachedClient: Client | null = null;
 
 export function getDbClient(): Client {
@@ -43,11 +64,19 @@ export function getDbClient(): Client {
     throw new Error('TURSO_DATABASE_URL environment variable is required.');
   }
 
-  cachedClient = createClient({
+  const rawClient = createClient({
     url,
     authToken: authToken || undefined,
   });
 
+  const rawExecute = rawClient.execute.bind(rawClient);
+  const rawBatch = rawClient.batch.bind(rawClient);
+
+  rawClient.execute = ((stmt: InStatement) => rawExecute(sanitizeInStatement(stmt))) as any;
+  rawClient.batch = ((stmts: InStatement[], mode?: 'write' | 'read' | 'deferred') =>
+    rawBatch(stmts.map(sanitizeInStatement), mode)) as any;
+
+  cachedClient = rawClient;
   return cachedClient;
 }
 
@@ -840,19 +869,6 @@ export async function prepareAuditEventStatement(params: RecordAuditParams): Pro
       timestamp,
     ],
   };
-}
-
-function sanitizeInStatement(statement: InStatement): InStatement {
-  if (typeof statement === 'string') {
-    return statement;
-  }
-  if (Array.isArray(statement.args)) {
-    return {
-      sql: statement.sql,
-      args: statement.args.map((a) => (a === undefined ? null : a)),
-    };
-  }
-  return statement;
 }
 
 /**

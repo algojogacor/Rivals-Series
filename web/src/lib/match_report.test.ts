@@ -2,25 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { createClient } from '@libsql/client';
 import fs from 'node:fs';
 import path from 'node:path';
+import { sanitizeInStatement } from './db';
 
 describe('Match Report Submission & Screenshot Optionality', () => {
   it('Sanitizes undefined statement arguments to null so LibSQL never throws TypeError', () => {
-    type InStatementLike = { sql: string; args: unknown[] };
-
-    function sanitizeInStatement(statement: string | InStatementLike): string | InStatementLike {
-      if (typeof statement === 'string') return statement;
-      if (Array.isArray(statement.args)) {
-        return { sql: statement.sql, args: statement.args.map((a) => (a === undefined ? null : a)) };
-      }
-      return statement;
-    }
-
-    const rawStmt: InStatementLike = {
+    const rawStmt = {
       sql: 'INSERT INTO test (a, b, c) VALUES (?, ?, ?);',
       args: ['valid', undefined, 123],
     };
 
-    const sanitized = sanitizeInStatement(rawStmt) as InStatementLike;
+    const sanitized = sanitizeInStatement(rawStmt) as { sql: string; args: unknown[] };
     expect(sanitized.args).toEqual(['valid', null, 123]);
     expect(sanitized.args[1]).toBeNull();
   });
