@@ -24,16 +24,22 @@ export function PlayerAvatar({
   size = 'md',
   className = '',
 }: PlayerAvatarProps) {
+  const variant = size === 'xl' ? 'card' : 'mini';
+
   const candidates = React.useMemo(() => {
     if (!cardId && !basePlayerId) return [];
-    return getPlayerImageCandidateUrls(cardId || basePlayerId || '', basePlayerId || undefined);
-  }, [cardId, basePlayerId]);
+    return getPlayerImageCandidateUrls(
+      cardId || basePlayerId || '',
+      basePlayerId || undefined,
+      variant
+    );
+  }, [cardId, basePlayerId, variant]);
 
   const [candidateIndex, setCandidateIndex] = useState(0);
 
   useEffect(() => {
     setCandidateIndex(0);
-  }, [cardId, basePlayerId]);
+  }, [cardId, basePlayerId, variant]);
 
   const initials = React.useMemo(() => {
     const cleaned = (name || 'P').trim();
@@ -45,17 +51,17 @@ export function PlayerAvatar({
   }, [name]);
 
   const sizeMap = {
-    sm: 'w-9 h-9 text-xs rounded-[6px]',
-    md: 'w-12 h-12 text-sm rounded-[8px]',
-    lg: 'w-16 h-16 text-lg rounded-[10px]',
-    xl: 'w-24 h-24 text-2xl rounded-[12px]',
+    sm: 'w-12 h-8 text-xs rounded-[6px]',
+    md: 'w-[68px] h-[48px] text-sm rounded-[8px]',
+    lg: 'w-[84px] h-[58px] text-lg rounded-[8px]',
+    xl: 'w-24 h-[134px] text-2xl rounded-[10px]',
   };
 
   const borderStyle = Number(isTrending) === 1
     ? 'border-[var(--p-a)]/60 bg-[var(--p-a-soft)]'
     : Number(isIndonesian) === 1
     ? 'border-[var(--ok)]/60 bg-[var(--ok)]/10'
-    : 'border-[var(--line)] bg-[var(--ink-2)]';
+    : 'border-[var(--line)] bg-[var(--ink-1)]';
 
   const activeUrl = candidateIndex < candidates.length ? candidates[candidateIndex] : null;
 
@@ -70,7 +76,7 @@ export function PlayerAvatar({
           alt={name}
           loading="lazy"
           onError={() => setCandidateIndex((prev) => prev + 1)}
-          className="w-full h-full object-cover object-top"
+          className="w-full h-full object-contain"
         />
       ) : (
         <div className="flex flex-col items-center justify-center leading-none">

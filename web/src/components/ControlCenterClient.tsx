@@ -55,6 +55,8 @@ import { PlayerTag } from './PlayerTag';
 import { StatusChip } from './StatusChip';
 import { SquadBuilderWorkbench } from './SquadBuilderWorkbench';
 import { AuditTrailPanel } from './AuditTrailPanel';
+import { SquadPlayerSelect } from './SquadPlayerSelect';
+import { PlayerAvatar } from './PlayerAvatar';
 import { AuditChainVerification, AuditEventRecord } from '@/lib/audit';
 
 interface DraftGoalEvent {
@@ -694,11 +696,11 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                 {/* Collapsible Steps */}
                 <div className="space-y-3">
                   {/* Step 0: Pencetak Gol Resmi (Golden Boot · Pasal 41) */}
-                  <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] overflow-hidden">
+                  <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)]">
                     <button
                       type="button"
                       onClick={() => setStepScorersOpen(!stepScorersOpen)}
-                      className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--ink-1)]/50 transition-colors"
+                      className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--ink-1)]/50 transition-colors rounded-t-[8px]"
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-xs text-[var(--text)] uppercase">
@@ -729,7 +731,7 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                                 setDraftScorerParticipant(nextP);
                                 setDraftScorerRosterId('');
                               }}
-                              className="w-full h-9 px-2.5 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] text-xs font-bold text-[var(--text)]"
+                              className="w-full h-[44px] px-2.5 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs font-bold text-[var(--text)]"
                             >
                               <option value="participant_a">{pA.display_name} (A)</option>
                               <option value="participant_b">{pB.display_name} (B)</option>
@@ -741,20 +743,14 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                               Pilih Pemain dari Skuad ({draftScorerParticipant === 'participant_a' ? pA.display_name : pB.display_name})
                             </label>
                             {(draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).length > 0 ? (
-                              <select
+                              <SquadPlayerSelect
+                                cards={draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards}
                                 value={draftScorerRosterId}
-                                onChange={(e) => setDraftScorerRosterId(e.target.value)}
-                                className="w-full h-9 px-2.5 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] text-xs text-[var(--text)]"
-                              >
-                                <option value="">— Pilih Kartu Skuad atau Ketik Manual —</option>
-                                {(draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    [{c.position || '—'}] {c.player_name} ({c.card_version})
-                                    {c.is_trending === 1 ? ' ★TRENDING' : ''}
-                                    {c.is_indonesian === 1 ? ' 🇮🇩IDN' : ''}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(val) => setDraftScorerRosterId(val)}
+                                placeholder="Cari & pilih pemain pencetak gol..."
+                                emptyOptionLabel="— Ketik Manual Nama Pencetak Gol —"
+                                emptyOptionValue=""
+                              />
                             ) : null}
                             {(!draftScorerRosterId ||
                               (draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).length === 0) && (
@@ -785,12 +781,12 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                                   else if (m <= 90) setDraftGoalPeriod('second_half');
                                   else setDraftGoalPeriod('et');
                                 }}
-                                className="w-14 h-9 px-2 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] text-xs font-mono text-center text-[var(--text)]"
+                                className="w-14 h-[44px] px-2 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs font-mono text-center text-[var(--text)]"
                               />
                               <select
                                 value={draftGoalPeriod}
                                 onChange={(e) => setDraftGoalPeriod(e.target.value as any)}
-                                className="flex-1 h-9 px-1.5 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] text-[11px] text-[var(--text)]"
+                                className="flex-1 h-[44px] px-1.5 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[11px] text-[var(--text)]"
                               >
                                 <option value="first_half">B1</option>
                                 <option value="second_half">B2</option>
@@ -812,7 +808,7 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                             <button
                               type="button"
                               onClick={handleAddDraftGoal}
-                              className="h-9 px-3 rounded-[6px] bg-[var(--text)] text-[var(--ink-0)] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1 hover:opacity-90"
+                              className="h-[44px] px-3 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1 hover:opacity-90"
                             >
                               <Plus className="w-3.5 h-3.5" />
                               <span>Tambah Gol</span>
@@ -829,6 +825,16 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                                 className="flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] bg-[var(--ink-1)] border border-[var(--line)]"
                               >
                                 <div className="flex flex-wrap items-center gap-2">
+                                  {(g.scorer_card_id || g.scorer_base_player_id) && (
+                                    <PlayerAvatar
+                                      cardId={g.scorer_card_id}
+                                      basePlayerId={g.scorer_base_player_id}
+                                      name={g.scorer_player_name}
+                                      isTrending={g.is_trending}
+                                      isIndonesian={g.is_indonesian}
+                                      size="sm"
+                                    />
+                                  )}
                                   <span
                                     className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
                                     style={{
@@ -885,11 +891,11 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                   </div>
 
                   {/* Step 1: Kiper Starter */}
-                  <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] overflow-hidden">
+                  <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)]">
                     <button
                       type="button"
                       onClick={() => setStepGkOpen(!stepGkOpen)}
-                      className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--ink-1)]/50 transition-colors"
+                      className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--ink-1)]/50 transition-colors rounded-t-[8px]"
                     >
                       <span className="font-semibold text-xs text-[var(--text)] uppercase">
                         Kiper Starter (Golden Glove · Pasal 42)
@@ -904,21 +910,16 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                             Kiper Starter {pA.display_name} (A)
                           </label>
                           {paSquadCards.length > 0 && (
-                            <select
-                              value={paSelectedGkCardId}
-                              onChange={(e) => setPaSelectedGkCardId(e.target.value)}
-                              className="w-full h-10 px-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-[var(--text)]"
-                            >
-                              {paSquadCards
+                            <SquadPlayerSelect
+                              cards={paSquadCards
                                 .slice()
-                                .sort((a, b) => (a.position === 'GK' ? -1 : b.position === 'GK' ? 1 : 0))
-                                .map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    [{c.position || '—'}] {c.player_name} ({c.card_version})
-                                  </option>
-                                ))}
-                              <option value="manual">— Ketik Nama Kiper Manual —</option>
-                            </select>
+                                .sort((a, b) => (a.position === 'GK' ? -1 : b.position === 'GK' ? 1 : 0))}
+                              value={paSelectedGkCardId}
+                              onChange={(val) => setPaSelectedGkCardId(val)}
+                              placeholder="Cari & pilih kiper starter A..."
+                              emptyOptionLabel="— Ketik Nama Kiper Manual —"
+                              emptyOptionValue="manual"
+                            />
                           )}
                           {(paSelectedGkCardId === 'manual' || paSquadCards.length === 0) && (
                             <input
@@ -962,21 +963,16 @@ d. Berikan kesimpulan akhir yang jelas: TERBUKTI atau TIDAK TERBUKTI.`;
                             Kiper Starter {pB.display_name} (B)
                           </label>
                           {pbSquadCards.length > 0 && (
-                            <select
-                              value={pbSelectedGkCardId}
-                              onChange={(e) => setPbSelectedGkCardId(e.target.value)}
-                              className="w-full h-10 px-3 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-[var(--text)]"
-                            >
-                              {pbSquadCards
+                            <SquadPlayerSelect
+                              cards={pbSquadCards
                                 .slice()
-                                .sort((a, b) => (a.position === 'GK' ? -1 : b.position === 'GK' ? 1 : 0))
-                                .map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    [{c.position || '—'}] {c.player_name} ({c.card_version})
-                                  </option>
-                                ))}
-                              <option value="manual">— Ketik Nama Kiper Manual —</option>
-                            </select>
+                                .sort((a, b) => (a.position === 'GK' ? -1 : b.position === 'GK' ? 1 : 0))}
+                              value={pbSelectedGkCardId}
+                              onChange={(val) => setPbSelectedGkCardId(val)}
+                              placeholder="Cari & pilih kiper starter B..."
+                              emptyOptionLabel="— Ketik Nama Kiper Manual —"
+                              emptyOptionValue="manual"
+                            />
                           )}
                           {(pbSelectedGkCardId === 'manual' || pbSquadCards.length === 0) && (
                             <input

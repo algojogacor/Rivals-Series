@@ -49,6 +49,7 @@ import {
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayerDetailModal } from './PlayerDetailModal';
 import { PlayerTag } from './PlayerTag';
+import { SquadPlayerSelect } from './SquadPlayerSelect';
 
 interface SquadBuilderWorkbenchProps {
   session: {
@@ -1680,11 +1681,14 @@ export function SquadBuilderWorkbench({
                             </span>
                           </div>
 
-                          <select
+                          <SquadPlayerSelect
+                            cards={myCards}
                             disabled={!canModifyMySquad || isPending}
                             value={assigned?.id || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
+                            placeholder="Cari & pilih pemain dari skuad..."
+                            emptyOptionLabel="— Kosongkan Slot Ini —"
+                            emptyOptionValue=""
+                            onChange={(val) => {
                               startTransition(async () => {
                                 if (val) {
                                   await updateRosterCardSlotAction({
@@ -1702,17 +1706,7 @@ export function SquadBuilderWorkbench({
                                 onSquadLockedChange?.();
                               });
                             }}
-                            className="w-full h-9 px-2.5 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] text-xs text-[var(--text)]"
-                          >
-                            <option value="">— Pilih Pemain dari Skuad —</option>
-                            {myCards.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                [{c.position || '—'}] {c.player_name} ({c.overall_max || '—'})
-                                {c.is_trending ? ' ★TRENDING' : ''}
-                                {c.is_indonesian ? ' 🇮🇩IDN' : ''}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
                       );
                     })}

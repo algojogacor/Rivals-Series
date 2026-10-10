@@ -192,7 +192,8 @@ export interface EfootballPlayerDetail extends EfootballPlayerSummary {
  */
 export function getPlayerImageCandidateUrls(
   cardId: string | number,
-  basePlayerId?: string | number | null
+  basePlayerId?: string | number | null,
+  variant: 'mini' | 'card' | 'cutout' = 'mini'
 ): string[] {
   const cid = String(cardId);
   let bid = basePlayerId ? String(basePlayerId) : cid;
@@ -204,21 +205,36 @@ export function getPlayerImageCandidateUrls(
     }
   }
   const envBase = (process.env.NEXT_PUBLIC_PLAYER_IMAGE_BASE_URL || '').trim().replace(/\/+$/, '');
-  const upstreamBase = 'https://efimg.com/efootballhub22/images/Player';
-
-  const bases = envBase ? [envBase, upstreamBase] : [upstreamBase];
-  const filenames =
-    cid !== bid
-      ? [`${cid}_l.png`, `${cid}_.png`, `${bid}_.png`, `${bid}_l.png`]
-      : [`${cid}_.png`, `${cid}_l.png`];
+  const upstreamRoot = 'https://efimg.com/efootballhub22/images';
 
   const urls: string[] = [];
-  for (const b of bases) {
-    for (const fn of filenames) {
-      const url = `${b}/${fn}`;
-      if (!urls.includes(url)) {
-        urls.push(url);
-      }
+  const pushUnique = (u: string) => {
+    if (!urls.includes(u)) urls.push(u);
+  };
+
+  if (variant === 'card') {
+    if (envBase) pushUnique(`${envBase}/player_cards/${cid}_l.png`);
+    pushUnique(`${upstreamRoot}/player_cards/${cid}_l.png`);
+    if (envBase) pushUnique(`${envBase}/mini-cards/${cid}_l.png`);
+    pushUnique(`${upstreamRoot}/mini-cards/mini-cards/${cid}_l.png`);
+  } else if (variant === 'mini') {
+    if (envBase) pushUnique(`${envBase}/mini-cards/${cid}_l.png`);
+    pushUnique(`${upstreamRoot}/mini-cards/mini-cards/${cid}_l.png`);
+    if (envBase) pushUnique(`${envBase}/player_cards/${cid}_l.png`);
+    pushUnique(`${upstreamRoot}/player_cards/${cid}_l.png`);
+  }
+
+  const cutoutBases = envBase
+    ? [envBase, `${upstreamRoot}/Player`]
+    : [`${upstreamRoot}/Player`];
+  const cutoutFiles =
+    cid !== bid
+      ? [`${cid}_.png`, `${cid}_l.png`, `${bid}_.png`, `${bid}_l.png`]
+      : [`${cid}_.png`, `${cid}_l.png`];
+
+  for (const b of cutoutBases) {
+    for (const fn of cutoutFiles) {
+      pushUnique(`${b}/${fn}`);
     }
   }
   return urls;
