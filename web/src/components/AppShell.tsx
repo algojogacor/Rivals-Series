@@ -90,8 +90,8 @@ export function AppShell({ session, children }: AppShellProps) {
         <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-5 md:px-8">
           {/* Kiri: Logo "RS" (blok persegi) + "Rivals Series" */}
           <Link href="/" className="flex items-center gap-3 group focus:outline-none">
-            <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] p-1.5 transition-all group-hover:border-[var(--p-a)] group-hover:shadow-[0_0_12px_var(--p-a-glow)]">
-              <MonogramLogo className="w-5 h-5" fill="var(--text)" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] p-1 transition-all group-hover:border-[var(--p-a)] group-hover:shadow-[0_0_12px_var(--p-a-glow)]">
+              <MonogramLogo className="w-[26px] h-auto" fill="var(--text)" />
             </div>
             <div className="flex items-center gap-1.5 font-[family-name:var(--font-display)]">
               <span className="font-extrabold text-xl tracking-tight uppercase text-[var(--text)] group-hover:text-white transition-colors">

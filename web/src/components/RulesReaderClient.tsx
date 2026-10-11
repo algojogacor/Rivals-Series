@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Search, ChevronRight, Scale, BookOpen, Link2, Check, X } from 'lucide-react';
 import { useEffect, useCallback } from 'react';
+import { MonogramLogo } from './MonogramLogo';
 
 interface BabItem {
   id: string;
@@ -456,17 +457,22 @@ export function RulesReaderClient() {
       {/* 1. Header & Quote Integritas */}
       <div className="space-y-6 border-b border-[var(--line)] pb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-[var(--ink-2)] border border-[var(--line)] text-[var(--accent)] mb-1">
-              <Scale className="w-3 h-3" />
-              <span>Buku Aturan Otoritatif</span>
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--ink-1)] border border-[var(--line)] p-2 shrink-0 shadow-sm mt-1">
+              <MonogramLogo className="w-8 h-auto" fill="var(--text)" />
             </div>
-            <h1 className="font-[family-name:var(--font-display)] font-extrabold text-[clamp(2.5rem,5vw,3.75rem)] uppercase tracking-tight text-[var(--text)] leading-none">
-              Regulasi Liga
-            </h1>
-            <p className="text-[13px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
-              Regulasi Resmi Rivals Series Season 1 · Versi 1.0 (52 Pasal)
-            </p>
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-[var(--ink-2)] border border-[var(--line)] text-[var(--p-a)] mb-1">
+                <Scale className="w-3 h-3" />
+                <span>Buku Aturan Otoritatif</span>
+              </div>
+              <h1 className="font-[family-name:var(--font-display)] font-extrabold text-[clamp(2.5rem,5vw,3.75rem)] uppercase tracking-tight text-[var(--text)] leading-none">
+                Regulasi Liga
+              </h1>
+              <p className="text-[13px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
+                Regulasi Resmi Rivals Series Season 1 · Versi 1.0 (52 Pasal)
+              </p>
+            </div>
           </div>
 
           <Link

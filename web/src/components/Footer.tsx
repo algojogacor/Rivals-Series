@@ -10,7 +10,7 @@ export function Footer() {
           {/* Col 1: Identity */}
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center gap-3">
-              <MonogramLogo className="w-8 h-8" width={32} height={21} fill="#EEE6DA" />
+              <MonogramLogo className="w-8 h-auto" width={32} height={21} fill="#EEE6DA" />
               <div>
                 <h3 className="text-sm font-bold tracking-tight text-[#EEE6DA] uppercase">
                   Rivals Series Season 1
