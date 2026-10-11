@@ -31,6 +31,7 @@ import {
 import {
   calculateStandings,
   calculateGoldenBoot,
+  calculatePlaymakerAward,
   calculateGoldenGlove,
   calculateWinningStreak,
   calculateGoalOfTheSeason,
@@ -112,6 +113,7 @@ export const getCachedStatisticsData = unstable_cache(
     const confirmedIds = new Set(confirmedMatches.map((m) => m.id));
 
     const topScorers = calculateGoldenBoot(goalEvents, confirmedIds);
+    const topAssisters = calculatePlaymakerAward(goalEvents, confirmedIds);
     const topGoalkeepers = calculateGoldenGlove(gkRecords, matches);
     const paStreak = calculateWinningStreak(matches, 'participant_a');
     const pbStreak = calculateWinningStreak(matches, 'participant_b');
@@ -126,6 +128,7 @@ export const getCachedStatisticsData = unstable_cache(
       seasonSettings,
       standings,
       topScorers,
+      topAssisters,
       topGoalkeepers,
       paStreak,
       pbStreak,
@@ -172,6 +175,7 @@ export const getCachedAwardsData = unstable_cache(
     const confirmedIds = new Set(confirmedMatches.map((m) => m.id));
 
     const bootLeaders = calculateGoldenBoot(goalEvents, confirmedIds);
+    const playmakerLeaders = calculatePlaymakerAward(goalEvents, confirmedIds);
     const gloveLeaders = calculateGoldenGlove(gkRecords, matches);
     const gotsResults = calculateGoalOfTheSeason(goalNominations, awardBallots);
     const paStreak = calculateWinningStreak(matches, 'participant_a');
@@ -189,6 +193,7 @@ export const getCachedAwardsData = unstable_cache(
       awardBallots,
       standings,
       bootLeaders,
+      playmakerLeaders,
       gloveLeaders,
       gotsResults,
       paStreak,

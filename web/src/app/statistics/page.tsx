@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { getCachedStatisticsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
 import { EmptyState } from '@/components/EmptyState';
-import { Trophy, Shield, Zap, Award, Flame } from 'lucide-react';
+import { Trophy, Shield, Zap, Award, Flame, Sparkles } from 'lucide-react';
 import { RollingNumber } from '@/components/fx/RollingNumber';
 
 export const metadata = {
   title: 'Statistik | Rivals Series Season 1',
-  description: 'Statistik resmi pencetak gol Golden Boot, clean sheet Golden Glove, dan rekor performa musim.',
+  description:
+    'Statistik resmi pencetak gol Golden Boot, kreator peluang Playmaker of the Season, clean sheet Golden Glove, dan rekor performa musim.',
 };
 
 export const revalidate = 300;
@@ -17,6 +18,7 @@ export default async function StatisticsPage() {
     participants,
     standings,
     topScorers,
+    topAssisters,
     topGoalkeepers,
     paStreak,
     pbStreak,
@@ -62,57 +64,57 @@ export default async function StatisticsPage() {
         </p>
       </div>
 
-      {/* 2. Dua Kolom: Golden Boot & Golden Glove */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* 2. Tiga Kolom Gelar Individual: Golden Boot, Playmaker, & Golden Glove */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Golden Boot (Pencetak Gol) */}
-        <section className="space-y-4">
+        <section className="space-y-4 flex flex-col">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)] flex items-center gap-2.5">
-              <Trophy className="w-5 h-5 text-[var(--gold)]" />
-              <span>Golden Boot (Top Scorer)</span>
+            <h2 className="font-[family-name:var(--font-display)] font-extrabold text-xl uppercase tracking-tight text-[var(--text)] flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-[var(--gold)] shrink-0" />
+              <span>Golden Boot</span>
             </h2>
             <Link
               href="/rules#pasal-42"
-              className="text-xs font-semibold text-[var(--text-dim)] hover:text-[var(--text)] underline underline-offset-4 uppercase tracking-wider"
+              className="text-[11px] font-semibold text-[var(--text-dim)] hover:text-[var(--text)] underline underline-offset-4 uppercase tracking-wider"
             >
-              Pasal 42 Regulasi
+              Pasal 42
             </Link>
           </div>
 
           {topScorers.length > 0 ? (
-            <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm">
+            <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm flex-1">
               {topScorers.map((s, idx) => {
                 const isA = s.participant_id === 'participant_a';
                 const p = isA ? pA : pB;
                 return (
                   <div
                     key={s.player_name}
-                    className="p-4 flex items-center justify-between gap-4 hover:bg-[var(--ink-2)]/40 transition-colors"
+                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-[var(--ink-2)]/40 transition-colors"
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <span className="font-[family-name:var(--font-display)] font-extrabold text-2xl text-[var(--text-dim)] tabular-nums w-7 shrink-0 text-center">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-[family-name:var(--font-display)] font-extrabold text-xl text-[var(--text-dim)] tabular-nums w-6 shrink-0 text-center">
                         #{idx + 1}
                       </span>
                       <div className="min-w-0">
-                        <span className="font-semibold text-base text-[var(--text)] block truncate">
+                        <span className="font-semibold text-sm text-[var(--text)] block truncate">
                           {s.player_name}
                         </span>
                         {s.card_versions.length > 0 && (
-                          <span className="text-xs text-[var(--text-faint)] block truncate font-mono">
+                          <span className="text-[11px] text-[var(--text-faint)] block truncate font-mono">
                             {s.card_versions.join(' + ')}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
                       <PlayerTag
                         id={s.participant_id}
                         name=""
                         monogram={p.monogram}
                         size="sm"
                       />
-                      <span className="font-[family-name:var(--font-display)] font-extrabold text-3xl tabular-nums text-[var(--text)] min-w-[36px] text-right">
+                      <span className="font-[family-name:var(--font-display)] font-extrabold text-2xl tabular-nums text-[var(--gold)] min-w-[28px] text-right">
                         {s.total_goals}
                       </span>
                     </div>
@@ -123,60 +125,128 @@ export default async function StatisticsPage() {
           ) : (
             <EmptyState
               motif="boot"
-              title="Perburuan Sepatu Emas Belum Dimulai"
-              description="Pemain virtual dengan jumlah gol sah terbanyak akan memimpin daftar ini. Seluruh versi kartu dari pemain virtual yang sama digabungkan."
-              nextStep="Gol akan otomatis diagregasi saat laporan pertandingan disahkan kedua pemain (Pasal 42)."
+              title="Perburuan Golden Boot"
+              description="Pemain virtual dengan jumlah gol sah terbanyak. Seluruh versi kartu digabungkan."
+              nextStep="Otomatis diagregasi saat laporan disahkan kedua pemain (Pasal 42)."
+              className="flex-1"
+            />
+          )}
+        </section>
+
+        {/* Playmaker of the Season (Top Assist) */}
+        <section className="space-y-4 flex flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-[family-name:var(--font-display)] font-extrabold text-xl uppercase tracking-tight text-[var(--text)] flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[var(--p-b)] shrink-0" />
+              <span>Playmaker of Season</span>
+            </h2>
+            <Link
+              href="/rules#pasal-42a"
+              className="text-[11px] font-semibold text-[var(--text-dim)] hover:text-[var(--text)] underline underline-offset-4 uppercase tracking-wider"
+            >
+              Pasal 42A
+            </Link>
+          </div>
+
+          {topAssisters.length > 0 ? (
+            <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm flex-1">
+              {topAssisters.map((a, idx) => {
+                const isA = a.participant_id === 'participant_a';
+                const p = isA ? pA : pB;
+                return (
+                  <div
+                    key={a.player_name}
+                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-[var(--ink-2)]/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-[family-name:var(--font-display)] font-extrabold text-xl text-[var(--text-dim)] tabular-nums w-6 shrink-0 text-center">
+                        #{idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-sm text-[var(--text)] block truncate">
+                          {a.player_name}
+                        </span>
+                        {a.card_versions.length > 0 && (
+                          <span className="text-[11px] text-[var(--text-faint)] block truncate font-mono">
+                            {a.card_versions.join(' + ')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <PlayerTag
+                        id={a.participant_id}
+                        name=""
+                        monogram={p.monogram}
+                        size="sm"
+                      />
+                      <span className="font-[family-name:var(--font-display)] font-extrabold text-2xl tabular-nums text-[var(--p-b)] min-w-[28px] text-right">
+                        {a.total_assists}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              motif="playmaker"
+              title="Perburuan Top Asis"
+              description="Pemain virtual dengan catatan asis terbanyak. Seluruh versi kartu digabungkan."
+              nextStep="Otomatis diagregasi dari asis sah pada formulir laporan hasil (Pasal 42A)."
+              className="flex-1"
             />
           )}
         </section>
 
         {/* Golden Glove (Clean Sheet Kiper) */}
-        <section className="space-y-4">
+        <section className="space-y-4 flex flex-col">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)] flex items-center gap-2.5">
-              <Shield className="w-5 h-5 text-[var(--p-a)]" />
-              <span>Golden Glove (Kiper Terbaik)</span>
+            <h2 className="font-[family-name:var(--font-display)] font-extrabold text-xl uppercase tracking-tight text-[var(--text)] flex items-center gap-2">
+              <Shield className="w-4 h-4 text-[var(--p-a)] shrink-0" />
+              <span>Golden Glove</span>
             </h2>
             <Link
               href="/rules#pasal-44"
-              className="text-xs font-semibold text-[var(--text-dim)] hover:text-[var(--text)] underline underline-offset-4 uppercase tracking-wider"
+              className="text-[11px] font-semibold text-[var(--text-dim)] hover:text-[var(--text)] underline underline-offset-4 uppercase tracking-wider"
             >
-              Pasal 44 Regulasi
+              Pasal 44
             </Link>
           </div>
 
           {topGoalkeepers.length > 0 ? (
-            <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm">
+            <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm flex-1">
               {topGoalkeepers.map((g, idx) => {
                 const isA = g.participant_id === 'participant_a';
                 const p = isA ? pA : pB;
                 return (
                   <div
                     key={g.goalkeeper_name}
-                    className="p-4 flex items-center justify-between gap-4 hover:bg-[var(--ink-2)]/40 transition-colors"
+                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-[var(--ink-2)]/40 transition-colors"
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <span className="font-[family-name:var(--font-display)] font-extrabold text-2xl text-[var(--text-dim)] tabular-nums w-7 shrink-0 text-center">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-[family-name:var(--font-display)] font-extrabold text-xl text-[var(--text-dim)] tabular-nums w-6 shrink-0 text-center">
                         #{idx + 1}
                       </span>
                       <div className="min-w-0">
-                        <span className="font-semibold text-base text-[var(--text)] block truncate">
+                        <span className="font-semibold text-sm text-[var(--text)] block truncate">
                           {g.goalkeeper_name}
                         </span>
-                        <span className="text-xs text-[var(--text-faint)] block">
-                          Starter bermain 90 menit reguler penuh
+                        <span className="text-[11px] text-[var(--text-faint)] block">
+                          Starter 90 menit reguler
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
                       <PlayerTag
                         id={g.participant_id}
                         name=""
                         monogram={p.monogram}
                         size="sm"
                       />
-                      <span className="font-[family-name:var(--font-display)] font-extrabold text-3xl tabular-nums text-[var(--text)] min-w-[36px] text-right">
+                      <span className="font-[family-name:var(--font-display)] font-extrabold text-2xl tabular-nums text-[var(--p-a)] min-w-[28px] text-right">
                         {g.clean_sheets}
                       </span>
                     </div>
@@ -187,9 +257,10 @@ export default async function StatisticsPage() {
           ) : (
             <EmptyState
               motif="glove"
-              title="Kiper Belum Mengukir Clean Sheet"
-              description="Hanya kiper starter yang bermain 90 menit reguler penuh tanpa kebobolan yang memenuhi syarat untuk penghargaan Golden Glove."
-              nextStep="Data clean sheet tercatat otomatis dari pemilihan nama kiper pada formulir laporan (Pasal 44)."
+              title="Perburuan Golden Glove"
+              description="Kiper starter yang bermain 90 menit reguler penuh tanpa kebobolan."
+              nextStep="Tercatat otomatis dari pemilihan nama kiper starter di laporan laga (Pasal 44)."
+              className="flex-1"
             />
           )}
         </section>

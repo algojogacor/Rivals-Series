@@ -14,6 +14,7 @@ import {
   EarlyChampionCalculation,
   GoldenBootEntry,
   GoldenGloveEntry,
+  PlaymakerEntry,
   GoalNomination,
   AwardBallot,
   GoalOfTheSeasonResult,
@@ -492,6 +493,73 @@ export function calculateGoldenBoot(
   }));
 
   return results.sort((a, b) => b.total_goals - a.total_goals);
+}
+
+/**
+ * Pasal 42A: Playmaker of the Season S1 (Top Assist)
+ * Aggregates all valid assists per virtual player across different card versions.
+ * Assist entries belong to the participant whose team scored (scoring_participant_id).
+ * Excludes own goals, unconfirmed matches, and reconstruction goals.
+ */
+export function calculatePlaymakerAward(
+  goalEvents: MatchGoalEvent[],
+  confirmedMatchIds: Set<string>
+): PlaymakerEntry[] {
+  const map = new Map<
+    string,
+    {
+      basePlayerId: number | null;
+      playerName: string;
+      participantId: ParticipantId;
+      totalAssists: number;
+      versions: Set<string>;
+    }
+  >();
+
+  for (const ev of goalEvents) {
+    // Only count assists from confirmed matches
+    if (!confirmedMatchIds.has(ev.match_id)) continue;
+    // Exclude own goals
+    if (ev.is_own_goal) continue;
+    // Exclude reconstruction-only own goals
+    if (ev.is_reconstruction_only) continue;
+    // Assist player name must be present
+    if (!ev.assist_player_name) continue;
+
+    const cleanName = ev.assist_player_name.trim();
+    if (!cleanName) continue;
+
+    const baseId = ev.assist_base_player_id ? Number(ev.assist_base_player_id) : null;
+    const key = baseId
+      ? `${ev.scoring_participant_id}::base_${baseId}`
+      : `${ev.scoring_participant_id}::name_${cleanName.toLowerCase()}`;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        basePlayerId: baseId,
+        playerName: cleanName,
+        participantId: ev.scoring_participant_id,
+        totalAssists: 0,
+        versions: new Set<string>(),
+      });
+    }
+
+    const entry = map.get(key)!;
+    entry.totalAssists += 1;
+    if (ev.assist_card_version) {
+      entry.versions.add(ev.assist_card_version);
+    }
+  }
+
+  const results: PlaymakerEntry[] = Array.from(map.values()).map((data) => ({
+    base_player_id: data.basePlayerId,
+    player_name: data.playerName,
+    participant_id: data.participantId,
+    total_assists: data.totalAssists,
+    card_versions: Array.from(data.versions),
+  }));
+
+  return results.sort((a, b) => b.total_assists - a.total_assists);
 }
 
 /**

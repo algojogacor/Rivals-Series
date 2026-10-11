@@ -309,9 +309,61 @@ const BAB_LIST: BabItem[] = [
     content: [
       {
         pasal: 'Pasal 41',
-        heading: 'Tujuh Gelar Resmi Musim',
+        heading: 'Delapan Gelar Resmi Musim',
         body: [
-          'RS S1 menganugerahkan 7 gelar: RS Champion, Golden Boot, Goal of the Season, Golden Glove, Best Defence, Longest Winning Streak, dan Most Clean Sheets.',
+          'RS S1 menganugerahkan 8 gelar: RS Champion, Golden Boot, Playmaker of the Season, Golden Glove, Best Defence, Goal of the Season, Longest Winning Streak, dan Most Clean Sheets.',
+        ],
+      },
+      {
+        pasal: 'Pasal 42',
+        heading: 'Golden Boot S1 (Top Scorer)',
+        body: [
+          'Diberikan kepada pemain virtual dengan jumlah gol sah terbanyak. Seluruh versi kartu digabung per pemain virtual.',
+        ],
+      },
+      {
+        pasal: 'Pasal 42A',
+        heading: 'Playmaker of the Season S1 (Top Asis)',
+        body: [
+          'Diberikan kepada pemain virtual dengan jumlah asis sah terbanyak dalam pertandingan resmi yang disahkan.',
+          'Pencatatan asis bersifat opsional pada pelaporan hasil pertandingan.',
+          'Versi kartu yang berbeda dari pemain virtual bernama sama (base player ID yang sama) digabungkan untuk penghargaan ini.',
+          'Jika jumlah asis tertinggi sama, penghargaan diberikan bersama (co-winner) tanpa tiebreaker fiktif.',
+        ],
+      },
+      {
+        pasal: 'Pasal 44',
+        heading: 'Golden Glove S1 (Kiper Terbaik)',
+        body: [
+          'Diberikan kepada kiper starter yang bermain 90 menit reguler penuh dengan clean sheet terbanyak.',
+        ],
+      },
+      {
+        pasal: 'Pasal 43',
+        heading: 'Goal of the Season S1',
+        body: [
+          'Gol terbaik hasil pemeringkatan rahasia kedua peserta (bobot 4–3–2–1).',
+        ],
+      },
+      {
+        pasal: 'Pasal 45',
+        heading: 'Best Defence S1',
+        body: [
+          'Peserta dengan jumlah kebobolan (GA) paling sedikit dalam klasemen akhir.',
+        ],
+      },
+      {
+        pasal: 'Pasal 46',
+        heading: 'Longest Winning Streak S1',
+        body: [
+          'Rangkaian kemenangan pertandingan sportif beruntun paling panjang sepanjang musim.',
+        ],
+      },
+      {
+        pasal: 'Pasal 47',
+        heading: 'Most Clean Sheets S1',
+        body: [
+          'Peserta dengan jumlah clean sheet tim terbanyak di seluruh musim.',
         ],
       },
     ],

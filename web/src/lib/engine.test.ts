@@ -11,6 +11,7 @@ import {
   calculateGoldenGlove,
   calculateWinningStreak,
   calculateGoalOfTheSeason,
+  calculatePlaymakerAward,
   validateSquadForLock,
   evaluateMatchTrendingCompliance,
 } from './engine';
@@ -739,6 +740,119 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
     expect(
       evaluateMatchTrendingCompliance({ trending_first_half: 0, trending_second_half: 0 }).compliant
     ).toBe(false);
+  });
+
+  // Test 19: calculatePlaymakerAward aggregates assists per virtual player, combines card versions, excludes OG & unconfirmed
+  it('Criterion 19: calculatePlaymakerAward calculates Playmaker of the Season correctly (Pasal 42A)', () => {
+    const confirmedMatches = new Set(['MD1', 'MD2']);
+
+    const goalEvents: MatchGoalEvent[] = [
+      // Match 1 (confirmed): Marselino assists with Highlight card
+      {
+        id: 'g1',
+        match_id: 'MD1',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Rafael Struick',
+        scorer_card_id: 'card_rs_1',
+        minute: 25,
+        period: 'regular_first_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+        assist_player_name: 'Marselino Ferdinan',
+        assist_card_id: 'card_mf_1',
+        assist_base_player_id: 150001,
+        assist_card_version: 'Highlight · Timnas',
+      },
+      // Match 2 (confirmed): Marselino assists again, but with Standard card version
+      {
+        id: 'g2',
+        match_id: 'MD2',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Rafael Struick',
+        scorer_card_id: 'card_rs_1',
+        minute: 40,
+        period: 'regular_first_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+        assist_player_name: 'Marselino Ferdinan',
+        assist_card_id: 'card_mf_2',
+        assist_base_player_id: 150001,
+        assist_card_version: 'Standard',
+      },
+      // Match 2 (confirmed): K. De Bruyne assists 1 goal for participant_b
+      {
+        id: 'g3',
+        match_id: 'MD2',
+        scoring_participant_id: 'participant_b',
+        scorer_player_name: 'Erling Haaland',
+        scorer_card_id: 'card_eh_1',
+        minute: 70,
+        period: 'regular_second_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+        assist_player_name: 'K. De Bruyne',
+        assist_card_id: 'card_kdb_1',
+        assist_base_player_id: 4001,
+        assist_card_version: 'Showtime',
+      },
+      // Match 2 (confirmed): Goal without assist (assist_player_name: null)
+      {
+        id: 'g4',
+        match_id: 'MD2',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Ivar Jenner',
+        scorer_card_id: 'card_ij_1',
+        minute: 88,
+        period: 'regular_second_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+        assist_player_name: null,
+      },
+      // Match 2 (confirmed): Own goal - should NOT count assist even if set
+      {
+        id: 'g5',
+        match_id: 'MD2',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Opponent Defender',
+        minute: 12,
+        period: 'regular_first_half',
+        is_own_goal: 1,
+        is_reconstruction_only: 0,
+        assist_player_name: 'K. De Bruyne',
+        assist_base_player_id: 4001,
+      },
+      // Match 3 (unconfirmed): Marselino assists - must NOT be counted yet
+      {
+        id: 'g6',
+        match_id: 'MD3',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Rafael Struick',
+        minute: 15,
+        period: 'regular_first_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+        assist_player_name: 'Marselino Ferdinan',
+        assist_base_player_id: 150001,
+      },
+    ];
+
+    const playmakers = calculatePlaymakerAward(goalEvents, confirmedMatches);
+
+    expect(playmakers).toHaveLength(2);
+    // Rank 1: Marselino Ferdinan with 2 assists across 2 card versions
+    expect(playmakers[0].player_name).toBe('Marselino Ferdinan');
+    expect(playmakers[0].base_player_id).toBe(150001);
+    expect(playmakers[0].participant_id).toBe('participant_a');
+    expect(playmakers[0].total_assists).toBe(2);
+    expect(playmakers[0].card_versions).toEqual(
+      expect.arrayContaining(['Highlight · Timnas', 'Standard'])
+    );
+
+    // Rank 2: K. De Bruyne with 1 assist
+    expect(playmakers[1].player_name).toBe('K. De Bruyne');
+    expect(playmakers[1].base_player_id).toBe(4001);
+    expect(playmakers[1].participant_id).toBe('participant_b');
+    expect(playmakers[1].total_assists).toBe(1);
   });
 });
 

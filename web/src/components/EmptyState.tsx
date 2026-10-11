@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 
-export type EmptyStateMotif = 'pitch' | 'whistle' | 'boot' | 'glove' | 'trophy' | 'search';
+export type EmptyStateMotif = 'pitch' | 'whistle' | 'boot' | 'playmaker' | 'glove' | 'trophy' | 'search';
 
 interface EmptyStateProps {
   title: string;
@@ -73,6 +73,39 @@ export function EmptyState({
             <circle cx="40" cy="56" r="6" fill="currentColor" />
             <path d="M28 56 L52 56" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             <path d="M40 44 L40 68" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        );
+
+      case 'playmaker':
+        return (
+          <svg
+            width="80"
+            height="80"
+            viewBox="0 0 80 80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="mb-4 text-[var(--p-b)]/80 shrink-0"
+            aria-hidden="true"
+          >
+            {/* Tactical pitch grid arc */}
+            <circle cx="40" cy="40" r="32" stroke="var(--line)" strokeWidth="1.5" strokeDasharray="3 3" />
+            {/* Curved Assist trajectory path */}
+            <path
+              d="M18 56 C24 32, 44 24, 60 36"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeDasharray="4 2"
+            />
+            {/* Playmaker spark star */}
+            <path
+              d="M60 36 L66 32 L64 39 L70 42 L63 43 L62 50 L58 44 L51 44 L56 39 L54 32 Z"
+              fill="rgba(192, 132, 252, 0.25)"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            {/* Ball origin circle */}
+            <circle cx="18" cy="56" r="4" fill="var(--p-a)" />
           </svg>
         );
 

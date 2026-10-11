@@ -570,7 +570,7 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 5. Gol administratif dalam hasil forfeit hanya berfungsi untuk skor tim pada klasemen; gol tersebut tidak dikreditkan kepada pemain virtual.
 6. Technical Win dari undian tidak menciptakan GF/GA, gol individual, clean sheet, atau kemenangan sportif untuk streak.
 7. Jika statistik tidak dapat dibuktikan, website harus menunjukkan data tidak tersedia daripada mengarangnya.
-8. Untuk catatan pemain, identitas pemain di log skuad menggunakan nama dan versi kartu. Untuk penghargaan individual Golden Boot dan Golden Glove, statistik dari versi kartu yang berbeda milik pemain virtual dengan nama pemain yang sama digabungkan, sementara versi kartu tetap tercatat dalam rincian statistik.
+8. Untuk catatan pemain, identitas pemain di log skuad menggunakan nama dan versi kartu. Untuk penghargaan individual Golden Boot, Playmaker of the Season, dan Golden Glove, statistik dari versi kartu yang berbeda milik pemain virtual dengan nama pemain yang sama digabungkan, sementara versi kartu tetap tercatat dalam rincian statistik.
 
 ## Pasal 41 — RS Champion S1
 
@@ -586,6 +586,15 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 3. Gol adu penalti, gol administratif, dan gol bunuh diri rekonstruksi tidak dihitung.
 4. Versi kartu yang berbeda dari pemain virtual bernama sama digabungkan untuk penghargaan ini, tetapi rincian gol tetap dapat menampilkan versi kartu yang digunakan.
 5. Jika pemain teratas mempunyai jumlah gol sama, penghargaan dapat diberikan bersama. Tidak perlu menciptakan tiebreaker dari statistik yang tidak dicatat.
+
+## Pasal 42A — Playmaker of the Season S1
+
+1. Playmaker of the Season S1 diberikan kepada pemain virtual dengan jumlah asis terbanyak dalam pertandingan resmi yang dimainkan.
+2. Asis pada waktu reguler dan Extra Time dihitung.
+3. Asis pada adu penalti, gol administratif, dan gol bunuh diri (own goal) tidak dihitung.
+4. Pencatatan asis bersifat opsional pada formulir pelaporan hasil pertandingan. Asis yang sah diakui adalah asis yang dicantumkan saat pelaporan dan disahkan oleh kedua peserta.
+5. Versi kartu yang berbeda dari pemain virtual bernama sama (base player ID yang sama) digabungkan untuk penghargaan ini, dengan rincian asis tetap dapat menampilkan versi kartu yang digunakan.
+6. Jika dua atau lebih pemain teratas memiliki jumlah asis yang sama, penghargaan diberikan bersama (co-winner). Tidak ada tiebreaker fiktif yang diciptakan.
 
 ## Pasal 43 — Goal of the Season S1
 
@@ -655,6 +664,7 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 1. Seluruh penghargaan yang wajib untuk Season 1 adalah:
    - RS Champion S1;
    - Golden Boot S1;
+   - Playmaker of the Season S1;
    - Golden Glove S1;
    - Best Defence S1;
    - Goal of the Season S1;
@@ -854,5 +864,6 @@ Tautan atau catatan keputusan:
 | Versi | Tanggal | Pasal | Perubahan | Alasan | Persetujuan A | Persetujuan B | Berlaku mulai |
 |---|---|---|---|---|---|---|---|
 | 1.0-draft | — | — | Draft awal | Penyusunan regulasi | Menunggu | Menunggu | Setelah disetujui |
+| 1.1 | 2026-10-11 | Pasal 40(8), 42A, 48(1) | Penambahan gelar kehormatan Playmaker of the Season S1 (Top Asis) dan penggabungan versi kartu pengasis | Menghargai kreator peluang dan melengkapi penghargaan individual liga | Disetujui | Disetujui | MD1 ke atas |
 
 **Catatan sebelum MD1:** catat model/layanan AI Adjudicator yang dipilih, template adjudikasi yang digunakan, alat undian digital, pemetaan Peserta A/B ke Heads/Tails, dan snapshot skuad masing-masing peserta.

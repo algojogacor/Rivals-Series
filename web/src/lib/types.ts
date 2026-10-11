@@ -250,6 +250,14 @@ export interface GoldenGloveEntry {
   card_versions?: string[];
 }
 
+export interface PlaymakerEntry {
+  base_player_id?: number | null;
+  player_name: string;
+  participant_id: ParticipantId;
+  total_assists: number;
+  card_versions: string[];
+}
+
 export interface GoalNomination {
   id: string;
   participant_id: ParticipantId;

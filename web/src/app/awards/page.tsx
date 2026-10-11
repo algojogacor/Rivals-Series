@@ -8,7 +8,7 @@ import { TrophyShowcaseClient } from '@/components/awards/TrophyShowcaseClient';
 
 export const metadata = {
   title: 'Penghargaan | Rivals Series Season 1',
-  description: 'Tujuh gelar kehormatan resmi Rivals Series Season 1 ditentukan murni dari performa kompetisi.',
+  description: 'Delapan gelar kehormatan resmi Rivals Series Season 1 ditentukan murni dari performa kompetisi.',
 };
 
 export const revalidate = 300;
@@ -18,6 +18,7 @@ export default async function AwardsPage() {
     participants,
     standings,
     bootLeaders,
+    playmakerLeaders,
     gloveLeaders,
     gotsResults,
     paStreak,
@@ -87,6 +88,36 @@ export default async function AwardsPage() {
           <span className="text-xs text-[var(--text-faint)] font-mono">Belum ada gol tercatat</span>
         ),
       icon: <Award className="w-5 h-5 text-[var(--gold)]" />,
+      action: null,
+    },
+    {
+      title: 'Playmaker of the Season S1',
+      rule: 'Pemain virtual dengan jumlah asis sah terbanyak. Seluruh versi kartu digabung per pemain virtual.',
+      ruleRef: 'Pasal 42A',
+      leaderContent:
+        playmakerLeaders.length > 0 ? (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <PlayerTag
+                id={playmakerLeaders[0].participant_id}
+                name={playmakerLeaders[0].player_name}
+                monogram={pMap.get(playmakerLeaders[0].participant_id)?.monogram || 'P'}
+                size="sm"
+              />
+              <span className="font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums text-[var(--p-b)]">
+                {playmakerLeaders[0].total_assists} Asis
+              </span>
+            </div>
+            {playmakerLeaders[0].card_versions && playmakerLeaders[0].card_versions.length > 0 && (
+              <span className="text-xs text-[var(--text-faint)] block font-mono">
+                Versi kartu: {playmakerLeaders[0].card_versions.join(' + ')}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-[var(--text-faint)] font-mono">Belum ada asis tercatat</span>
+        ),
+      icon: <Sparkles className="w-5 h-5 text-[var(--p-b)]" />,
       action: null,
     },
     {
