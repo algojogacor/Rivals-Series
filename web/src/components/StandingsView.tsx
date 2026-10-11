@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { ParticipantStanding } from '@/lib/types';
 import { PlayerTag } from './PlayerTag';
-import { ChevronDown, ChevronUp, Flag, Award, Crown } from 'lucide-react';
+import { ChevronDown, ChevronUp, Flag, Award, Crown, Sparkles } from 'lucide-react';
+import { RollingNumber } from './fx/RollingNumber';
 
 interface StandingsViewProps {
   standings: ParticipantStanding[];
@@ -77,7 +78,7 @@ export function StandingsView({ standings }: StandingsViewProps) {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-16">
       {/* 1. Header */}
       <div className="space-y-2 border-b border-[var(--line)] pb-6">
         <div className="flex items-center gap-2">
@@ -205,7 +206,7 @@ export function StandingsView({ standings }: StandingsViewProps) {
                           color: isA ? 'var(--p-a)' : 'var(--p-b)',
                         }}
                       >
-                        {s.points}
+                        <RollingNumber value={s.points} />
                       </span>
                     </td>
 
@@ -284,7 +285,7 @@ export function StandingsView({ standings }: StandingsViewProps) {
                     className="font-[family-name:var(--font-display)] font-extrabold text-3xl tabular-nums"
                     style={{ color: isA ? 'var(--p-a)' : 'var(--p-b)' }}
                   >
-                    {s.points}
+                    <RollingNumber value={s.points} />
                   </span>
                 </div>
               </div>

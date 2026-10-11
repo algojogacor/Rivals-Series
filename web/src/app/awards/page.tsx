@@ -3,6 +3,8 @@ import { getCachedAwardsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
 import { StatusChip } from '@/components/StatusChip';
 import { Trophy, Award, Shield, Zap, Sparkles, ArrowRight, Crown } from 'lucide-react';
+import { RollingNumber } from '@/components/fx/RollingNumber';
+import { TrophyShowcaseClient } from '@/components/awards/TrophyShowcaseClient';
 
 export const metadata = {
   title: 'Penghargaan | Rivals Series Season 1',
@@ -214,7 +216,7 @@ export default async function AwardsPage() {
   ];
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 pb-16">
       {/* 1. Header */}
       <div className="space-y-2 border-b border-[var(--line)] pb-6">
         <div className="flex items-center gap-2.5">
@@ -228,27 +230,28 @@ export default async function AwardsPage() {
         </p>
       </div>
 
-      {/* 2. RS CHAMPION (Championship Trophy Banner) */}
-      <section className="relative overflow-hidden rounded-[16px] bg-[var(--ink-1)] border-2 border-[var(--gold)]/40 p-6 sm:p-10 space-y-6 shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+      {/* 2. RS CHAMPION (Championship Trophy Grand Showcase with 3D Canvas) */}
+      <section className="relative overflow-hidden rounded-[20px] bg-[var(--ink-1)] border-2 border-[var(--gold)]/40 p-6 sm:p-10 shadow-[0_16px_48px_rgba(0,0,0,0.6)]">
         {/* Subtle gold ambient glow */}
         <div
-          className="absolute -top-24 right-0 w-80 h-80 rounded-full pointer-events-none opacity-20 blur-3xl"
+          className="absolute -top-24 right-0 w-96 h-96 rounded-full pointer-events-none opacity-25 blur-3xl"
           style={{
             background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)',
           }}
         />
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--line)] pb-5">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--gold)]/10 border border-[var(--gold)]/40 text-[var(--gold)]">
+        {/* Top bar with responsive wrapping */}
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 border-b border-[var(--line)] pb-5">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[12px] bg-[var(--gold)]/10 border border-[var(--gold)]/40 text-[var(--gold)] shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.2)]">
               <Crown className="w-6 h-6 stroke-[2]" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl uppercase tracking-tight text-[var(--text)]">
                   RS Champion Season 1
                 </h2>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--gold)]/20 text-[var(--gold)] border border-[var(--gold)]/30">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--gold)]/20 text-[var(--gold)] border border-[var(--gold)]/30 shrink-0">
                   Gelar Utama
                 </span>
               </div>
@@ -258,37 +261,59 @@ export default async function AwardsPage() {
             </div>
           </div>
 
-          <StatusChip
-            status={isCompleted ? 'confirmed' : 'provisional'}
-            label={isCompleted ? 'Juara Terkunci' : 'Provisional'}
-          />
+          <div className="shrink-0">
+            <StatusChip
+              status={isCompleted ? 'confirmed' : 'provisional'}
+              label={isCompleted ? 'Juara Terkunci' : 'Provisional'}
+            />
+          </div>
         </div>
 
-        {/* Champion Leader Display */}
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-2">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">
-              Pimpinan Klasemen Sementara
-            </span>
-            <div className="flex items-center gap-4">
-              <PlayerTag
-                id={leader?.participant_id || 'participant_a'}
-                name={leaderParticipant?.display_name || 'Peserta'}
-                monogram={leaderParticipant?.monogram || 'PA'}
-                size="lg"
-              />
+        {/* Champion Details Grid: Left Info & Leader, Right 3D Trophy Showcase */}
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] items-center gap-8 pt-4">
+          {/* Left Column: Leader & Poin */}
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">
+                Pimpinan Klasemen Sementara
+              </span>
+              <div className="flex items-center gap-4 p-4 rounded-[14px] bg-[var(--ink-0)]/70 border border-[var(--line)]">
+                <PlayerTag
+                  id={leader?.participant_id || 'participant_a'}
+                  name={leaderParticipant?.display_name || 'Peserta'}
+                  monogram={leaderParticipant?.monogram || 'PA'}
+                  size="lg"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-8">
+              <div className="p-4 rounded-[14px] bg-[var(--ink-0)]/70 border border-[var(--line)] flex-1">
+                <span className="block text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">
+                  Poin Terkumpul
+                </span>
+                <span className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl tabular-nums text-[var(--gold)]">
+                  <RollingNumber value={leader?.points ?? 0} />
+                </span>
+              </div>
+
+              <div className="p-4 rounded-[14px] bg-[var(--ink-0)]/70 border border-[var(--line)] flex-1">
+                <span className="block text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">
+                  Selisih Gol (GD)
+                </span>
+                <span className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl tabular-nums text-[var(--text)]">
+                  <RollingNumber
+                    value={Math.abs(leader?.gd ?? 0)}
+                    prefix={(leader?.gd ?? 0) > 0 ? '+' : (leader?.gd ?? 0) < 0 ? '-' : ''}
+                  />
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-6 sm:text-right">
-            <div>
-              <span className="block text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">
-                Poin Terkumpul
-              </span>
-              <span className="font-[family-name:var(--font-display)] font-extrabold text-4xl sm:text-5xl tabular-nums text-[var(--gold)]">
-                {leader?.points ?? 0}
-              </span>
-            </div>
+          {/* Right Column: 3D Interactive Golden Trophy */}
+          <div className="flex flex-col items-center justify-center p-2 rounded-[16px] bg-[var(--ink-0)]/40 border border-[var(--line)]">
+            <TrophyShowcaseClient />
           </div>
         </div>
       </section>
@@ -307,7 +332,7 @@ export default async function AwardsPage() {
             >
               {/* Kiri: Nama & Aturan Singkat */}
               <div className="space-y-1 md:max-w-md">
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2.5">
                   {a.icon}
                   <h3 className="font-[family-name:var(--font-display)] font-bold text-xl uppercase tracking-tight text-[var(--text)]">
                     {a.title}

@@ -40,7 +40,7 @@ export default async function MatchesPage({
   ).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-16">
       {/* 1. Header with Segmented Control & Primary Action */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 border-b border-[var(--line)] pb-6">
         <div className="space-y-2">

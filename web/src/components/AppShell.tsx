@@ -21,6 +21,9 @@ import { ParticipantId, Participant } from '@/lib/types';
 import { PlayerTag } from './PlayerTag';
 import { MonogramLogo } from './MonogramLogo';
 import { logoutParticipantAction } from '@/lib/actions';
+import { RouteProgressBar } from './fx/RouteProgressBar';
+import { AmbientSpotlight } from './fx/AmbientSpotlight';
+import { Suspense } from 'react';
 
 interface AppShellProps {
   session: {
@@ -77,7 +80,11 @@ export function AppShell({ session, children }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--ink-0)] text-[var(--text)] pb-20 md:pb-0">
+    <div className="min-h-screen flex flex-col bg-[var(--ink-0)] text-[var(--text)] pb-28 md:pb-0">
+      <Suspense fallback={null}>
+        <RouteProgressBar />
+      </Suspense>
+      <AmbientSpotlight />
       {/* 1. TOP STICKY BAR (Desktop & Mobile header) */}
       <header className="sticky top-0 z-40 w-full h-16 bg-[var(--ink-0)]/90 backdrop-blur-md border-b border-[var(--line)]">
         <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-5 md:px-8">

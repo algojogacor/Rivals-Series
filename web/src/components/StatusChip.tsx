@@ -29,7 +29,10 @@ export function StatusChip({
   let variant: StatusVariant = 'scheduled';
   let defaultLabel = 'Terjadwal';
 
-  if (status === 'awaiting_confirmation' || confirmationStatus === 'pending') {
+  if (status === 'scheduled') {
+    variant = 'scheduled';
+    defaultLabel = 'Terjadwal';
+  } else if (status === 'awaiting_confirmation' || confirmationStatus === 'pending') {
     variant = 'awaiting_confirmation';
     defaultLabel = 'Menunggu konfirmasi';
   } else if (status === 'disputed' || confirmationStatus === 'disputed') {

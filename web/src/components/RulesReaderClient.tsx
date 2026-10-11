@@ -452,7 +452,7 @@ export function RulesReaderClient() {
   }, []);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 pb-16">
       {/* 1. Header & Quote Integritas */}
       <div className="space-y-6 border-b border-[var(--line)] pb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -479,11 +479,11 @@ export function RulesReaderClient() {
         </div>
 
         {/* Lead Quote Integritas: Stamped quote with subtle background */}
-        <div className="relative rounded-[10px] bg-[var(--ink-1)]/70 border-l-4 border-[var(--accent)] p-5 backdrop-blur-sm">
+        <div className="relative rounded-[12px] bg-[var(--ink-1)]/80 border-l-4 border-[var(--p-a)] p-5 backdrop-blur-sm shadow-sm">
           <p className="text-base sm:text-lg font-medium text-[var(--text)] italic leading-relaxed">
             &ldquo;Beban pembuktian ada pada pihak yang mengajukan klaim. Tidak ada sanksi yang boleh dijatuhkan tanpa bukti rekaman atau tangkapan layar yang sah.&rdquo;
           </p>
-          <div className="flex items-center gap-2 mt-2.5 text-[12px] text-[var(--text-faint)] font-mono">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5 text-[12px] text-[var(--text-faint)] font-mono">
             <span className="font-semibold text-[var(--text-dim)]">Pasal 3 ayat (1) Regulasi Resmi RS S1</span>
             <span>·</span>
             <span>Asas Beban Pembuktian</span>
@@ -523,7 +523,7 @@ export function RulesReaderClient() {
               onClick={() => setActiveBab(b.id)}
               className={`px-3 py-1.5 rounded-[8px] text-xs font-semibold whitespace-nowrap shrink-0 transition-colors border ${
                 activeBab === b.id
-                  ? 'bg-[var(--accent)] text-[var(--ink-0)] border-[var(--accent)] font-bold shadow-sm'
+                  ? 'bg-[var(--p-a)] text-[var(--ink-0)] border-[var(--p-a)] font-bold shadow-sm'
                   : 'bg-[var(--ink-1)] text-[var(--text-dim)] border-[var(--line)] hover:text-[var(--text)]'
               }`}
             >
@@ -537,7 +537,7 @@ export function RulesReaderClient() {
       {searchQuery.trim() && (
         <div className="rounded-[10px] bg-[var(--ink-1)] border border-[var(--line)] px-4 py-3 flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-[var(--accent)]" />
+            <Search className="w-4 h-4 text-[var(--p-a)]" />
             <span className="text-[var(--text-dim)]">
               Ditemukan <strong className="text-[var(--text)] font-mono">{totalMatches}</strong> pasal untuk kata kunci{' '}
               <mark className="search-highlight">&ldquo;{searchQuery}&rdquo;</mark>
@@ -545,7 +545,7 @@ export function RulesReaderClient() {
           </div>
           <button
             onClick={() => setSearchQuery('')}
-            className="text-[11px] font-semibold text-[var(--accent)] hover:underline flex items-center gap-1 shrink-0"
+            className="text-[11px] font-semibold text-[var(--p-a)] hover:underline flex items-center gap-1 shrink-0"
           >
             <span>Reset Pencarian</span>
             <X className="w-3 h-3" />
@@ -565,7 +565,7 @@ export function RulesReaderClient() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari pasal atau kata kunci…"
-              className="w-full h-11 pl-10 pr-8 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-xs text-[var(--text)] placeholder-[var(--text-faint)] focus:border-[var(--accent)] focus:outline-none transition-colors"
+              className="w-full h-11 pl-10 pr-8 rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] text-xs text-[var(--text)] placeholder-[var(--text-faint)] focus:border-[var(--p-a)] focus:outline-none transition-colors"
             />
             {searchQuery && (
               <button
@@ -593,7 +593,7 @@ export function RulesReaderClient() {
                   onClick={() => setActiveBab(b.id)}
                   className={`block px-3 py-2.5 rounded-[8px] text-xs transition-all ${
                     isActive
-                      ? 'bg-[var(--ink-2)] text-[var(--text)] font-bold border-l-2 border-[var(--accent)] shadow-sm'
+                      ? 'bg-[var(--ink-2)] text-[var(--text)] font-bold border-l-2 border-[var(--p-a)] shadow-sm'
                       : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--ink-2)]/60'
                   }`}
                 >
@@ -617,7 +617,7 @@ export function RulesReaderClient() {
                   <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl uppercase tracking-tight text-[var(--text)] leading-tight">
                     {highlightMatch(b.title, searchQuery)}
                   </h2>
-                  <span className="text-[11px] text-[var(--accent)] uppercase tracking-wider font-mono font-bold bg-[var(--ink-1)] px-2.5 py-1 rounded-[6px] border border-[var(--line)] shrink-0 ml-3">
+                  <span className="text-[11px] text-[var(--p-a)] uppercase tracking-wider font-mono font-bold bg-[var(--ink-1)] px-2.5 py-1 rounded-[6px] border border-[var(--line)] shrink-0 ml-3">
                     {b.pasalRange}
                   </span>
                 </div>

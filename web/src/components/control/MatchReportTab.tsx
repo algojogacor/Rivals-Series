@@ -23,6 +23,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { SquadPlayerSelect } from '../SquadPlayerSelect';
 import { EvidenceUploadInput } from '../EvidenceUploadInput';
 import { DraftGoalEvent } from './control-types';
+import { burstRivalryConfetti } from '../fx/ConfettiBurst';
 
 interface MatchReportTabProps {
   matches: Match[];
@@ -204,6 +205,7 @@ export function MatchReportTab({
             if (res?.error) {
               showMessage('error', res.error);
             } else {
+              burstRivalryConfetti();
               showMessage('success', `Laporan hasil MD${selectedMd} berhasil dikirim. Menunggu konfirmasi lawan.`);
             }
           });

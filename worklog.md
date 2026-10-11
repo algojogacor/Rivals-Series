@@ -386,3 +386,99 @@ Konfigurasi `vercel.json` akan otomatis mengatur region default untuk deployment
 - **Production Build:** 100% sukses tanpa galat tipe atau lint (`next build`).
 - **Logika & Data:** Tidak ada perubahan pada perhitungan skor, poin klasemen, aturan tiebreak, schema database, atau teks regulasi.
 
+
+
+---
+
+## 7. Creative Overhaul "To The Max" — Broadcast War Room: The Crown & The Arena (11 Oktober 2026)
+
+**Branch:** `creative-overhaul-max`  
+**Status:** Selesai & Terverifikasi Penuh (51/51 Unit Tests Pass, Next.js Turbopack Production Build Clean)  
+**Tautan Terkait:** [`VersusHero.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/VersusHero.tsx), [`SeasonTracker.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/SeasonTracker.tsx), [`StadiumAtmosphereCanvas.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/StadiumAtmosphereCanvas.tsx), [`Trophy3DCanvas.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/Trophy3DCanvas.tsx), [`RollingNumber.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/RollingNumber.tsx), [`RouteProgressBar.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/RouteProgressBar.tsx), [`not-found.tsx`](file:///d:/Projects/Rivals-Series/web/src/app/not-found.tsx)
+
+---
+
+### A. Temuan Audit Kritis (Kejujuran Teknis)
+Berdasarkan audit headless browser (Microsoft Edge) di berbagai resolusi layar (1440x900 desktop, 768px tablet, dan 390x844 mobile):
+
+1. **Typographic Wrapping Bug (Desktop):**
+   - Nama pemain `"ALGOJOGACOR"` di hero terpotong menjadi dua baris (`"ALGOJOGACO"` dan `"R"`) pada lebar 1440px karena kombinasi `clamp(2.75rem, 4.5vw, 4.25rem)` dan `break-words`.
+   - **Solusi:** Diubah menjadi `whitespace-nowrap font-black uppercase text-[clamp(2.1rem,3.2vw,3.6rem)]` sehingga tetap utuh dalam satu baris gagah di semua resolusi.
+
+2. **Bug Logika StatusChip (Semua Halaman):**
+   - Pertandingan MD2–MD20 yang belum dimainkan (`status = 'scheduled'`) salah menampilkan status kuning *"Menunggu konfirmasi"*.
+   - **Penyebab:** Pada `StatusChip.tsx`, pengecekan `confirmationStatus === 'pending'` dieksekusi sebelum pengecekan `status === 'scheduled'`.
+   - **Solusi:** Pengecekan `status === 'scheduled'` diprioritaskan terlebih dahulu sehingga laga terjadwal ditampilkan dengan tepat sebagai *"Terjadwal"*.
+
+3. **Overlap Navigasi Bawah di Layar HP (Mobile):**
+   - Bilah navigasi bawah tetap (*fixed bottom tab bar*, `h-14` + `env(safe-area-inset-bottom)`) menutupi tombol dan teks terbawah pada halaman Matches, Standings, Statistics, dan Rules.
+   - **Solusi:** Padding bawah pada `AppShell.tsx` dinaikkan menjadi `pb-28 md:pb-0`, dan kontainer halaman diberikan `pb-16` sehingga seluruh tombol aksi memiliki ruang aman sentuhan yang nyaman.
+
+4. **Token CSS Tak Terdefinisi di Rules:**
+   - `RulesReaderClient.tsx` menggunakan `var(--accent)`, yang tidak dideklarasikan di `globals.css` (warna hilang / jatuh ke default).
+   - **Solusi:** Diselaraskan menggunakan token tema resmi `var(--p-a)` (Cyan).
+
+5. **Ketiadaan Custom Icon & Halaman 404/Error Berkarakter:**
+   - Favicon masih berupa default starter icon Next.js, dan rute tidak dikenal menampilkan 404 default yang kaku.
+   - **Solusi:** Dibuat `icon.svg` vektor perisai dual-rivalry dan `not-found.tsx` bertema eFootball Offside.
+
+---
+
+### B. Ide Besar Kreatif: "Broadcast War Room: The Crown & The Arena"
+Mengangkat liga 1v1 ini menjadi pengalaman panggung tanding siaran digital berkarakter:
+- **The Arena:** Lapangan taktis 3D dinamis dengan partikel atmosfer stadion dan lampu sorot duel dual-color (Cyan algojogacor di kiri, Ungu CHarmed di kanan).
+- **The Crown:** Piala emas 3D interaktif yang dapat diputar 360 derajat secara langsung dengan kilauan specular material obsidian dan ledakan confetti perayaan.
+- **Gerakan Odometer Berbobot:** Angka skor dan poin berputar halus menggunakan GSAP dengan font tabular angka.
+- **Transisi Sinematik:** Indikator progress bar gradien saat pergantian rute antar halaman.
+
+---
+
+### C. Library Baru yang Ditambahkan & Justifikasi
+1. **`three` & `@types/three`:**
+   - Merender efek atmosfer lapangan tanding procedural dan Piala Juara 3D emas tanpa bergantung pada model file `.gltf` eksternal yang berat.
+   - Dibungkus secara modular dengan arsitektur non-SSR Client Component dan fallback CSS otomatis untuk perangkat tanpa WebGL / headless browser.
+2. **`canvas-confetti` & `@types/canvas-confetti`:**
+   - Merayakan momen penting: klik papan skor hero, rotasi piala emas, dan pengiriman laporan skor pertandingan resmi di Pusat Kontrol.
+3. **`gsap`:**
+   - Animasi angka berputar (*odometer rolling counter*) dengan easing `power3.out` pada statistik, klasemen, hero, dan H2H bars.
+
+---
+
+### D. Rincian Modul & Efek Baru (`src/components/fx/`)
+1. [`StadiumAtmosphereCanvas.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/StadiumAtmosphereCanvas.tsx): Lapangan taktis WebGL Three.js dengan garis lingkar tengah, garis penalti, 2 spotlight dual-color, 65 motes partikel mengambang, respons kemiringan mouse, jeda otomatis saat tab tidak terlihat, dan fallback CSS mesh.
+2. [`Trophy3DCanvas.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/Trophy3DCanvas.tsx): Model procedural piala emas Three.js, pedestal obsidian heksagonal, bintang mahkota mengambang, interaksi *drag-to-spin* 360°, dan klik untuk ledakan confetti emas.
+3. [`TrophyShowcaseClient.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/awards/TrophyShowcaseClient.tsx): Client boundary wrapper untuk mematuhi aturan Next.js 16 App Router Server Component saat memuat 3D canvas via `next/dynamic` (`ssr: false`).
+4. [`RollingNumber.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/RollingNumber.tsx): Komponen angka odometer GSAP dengan font angka tabular (`tabular-nums font-mono`).
+5. [`ConfettiBurst.ts`](file:///d:/Projects/Rivals-Series/web/src/components/fx/ConfettiBurst.ts): Helper ledakan confetti modular (Championship Gold & Rivalry Cyan/Purple).
+6. [`RouteProgressBar.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/RouteProgressBar.tsx): Bar indikator loading rute dengan gradien cyan-ke-ungu di bagian paling atas viewport.
+7. [`AmbientSpotlight.tsx`](file:///d:/Projects/Rivals-Series/web/src/components/fx/AmbientSpotlight.tsx): Lampu sorot ambient lembut yang melacak kursor di latar belakang desktop.
+
+---
+
+### E. Peningkatan Per Halaman
+1. **Beranda (`/`):**
+   - Panggung hero versus memuat `StadiumAtmosphereCanvas` secara dinamis.
+   - Nama pemain terkoreksi anti-wrap, poin menggunakan `RollingNumber`, dan skor dapat diklik untuk selebrasi confetti.
+   - `SeasonTracker` ditingkatkan dengan tampilan Fase 2 (Knockout MD11-20) beraksen piala emas *high-stakes* serta kartu inspeksi cepat putaran tanding interaktif.
+2. **Penghargaan (`/awards`):**
+   - Banner RS Champion menampilkan Piala Juara 3D interaktif (`Trophy3DCanvas`) yang dapat diputar 360 derajat.
+   - Poin klasemen sementara menggunakan animasi `RollingNumber`.
+3. **Statistik (`/statistics`):**
+   - Header kartu Golden Boot & Glove mobile wrap terkoreksi rapi.
+   - Angka streak kemenangan dan clean sheet menggunakan `RollingNumber`.
+4. **Pusat Kontrol (`/control`):**
+   - Pengiriman laporan pertandingan yang sukses memicu ledakan selebrasi rivalitas cyan/purple (`burstRivalryConfetti()`).
+5. **Aset & Navigasi Error:**
+   - Dibuat `web/src/app/icon.svg`: Emblem perisai dual-color vektor resmi RS S1.
+   - Dibuat `web/src/app/not-found.tsx`: Halaman 404 bertema bendera offside / bola keluar lapangan dengan tautan kembali cepat.
+   - Dibuat `web/src/app/error.tsx`: Layar pemulihan kesalahan bertema VAR Review dengan tombol "Coba Lagi".
+
+---
+
+### F. Integritas & Kepatuhan Batasan
+- **Logika Turnamen & Regulasi:** 0 baris teks regulasi atau formula perhitungan poin yang diubah.
+- **Data Produksi:** Database Turso produksi tidak disentuh sama sekali.
+- **Reduced Motion:** Sesuai instruksi khusus pemilik proyek, tidak ada media query `prefers-reduced-motion` yang ditambahkan kembali.
+- **Verifikasi Otomatis:**
+  - `pnpm test`: **51/51 unit tests lulus 100%**.
+  - `pnpm build`: **Turbopack build lulus 100%** tanpa kesalahan TypeScript maupun Turbopack compiler.

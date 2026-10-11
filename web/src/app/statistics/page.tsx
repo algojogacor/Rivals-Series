@@ -3,6 +3,7 @@ import { getCachedStatisticsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
 import { EmptyState } from '@/components/EmptyState';
 import { Trophy, Shield, Zap, Award, Flame } from 'lucide-react';
+import { RollingNumber } from '@/components/fx/RollingNumber';
 
 export const metadata = {
   title: 'Statistik | Rivals Series Season 1',
@@ -47,7 +48,7 @@ export default async function StatisticsPage() {
   const pbCsPct = csTotal > 0 ? ((standingB?.clean_sheets || 0) / csTotal) * 100 : 50;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 pb-16">
       {/* 1. Header */}
       <div className="space-y-2 border-b border-[var(--line)] pb-6">
         <div className="flex items-center gap-2.5">
@@ -65,7 +66,7 @@ export default async function StatisticsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Golden Boot (Pencetak Gol) */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)] flex items-center gap-2.5">
               <Trophy className="w-5 h-5 text-[var(--gold)]" />
               <span>Golden Boot (Top Scorer)</span>
@@ -131,7 +132,7 @@ export default async function StatisticsPage() {
 
         {/* Golden Glove (Clean Sheet Kiper) */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)] flex items-center gap-2.5">
               <Shield className="w-5 h-5 text-[var(--p-a)]" />
               <span>Golden Glove (Kiper Terbaik)</span>
@@ -236,7 +237,7 @@ export default async function StatisticsPage() {
                 paStreak > pbStreak ? 'text-[var(--p-a)] drop-shadow-[0_0_8px_var(--p-a-glow)]' : 'text-[var(--text-dim)]'
               }`}
             >
-              {paStreak}
+              <RollingNumber value={paStreak} />
             </span>
 
             <div className="flex-1 flex items-center gap-2 sm:gap-4 mx-2 sm:mx-4">
@@ -276,7 +277,7 @@ export default async function StatisticsPage() {
                 pbStreak > paStreak ? 'text-[var(--p-b)] drop-shadow-[0_0_8px_var(--p-b-glow)]' : 'text-[var(--text-dim)]'
               }`}
             >
-              {pbStreak}
+              <RollingNumber value={pbStreak} />
             </span>
           </div>
 
@@ -289,7 +290,7 @@ export default async function StatisticsPage() {
                   : 'text-[var(--text-dim)]'
               }`}
             >
-              {standingA?.clean_sheets || 0}
+              <RollingNumber value={standingA?.clean_sheets || 0} />
             </span>
 
             <div className="flex-1 flex items-center gap-2 sm:gap-4 mx-2 sm:mx-4">
@@ -331,7 +332,7 @@ export default async function StatisticsPage() {
                   : 'text-[var(--text-dim)]'
               }`}
             >
-              {standingB?.clean_sheets || 0}
+              <RollingNumber value={standingB?.clean_sheets || 0} />
             </span>
           </div>
         </div>

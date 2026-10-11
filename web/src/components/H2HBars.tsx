@@ -1,7 +1,7 @@
-import React from 'react';
 import { ParticipantStanding } from '@/lib/types';
 import { PlayerTag } from './PlayerTag';
 import { Flag } from 'lucide-react';
+import { RollingNumber } from './fx/RollingNumber';
 
 interface H2HBarsProps {
   standingA: ParticipantStanding;
@@ -115,7 +115,10 @@ export function H2HBars({ standingA, standingB, className = '' }: H2HBarsProps) 
                       : 'text-[var(--text-dim)]'
                   }`}
                 >
-                  {m.formatA}
+                  <RollingNumber
+                    value={m.valA}
+                    prefix={m.label === 'Selisih Gol' && standingA.gd > 0 ? '+' : ''}
+                  />
                 </span>
               </div>
 
@@ -166,7 +169,10 @@ export function H2HBars({ standingA, standingB, className = '' }: H2HBarsProps) 
                       : 'text-[var(--text-dim)]'
                   }`}
                 >
-                  {m.formatB}
+                  <RollingNumber
+                    value={m.valB}
+                    prefix={m.label === 'Selisih Gol' && standingB.gd > 0 ? '+' : ''}
+                  />
                 </span>
               </div>
             </div>
