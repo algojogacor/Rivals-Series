@@ -233,6 +233,10 @@ export const getAllGoalEvents = cache(async function getAllGoalEvents(matchId?: 
     period: r.period as any,
     is_own_goal: Number(r.is_own_goal || 0),
     is_reconstruction_only: Number(r.is_reconstruction_only || 0),
+    assist_player_name: r.assist_player_name ? String(r.assist_player_name) : null,
+    assist_card_id: r.assist_card_id ? String(r.assist_card_id) : null,
+    assist_base_player_id: r.assist_base_player_id !== null && r.assist_base_player_id !== undefined ? Number(r.assist_base_player_id) : null,
+    assist_card_version: r.assist_card_version ? String(r.assist_card_version) : null,
   }));
 });
 

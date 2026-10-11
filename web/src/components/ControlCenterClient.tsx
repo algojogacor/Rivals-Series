@@ -18,6 +18,7 @@ import {
   Participant,
   ParticipantId,
   Match,
+  MatchGoalEvent,
   GoalNomination,
   ResetRequest,
   RosterCard,
@@ -73,6 +74,7 @@ interface ControlCenterClientProps {
   lastAuditSeenAt?: string | null;
   goalNominations: GoalNomination[];
   pendingReset?: ResetRequest | null;
+  goalEvents?: MatchGoalEvent[];
 }
 
 export function ControlCenterClient({
@@ -89,6 +91,7 @@ export function ControlCenterClient({
   unreadOpponentAuditCount = 0,
   lastAuditSeenAt = null,
   pendingReset,
+  goalEvents = [],
 }: ControlCenterClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'report' | 'pending' | 'roster' | 'disputes' | 'audit' | 'profile'>('report');
@@ -346,6 +349,7 @@ export function ControlCenterClient({
               participants={participants}
               pendingMatches={pendingMatches}
               pendingReset={pendingReset}
+              goalEvents={goalEvents}
               pA={pA}
               pB={pB}
               isPending={isPending}

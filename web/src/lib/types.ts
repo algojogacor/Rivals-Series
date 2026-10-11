@@ -102,6 +102,10 @@ export interface MatchGoalEvent {
   period: 'regular_first_half' | 'regular_second_half' | 'extra_time_first_half' | 'extra_time_second_half';
   is_own_goal: number;
   is_reconstruction_only: number;
+  assist_player_name?: string | null;
+  assist_card_id?: string | null;
+  assist_base_player_id?: number | null;
+  assist_card_version?: string | null;
 }
 
 export interface GoalkeeperMatchRecord {

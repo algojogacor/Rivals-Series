@@ -249,13 +249,29 @@ export default async function MatchDetailPage({
                           {g.minute ? `${g.minute}'` : '—'}
                         </span>
                         <div>
-                          <span className="font-semibold text-[var(--text)] block">
-                            {g.scorer_player_name}
-                          </span>
-                          {g.scorer_card_version && (
-                            <span className="text-[11px] text-[var(--text-faint)]">
-                              {g.scorer_card_version}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-[var(--text)]">
+                              {g.scorer_player_name}
                             </span>
+                            {g.scorer_card_version && (
+                              <span className="text-[11px] text-[var(--text-faint)]">
+                                ({g.scorer_card_version})
+                              </span>
+                            )}
+                            {g.is_own_goal === 1 && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--danger)]/15 text-[var(--danger)]">
+                                OG
+                              </span>
+                            )}
+                          </div>
+                          {g.assist_player_name && (
+                            <div className="text-[12px] text-[var(--text-dim)] flex items-center gap-1 mt-0.5">
+                              <span className="text-[10px] uppercase font-bold text-[var(--text-faint)] tracking-wider">Asis:</span>
+                              <span className="font-medium text-[var(--text)]">{g.assist_player_name}</span>
+                              {g.assist_card_version && (
+                                <span className="text-[10px] text-[var(--text-faint)]">({g.assist_card_version})</span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

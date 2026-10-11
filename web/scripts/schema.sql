@@ -129,6 +129,10 @@ CREATE TABLE IF NOT EXISTS match_goal_events (
   period TEXT NOT NULL DEFAULT 'regular_first_half' CHECK(period IN ('regular_first_half', 'regular_second_half', 'extra_time_first_half', 'extra_time_second_half')),
   is_own_goal INTEGER NOT NULL DEFAULT 0,
   is_reconstruction_only INTEGER NOT NULL DEFAULT 0,
+  assist_player_name TEXT,
+  assist_card_id TEXT,
+  assist_base_player_id INTEGER,
+  assist_card_version TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

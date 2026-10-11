@@ -13,6 +13,10 @@ export interface DraftGoalEvent {
   minute: number;
   period: 'first_half' | 'second_half' | 'et';
   is_own_goal: number;
+  assist_card_id?: string | null;
+  assist_base_player_id?: number | null;
+  assist_player_name?: string | null;
+  assist_card_version?: string | null;
 }
 
 export interface ControlSession {

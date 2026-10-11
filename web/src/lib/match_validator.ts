@@ -10,6 +10,10 @@ export interface ValidatedGoalEvent {
   scorer_base_player_id: number | null;
   scorer_card_version: string | null;
   is_own_goal: number;
+  assist_player_name: string | null;
+  assist_card_id: string | null;
+  assist_base_player_id: number | null;
+  assist_card_version: string | null;
 }
 
 export interface ValidatedMatchReportPayload {
@@ -264,12 +268,35 @@ export function validateMatchReportInput(
       minuteVal = m;
     }
 
-    // Metadata opsional kartu
+    // Metadata opsional kartu pencetak
     const scorerCardId = g.scorer_card_id ? String(g.scorer_card_id).trim() : null;
     const baseIdNum = g.scorer_base_player_id ? Number(g.scorer_base_player_id) : null;
     const scorerBasePlayerId = baseIdNum && !isNaN(baseIdNum) ? baseIdNum : null;
     const scorerCardVersion = g.scorer_card_version ? String(g.scorer_card_version).trim() : null;
     const isOwnGoal = g.is_own_goal === 1 || g.is_own_goal === true ? 1 : 0;
+
+    // Metadata opsional asis (bisa null jika tanpa asis)
+    const rawAssistName = g.assist_player_name ? String(g.assist_player_name).trim() : null;
+    const assistPlayerName = rawAssistName && rawAssistName.length > 0 ? rawAssistName : null;
+
+    if (isOwnGoal === 1 && assistPlayerName) {
+      return { success: false, error: `Gol bunuh diri #${i + 1} tidak dapat memiliki pencatat asis.` };
+    }
+
+    if (assistPlayerName) {
+      const assistCardId = g.assist_card_id ? String(g.assist_card_id).trim() : null;
+      if (scorerCardId && assistCardId && scorerCardId === assistCardId) {
+        return { success: false, error: `Pencetak gol #${i + 1} dan pemberi asis tidak boleh pemain yang sama (${scorerName}).` };
+      }
+      if (scorerName.toLowerCase() === assistPlayerName.toLowerCase()) {
+        return { success: false, error: `Pencetak gol #${i + 1} dan pemberi asis tidak boleh pemain yang sama (${scorerName}).` };
+      }
+    }
+
+    const assistCardId = assistPlayerName && g.assist_card_id ? String(g.assist_card_id).trim() : null;
+    const assistBaseIdNum = assistPlayerName && g.assist_base_player_id ? Number(g.assist_base_player_id) : null;
+    const assistBasePlayerId = assistBaseIdNum && !isNaN(assistBaseIdNum) ? assistBaseIdNum : null;
+    const assistCardVersion = assistPlayerName && g.assist_card_version ? String(g.assist_card_version).trim() : null;
 
     validatedGoals.push({
       scoring_participant_id: partId as ParticipantId,
@@ -280,6 +307,10 @@ export function validateMatchReportInput(
       scorer_base_player_id: scorerBasePlayerId,
       scorer_card_version: scorerCardVersion,
       is_own_goal: isOwnGoal,
+      assist_player_name: assistPlayerName,
+      assist_card_id: assistCardId,
+      assist_base_player_id: assistBasePlayerId,
+      assist_card_version: assistCardVersion,
     });
   }
 

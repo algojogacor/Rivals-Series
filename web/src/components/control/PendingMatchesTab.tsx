@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { AlertTriangle, CheckCircle, ExternalLink } from 'lucide-react';
-import { Participant, Match, ResetRequest } from '@/lib/types';
+import { Participant, Match, ResetRequest, MatchGoalEvent } from '@/lib/types';
 import { confirmMatchReportAction, respondSeasonResetAction } from '@/lib/actions';
 import { ControlSession } from './control-types';
 
@@ -11,6 +11,7 @@ interface PendingMatchesTabProps {
   participants: Participant[];
   pendingMatches: Match[];
   pendingReset?: ResetRequest | null;
+  goalEvents?: MatchGoalEvent[];
   pA: Participant;
   pB: Participant;
   isPending: boolean;
@@ -24,6 +25,7 @@ export function PendingMatchesTab({
   participants,
   pendingMatches,
   pendingReset,
+  goalEvents = [],
   pA,
   pB,
   isPending,
@@ -153,6 +155,66 @@ export function PendingMatchesTab({
                         &ldquo;{m.match_report_text}&rdquo;
                       </p>
                     )}
+                    {(() => {
+                      const mGoals = goalEvents.filter((g) => g.match_id === m.id);
+                      if (mGoals.length === 0) return null;
+                      return (
+                        <div className="pt-2 space-y-1.5">
+                          <span className="text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider block">
+                            Rincian Gol & Asis Terlapor:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {mGoals.map((g) => (
+                              <div
+                                key={g.id}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[var(--ink-1)] border border-[var(--line)] text-xs"
+                              >
+                                <span
+                                  className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+                                  style={{
+                                    backgroundColor:
+                                      g.scoring_participant_id === 'participant_a'
+                                        ? 'var(--p-a-soft)'
+                                        : 'var(--p-b-soft)',
+                                    color:
+                                      g.scoring_participant_id === 'participant_a'
+                                        ? 'var(--p-a)'
+                                        : 'var(--p-b)',
+                                  }}
+                                >
+                                  {g.scoring_participant_id === 'participant_a' ? pA.display_name : pB.display_name}
+                                </span>
+                                <span className="font-mono font-bold text-[var(--text-dim)]">
+                                  {g.minute ? `${g.minute}'` : '—'}
+                                </span>
+                                <span className="font-semibold text-[var(--text)]">
+                                  {g.scorer_player_name}
+                                </span>
+                                {g.scorer_card_version && (
+                                  <span className="text-[11px] text-[var(--text-faint)]">
+                                    ({g.scorer_card_version})
+                                  </span>
+                                )}
+                                {g.assist_player_name && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--ink-2)] border border-[var(--line)] text-[11px]">
+                                    <span className="text-[9px] uppercase font-bold text-[var(--text-faint)]">Asis:</span>
+                                    <span className="font-semibold text-[var(--text)]">{g.assist_player_name}</span>
+                                    {g.assist_card_version && (
+                                      <span className="text-[10px] text-[var(--text-faint)]">({g.assist_card_version})</span>
+                                    )}
+                                  </span>
+                                )}
+                                {g.is_own_goal === 1 && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--danger)]/15 text-[var(--danger)]">
+                                    OG
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {m.result_screenshot_url && (
                       <div className="pt-2 flex items-center gap-3">
                         <a

@@ -8,6 +8,7 @@ import {
   getAuditTrailForViewer,
   getAllGoalNominations,
   getPendingResetRequest,
+  getAllGoalEvents,
 } from '@/lib/db';
 import { ControlCenterClient } from '@/components/ControlCenterClient';
 
@@ -31,6 +32,7 @@ export default async function ControlCenterPage() {
     auditTrail,
     goalNominations,
     pendingReset,
+    goalEvents,
   ] = await Promise.all([
     getParticipants(),
     getAllMatches(),
@@ -41,6 +43,7 @@ export default async function ControlCenterPage() {
     getAuditTrailForViewer(session?.participantId || null),
     getAllGoalNominations(),
     getPendingResetRequest(),
+    getAllGoalEvents(),
   ]);
 
   return (
@@ -59,6 +62,7 @@ export default async function ControlCenterPage() {
       lastAuditSeenAt={auditTrail.lastSeenAt}
       goalNominations={goalNominations}
       pendingReset={pendingReset}
+      goalEvents={goalEvents}
     />
   );
 }

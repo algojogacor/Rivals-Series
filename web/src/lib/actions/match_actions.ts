@@ -238,8 +238,9 @@ export async function submitMatchReportAction(formData: FormData) {
       statements.push({
         sql: `INSERT INTO match_goal_events (
                 id, match_id, scoring_participant_id, scorer_card_id, scorer_base_player_id,
-                scorer_player_name, scorer_card_version, minute, period, is_own_goal, is_reconstruction_only
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);`,
+                scorer_player_name, scorer_card_version, minute, period, is_own_goal, is_reconstruction_only,
+                assist_player_name, assist_card_id, assist_base_player_id, assist_card_version
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?);`,
         args: [
           goalId,
           matchId,
@@ -251,12 +252,18 @@ export async function submitMatchReportAction(formData: FormData) {
           g.minute,
           g.period,
           g.is_own_goal,
+          g.assist_player_name,
+          g.assist_card_id,
+          g.assist_base_player_id,
+          g.assist_card_version,
         ],
       });
     }
 
     const scoreSummary = `${homeScore}-${awayScore}${etPlayed ? ` (ET ${homeEtScore}-${awayEtScore})` : ''}${pkPlayed ? ` (PK ${homePkScore}-${awayPkScore})` : ''}`;
-    const scorersSummary = validatedGoals.length > 0 ? validatedGoals.map((g) => g.scorer_player_name).join(', ') : 'Tanpa pencetak gol tercatat';
+    const scorersSummary = validatedGoals.length > 0
+      ? validatedGoals.map((g) => `${g.scorer_player_name}${g.assist_player_name ? ` (as. ${g.assist_player_name})` : ''}`).join(', ')
+      : 'Tanpa pencetak gol tercatat';
 
     // Execute all match mutations + audit log atomically
     await executeWithAudit(statements, {
@@ -285,6 +292,7 @@ export async function submitMatchReportAction(formData: FormData) {
           player: g.scorer_player_name,
           minute: g.minute,
           team: g.scoring_participant_id,
+          assist: g.assist_player_name || null,
         })),
         goalkeepers: {
           pa: { name: paGkName, fullMatch: Boolean(paGkFull) },

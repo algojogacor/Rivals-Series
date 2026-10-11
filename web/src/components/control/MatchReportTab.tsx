@@ -105,6 +105,8 @@ export function MatchReportTab({
   const [draftScorerParticipant, setDraftScorerParticipant] = useState<ParticipantId>('participant_a');
   const [draftScorerRosterId, setDraftScorerRosterId] = useState<string>('');
   const [draftManualScorerName, setDraftManualScorerName] = useState<string>('');
+  const [draftAssistRosterId, setDraftAssistRosterId] = useState<string>('');
+  const [draftManualAssistName, setDraftManualAssistName] = useState<string>('');
   const [draftGoalMinute, setDraftGoalMinute] = useState<number>(45);
   const [draftGoalPeriod, setDraftGoalPeriod] = useState<'first_half' | 'second_half' | 'et'>('first_half');
   const [draftIsOwnGoal, setDraftIsOwnGoal] = useState<boolean>(false);
@@ -126,6 +128,33 @@ export function MatchReportTab({
       showMessage('error', 'Pilih pemain pencetak gol dari skuad atau ketik nama pemain.');
       return;
     }
+
+    let assistPlayerName: string | null = null;
+    let assistCardId: string | null = null;
+    let assistBasePlayerId: number | null = null;
+    let assistCardVersion: string | null = null;
+
+    if (!draftIsOwnGoal) {
+      const chosenAssistCard = squadPool.find((c) => c.id === draftAssistRosterId);
+      const manualAssist = draftManualAssistName.trim();
+      const assistName = chosenAssistCard ? chosenAssistCard.player_name : (manualAssist || null);
+
+      if (assistName) {
+        if (chosenCard && chosenAssistCard && chosenCard.id === chosenAssistCard.id) {
+          showMessage('error', 'Pencetak gol dan pemberi asis tidak boleh pemain yang sama.');
+          return;
+        }
+        if (scorerName.toLowerCase() === assistName.toLowerCase()) {
+          showMessage('error', 'Pencetak gol dan pemberi asis tidak boleh pemain yang sama.');
+          return;
+        }
+        assistPlayerName = assistName;
+        assistCardId = chosenAssistCard?.efootball_card_id || chosenAssistCard?.id || null;
+        assistBasePlayerId = chosenAssistCard?.base_player_id ?? null;
+        assistCardVersion = chosenAssistCard?.card_version || 'Standard';
+      }
+    }
+
     const newGoal: DraftGoalEvent = {
       id: `draft_goal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       participant_id: draftScorerParticipant,
@@ -139,9 +168,15 @@ export function MatchReportTab({
       minute: Number(draftGoalMinute) || 45,
       period: draftGoalPeriod,
       is_own_goal: draftIsOwnGoal ? 1 : 0,
+      assist_player_name: assistPlayerName,
+      assist_card_id: assistCardId,
+      assist_base_player_id: assistBasePlayerId,
+      assist_card_version: assistCardVersion,
     };
     setGoalEvents((prev) => [...prev, newGoal]);
     setDraftManualScorerName('');
+    setDraftAssistRosterId('');
+    setDraftManualAssistName('');
     setDraftIsOwnGoal(false);
   };
 
@@ -385,100 +420,158 @@ export function MatchReportTab({
                 </p>
 
                 {/* Add Goal Builder Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end bg-[var(--ink-1)] p-3 rounded-[8px] border border-[var(--line)]">
-                  <div className="sm:col-span-3">
-                    <label className="block text-[11px] font-semibold text-[var(--text-dim)] mb-1">
-                      Tim Pencetak Gol
-                    </label>
-                    <select
-                      value={draftScorerParticipant}
-                      onChange={(e) => {
-                        const nextP = e.target.value as ParticipantId;
-                        setDraftScorerParticipant(nextP);
-                        setDraftScorerRosterId('');
-                      }}
-                      className="w-full h-[44px] px-2.5 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs font-bold text-[var(--text)]"
-                    >
-                      <option value="participant_a">{pA.display_name} (A)</option>
-                      <option value="participant_b">{pB.display_name} (B)</option>
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-5">
-                    <label className="block text-[11px] font-semibold text-[var(--text-dim)] mb-1">
-                      Pilih Pemain dari Skuad ({draftScorerParticipant === 'participant_a' ? pA.display_name : pB.display_name})
-                    </label>
-                    {(draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).length > 0 ? (
-                      <SquadPlayerSelect
-                        cards={draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards}
-                        value={draftScorerRosterId}
-                        onChange={(val) => setDraftScorerRosterId(val)}
-                        placeholder="Cari & pilih pemain pencetak gol..."
-                        emptyOptionLabel="— Ketik Manual Nama Pencetak Gol —"
-                        emptyOptionValue=""
-                      />
-                    ) : null}
-                    {(!draftScorerRosterId ||
-                      (draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).length === 0) && (
-                      <input
-                        type="text"
-                        value={draftManualScorerName}
-                        onChange={(e) => setDraftManualScorerName(e.target.value)}
-                        placeholder="Atau ketik nama pencetak gol..."
-                        className="w-full h-9 px-2.5 mt-1.5 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] text-xs text-[var(--text)]"
-                      />
-                    )}
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-semibold text-[var(--text-dim)] mb-1">
-                      Menit & Babak
-                    </label>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min={1}
-                        max={125}
-                        value={draftGoalMinute}
-                        onChange={(e) => {
-                          const m = Number(e.target.value);
-                          setDraftGoalMinute(m);
-                          if (m <= 45) setDraftGoalPeriod('first_half');
-                          else if (m <= 90) setDraftGoalPeriod('second_half');
-                          else setDraftGoalPeriod('et');
-                        }}
-                        className="w-14 h-[44px] px-2 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs font-mono text-center text-[var(--text)]"
-                      />
+                <div className="bg-[var(--ink-1)] p-3.5 rounded-[8px] border border-[var(--line)] space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                    <div className="sm:col-span-3">
+                      <label className="block text-[11px] font-semibold text-[var(--text-dim)] mb-1">
+                        Tim Pencetak Gol
+                      </label>
                       <select
-                        value={draftGoalPeriod}
-                        onChange={(e) => setDraftGoalPeriod(e.target.value as any)}
-                        className="flex-1 h-[44px] px-1.5 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[11px] text-[var(--text)]"
+                        value={draftScorerParticipant}
+                        onChange={(e) => {
+                          const nextP = e.target.value as ParticipantId;
+                          setDraftScorerParticipant(nextP);
+                          setDraftScorerRosterId('');
+                          setDraftAssistRosterId('');
+                          setDraftManualAssistName('');
+                        }}
+                        className="w-full h-[44px] px-2.5 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs font-bold text-[var(--text)]"
                       >
-                        <option value="first_half">B1</option>
-                        <option value="second_half">B2</option>
-                        {isKnockout && <option value="et">ET</option>}
+                        <option value="participant_a">{pA.display_name} (A)</option>
+                        <option value="participant_b">{pB.display_name} (B)</option>
                       </select>
+                    </div>
+
+                    <div className="sm:col-span-5">
+                      <label className="block text-[11px] font-semibold text-[var(--text-dim)] mb-1">
+                        Pencetak Gol (Wajib)
+                      </label>
+                      {(draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).length > 0 ? (
+                        <SquadPlayerSelect
+                          cards={draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards}
+                          value={draftScorerRosterId}
+                          onChange={(val) => {
+                            setDraftScorerRosterId(val);
+                            if (val && draftAssistRosterId === val) {
+                              setDraftAssistRosterId('');
+                            }
+                          }}
+                          placeholder="Cari & pilih pencetak gol..."
+                          emptyOptionLabel="— Ketik Manual Nama Pencetak Gol —"
+                          emptyOptionValue=""
+                        />
+                      ) : null}
+                      {(!draftScorerRosterId ||
+                        (draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).length === 0) && (
+                        <input
+                          type="text"
+                          value={draftManualScorerName}
+                          onChange={(e) => setDraftManualScorerName(e.target.value)}
+                          placeholder="Atau ketik nama pencetak gol..."
+                          className="w-full h-9 px-2.5 mt-1.5 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] text-xs text-[var(--text)]"
+                        />
+                      )}
+                    </div>
+
+                    <div className="sm:col-span-4">
+                      <label className="block text-[11px] font-semibold text-[var(--text-dim)] mb-1">
+                        Pemberi Asis (Opsional)
+                      </label>
+                      {draftIsOwnGoal ? (
+                        <div className="h-[44px] px-3 rounded-[8px] bg-[var(--ink-2)]/50 border border-[var(--line)] text-xs text-[var(--text-faint)] flex items-center italic">
+                          Gol bunuh diri tidak mencatat asis
+                        </div>
+                      ) : (
+                        <>
+                          {(draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).length > 0 ? (
+                            <SquadPlayerSelect
+                              cards={(draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards).filter(
+                                (c) => c.id !== draftScorerRosterId
+                              )}
+                              value={draftAssistRosterId}
+                              onChange={(val) => {
+                                setDraftAssistRosterId(val);
+                                if (val) setDraftManualAssistName('');
+                              }}
+                              placeholder="Tanpa asis (solo/rebound/penalti)..."
+                              emptyOptionLabel="— Tanpa Asis / Ketik Manual —"
+                              emptyOptionValue=""
+                            />
+                          ) : null}
+                          {!draftAssistRosterId && (
+                            <input
+                              type="text"
+                              value={draftManualAssistName}
+                              onChange={(e) => setDraftManualAssistName(e.target.value)}
+                              placeholder="Kosongkan jika tanpa asis, atau ketik nama..."
+                              className="w-full h-9 px-2.5 mt-1.5 rounded-[6px] bg-[var(--ink-2)] border border-[var(--line)] text-xs text-[var(--text)]"
+                            />
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  <div className="sm:col-span-2 flex flex-col gap-1.5">
-                    <label className="flex items-center gap-1.5 text-[11px] text-[var(--text-dim)] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={draftIsOwnGoal}
-                        onChange={(e) => setDraftIsOwnGoal(e.target.checked)}
-                        className="accent-[var(--danger)]"
-                      />
-                      <span>Gol Bunuh Diri (OG)</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleAddDraftGoal}
-                      className="h-[44px] px-3 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1 hover:opacity-90"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Tambah Gol</span>
-                    </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center pt-1 border-t border-[var(--line)]/40">
+                    <div className="sm:col-span-4">
+                      <label className="block text-[11px] font-semibold text-[var(--text-dim)] mb-1">
+                        Menit & Babak
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min={1}
+                          max={125}
+                          value={draftGoalMinute}
+                          onChange={(e) => {
+                            const m = Number(e.target.value);
+                            setDraftGoalMinute(m);
+                            if (m <= 45) setDraftGoalPeriod('first_half');
+                            else if (m <= 90) setDraftGoalPeriod('second_half');
+                            else setDraftGoalPeriod('et');
+                          }}
+                          className="w-16 h-[40px] px-2 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs font-mono text-center text-[var(--text)]"
+                        />
+                        <select
+                          value={draftGoalPeriod}
+                          onChange={(e) => setDraftGoalPeriod(e.target.value as any)}
+                          className="flex-1 h-[40px] px-2 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[11px] text-[var(--text)]"
+                        >
+                          <option value="first_half">Babak 1 (B1)</option>
+                          <option value="second_half">Babak 2 (B2)</option>
+                          {isKnockout && <option value="et">Extra Time (ET)</option>}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-4">
+                      <label className="flex items-center gap-2 text-xs text-[var(--text-dim)] cursor-pointer mt-4 sm:mt-0">
+                        <input
+                          type="checkbox"
+                          checked={draftIsOwnGoal}
+                          onChange={(e) => {
+                            setDraftIsOwnGoal(e.target.checked);
+                            if (e.target.checked) {
+                              setDraftAssistRosterId('');
+                              setDraftManualAssistName('');
+                            }
+                          }}
+                          className="w-4 h-4 rounded accent-[var(--danger)] cursor-pointer"
+                        />
+                        <span className="font-medium text-[var(--text)]">Gol Bunuh Diri (OG)</span>
+                      </label>
+                    </div>
+
+                    <div className="sm:col-span-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleAddDraftGoal}
+                        className="w-full sm:w-auto h-[40px] px-4 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Tambah Gol</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -525,6 +618,15 @@ export function MatchReportTab({
                           <span className="text-[11px] text-[var(--text-faint)]">
                             ({g.scorer_card_version})
                           </span>
+                          {g.assist_player_name && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-[var(--ink-2)] border border-[var(--line)] text-[var(--text-dim)]">
+                              <span className="text-[9px] uppercase font-bold text-[var(--text-faint)]">Asis:</span>
+                              <span className="font-semibold text-[var(--text)]">{g.assist_player_name}</span>
+                              {g.assist_card_version && (
+                                <span className="text-[10px] text-[var(--text-faint)]">({g.assist_card_version})</span>
+                              )}
+                            </span>
+                          )}
                           {g.is_trending === 1 && (
                             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--p-a-soft)] text-[var(--p-a)]">
                               TRENDING
