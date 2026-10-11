@@ -342,6 +342,18 @@ export async function confirmMatchReportAction(matchId: string) {
     }
 
     const match = res.rows[0];
+
+    if (
+      match.status !== 'awaiting_confirmation' ||
+      match.home_score === null ||
+      match.away_score === null ||
+      !match.reported_by
+    ) {
+      return {
+        error: 'Pertandingan ini belum dilaporkan atau tidak dalam status menunggu konfirmasi.',
+      };
+    }
+
     const now = new Date().toISOString();
 
     let confirmedByPa = match.confirmed_by_pa_at;

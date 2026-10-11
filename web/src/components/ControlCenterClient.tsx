@@ -97,7 +97,7 @@ export function ControlCenterClient({
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const pendingMatches = matches.filter(
-    (m) => m.status === 'awaiting_confirmation' || m.confirmation_status === 'pending'
+    (m) => m.status === 'awaiting_confirmation'
   );
 
   const pA = participants.find((p) => p.id === 'participant_a') || {

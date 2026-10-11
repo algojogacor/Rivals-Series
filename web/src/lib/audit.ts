@@ -226,6 +226,7 @@ export function verifyAuditChain(events: AuditEventRecord[]): AuditChainVerifica
   // reversing a DESC list preserves exact insertion order.
   const chronological = [...events].reverse();
 
+  const verifiedHashes = new Set<string>(['GENESIS']);
   let expectedPrevHash = 'GENESIS';
   let verifiedCount = 0;
 
@@ -242,7 +243,14 @@ export function verifyAuditChain(events: AuditEventRecord[]): AuditChainVerifica
       };
     }
 
-    if (i > 0 && ev.prev_hash !== expectedPrevHash) {
+    const isLinear = i === 0 ? ev.prev_hash === 'GENESIS' : ev.prev_hash === expectedPrevHash;
+    const isConcurrentSibling =
+      !isLinear &&
+      i > 0 &&
+      verifiedHashes.has(ev.prev_hash) &&
+      chronological[i - 1]?.prev_hash === ev.prev_hash;
+
+    if (!isLinear && !isConcurrentSibling) {
       return {
         intact: false,
         totalEntries: chronological.length,
@@ -277,6 +285,7 @@ export function verifyAuditChain(events: AuditEventRecord[]): AuditChainVerifica
       };
     }
 
+    verifiedHashes.add(ev.entry_hash);
     expectedPrevHash = ev.entry_hash;
     verifiedCount++;
   }

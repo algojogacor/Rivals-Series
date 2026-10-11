@@ -56,7 +56,7 @@ export function SeasonTracker({ matches, participants = [], className = '' }: Se
     const isSelected = md === activeMd;
     const status = match?.status || 'scheduled';
     const isConfirmed = ['confirmed', 'reconstructed', 'forfeited', 'technical_win'].includes(status);
-    const isAwaiting = status === 'awaiting_confirmation' || match?.confirmation_status === 'pending';
+    const isAwaiting = status === 'awaiting_confirmation';
 
     let bgStyle: React.CSSProperties = {};
     let borderClass = 'border border-[var(--line)] bg-[var(--ink-2)]/60';
@@ -124,7 +124,7 @@ export function SeasonTracker({ matches, participants = [], className = '' }: Se
   // Inspect panel match details
   const activeHostIsA = activeMatch?.home_participant_id === 'participant_a';
   const activeIsConfirmed = activeMatch && ['confirmed', 'reconstructed', 'forfeited', 'technical_win'].includes(activeMatch.status);
-  const activeIsAwaiting = activeMatch?.status === 'awaiting_confirmation' || activeMatch?.confirmation_status === 'pending';
+  const activeIsAwaiting = activeMatch?.status === 'awaiting_confirmation';
   const activeIsNext = activeMd === nextMdNumber;
 
   return (
