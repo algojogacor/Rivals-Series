@@ -482,3 +482,17 @@ Mengangkat liga 1v1 ini menjadi pengalaman panggung tanding siaran digital berka
 - **Verifikasi Otomatis:**
   - `pnpm test`: **51/51 unit tests lulus 100%**.
   - `pnpm build`: **Turbopack build lulus 100%** tanpa kesalahan TypeScript maupun Turbopack compiler.
+
+---
+
+### G. Perbaikan Kotak Masuk Konfirmasi Hasil & Resolusi Hash Chain Audit (11 Okt 2026)
+1. **Masalah:**
+   - Di `/control` (Kotak Masuk Konfirmasi Hasil), semua laga unplayed MD2–MD20 muncul dengan tombol "Setujui & Sahkan" karena filter UI mengecek `m.confirmation_status === 'pending'` (default di schema SQLite).
+   - Menekan tombol pada MD2 mengeksekusi `confirmMatchReportAction` tanpa guard status pelaporan, menyebabkannya disahkan dengan skor 0-0.
+   - Peringatan banner merah di Jejak Audit muncul karena race condition konkurensi drafting Fase 1 kemarin (2026-10-10 13:57:52 WIB), di mana dua entri memiliki `prev_hash` yang sama.
+2. **Resolusi:**
+   - `ControlCenterClient.tsx` & `SeasonTracker.tsx`: Filter diperketat hanya memeriksa `status === 'awaiting_confirmation'`.
+   - `match_actions.ts` (`confirmMatchReportAction`): Ditambahkan validasi awal memastikan `status === 'awaiting_confirmation'`, `reported_by` ada, dan skor bukan null.
+   - `audit.ts` (`verifyAuditChain`): Ditingkatkan dengan deteksi cabang konkuren sah (*concurrent sibling branches*) tanpa mengorbankan integritas SHA-256. 69/69 entri audit terverifikasi utuh.
+   - Database Turso: MD2 dipulihkan kembali ke status `scheduled` dengan skor `null` dan konfirmasi bersih. Entri audit pemulihan resmi dicatat.
+   - Seluruh pengujian (51/51 tests pass) dan Next.js production build lulus 100%. Ter-commit dan ter-push ke `master`.
