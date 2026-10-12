@@ -119,8 +119,9 @@ export function PlayerCardVisual({
   const theme = getCardTheme(effectiveCardType, isTrending);
   const posBadgeColor = getPositionBadgeColor(effectivePos);
 
-  // Variant resolution: thumb uses mini card first; lg uses full card first
-  const imageVariant = size === 'thumb' ? 'mini' : 'card';
+  // Always load the official vertical portrait eFootball card (240x340).
+  // Mini-cards in eFHUB is a 180x120 horizontal banner that crops and distorts portrait slots.
+  const imageVariant = 'card';
 
   const candidates = useMemo(() => {
     if (!cardId && !basePlayerId) return [];
@@ -129,7 +130,7 @@ export function PlayerCardVisual({
       basePlayerId || undefined,
       imageVariant
     );
-  }, [cardId, basePlayerId, imageVariant]);
+  }, [cardId, basePlayerId]);
 
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -137,7 +138,7 @@ export function PlayerCardVisual({
   useEffect(() => {
     setCandidateIndex(0);
     setImageLoaded(false);
-  }, [cardId, basePlayerId, imageVariant]);
+  }, [cardId, basePlayerId]);
 
   const activeUrl = candidateIndex < candidates.length ? candidates[candidateIndex] : null;
 
@@ -150,28 +151,32 @@ export function PlayerCardVisual({
     return (name || 'P').slice(0, 2).toUpperCase();
   }, [name]);
 
-  // Dimensions & typography classes
+  // Dimensions & typography classes (native eFootball card aspect ratio is 240 / 340 ~ 1:1.41)
   const isThumb = size === 'thumb';
   const isLarge = size === 'lg' || size === 'md';
 
   const containerSizes = {
-    thumb: 'w-[40px] h-[54px] rounded-[7px]',
-    sm: 'w-[56px] h-[76px] rounded-[9px]',
-    md: 'w-[84px] h-[116px] rounded-[11px]',
-    lg: 'w-[104px] h-[146px] sm:w-[118px] sm:h-[164px] rounded-[13px]',
+    thumb: 'h-[46px] aspect-[240/340] rounded-[5px]',
+    sm: 'h-[76px] aspect-[240/340] rounded-[8px]',
+    md: 'h-[116px] aspect-[240/340] rounded-[10px]',
+    lg: 'h-[156px] sm:h-[168px] aspect-[240/340] rounded-[12px]',
   }[size];
+
+  const borderStyle = isThumb
+    ? 'border border-white/15 shadow-sm'
+    : `border-2 ${theme.border} ${theme.glow} shadow-md`;
 
   return (
     <div
-      className={`relative shrink-0 overflow-hidden select-none border-2 bg-gradient-to-b ${theme.gradient} ${theme.border} ${theme.glow} ${containerSizes} group transition-all duration-300 hover:scale-105 hover:z-20 ${className}`}
+      className={`relative shrink-0 overflow-hidden select-none bg-[var(--ink-2)] bg-gradient-to-b ${theme.gradient} ${borderStyle} ${containerSizes} group transition-all duration-300 hover:scale-105 hover:z-20 ${className}`}
       title={`${name} · ${effectiveCardType} ${effectiveRating ? `(${effectiveRating})` : ''}`}
     >
-      {/* 1. Official eFootball Card or Mini-Card Image */}
+      {/* 1. Official eFootball Vertical Card Image */}
       {activeUrl ? (
         <>
           {/* Skeleton loader until loaded */}
           {!imageLoaded && (
-            <div className="absolute inset-0 bg-[var(--ink-0)]/60 animate-pulse flex items-center justify-center">
+            <div className="absolute inset-0 bg-[var(--ink-0)] animate-pulse flex items-center justify-center">
               <span className="text-[10px] font-bold text-[var(--gold)]/60">{initials}</span>
             </div>
           )}
@@ -182,7 +187,7 @@ export function PlayerCardVisual({
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
             onError={() => setCandidateIndex((prev) => prev + 1)}
-            className={`w-full h-full object-cover transition-opacity duration-200 ${
+            className={`w-full h-full object-cover rounded-[inherit] transition-opacity duration-200 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
           />
@@ -235,19 +240,29 @@ export function PlayerCardVisual({
         </div>
       )}
 
-      {/* 3. Team Owner Badge (COR / CMS) */}
+      {/* 3. Team Owner Indicator (COR / CMS) */}
       {showOwnerBadge && participantId && (
-        <div className="absolute top-1 right-1 z-20 pointer-events-none">
-          <span
-            className={`inline-block font-mono font-black uppercase tracking-wider rounded-[3px] shadow-sm leading-none ${
-              participantId === 'participant_a'
-                ? 'bg-[#f43f5e] text-white border border-rose-300/40'
-                : 'bg-[#06b6d4] text-black border border-cyan-200/50'
-            } ${isThumb ? 'text-[7px] px-1 py-0.5' : 'text-[9px] px-1.5 py-0.5'}`}
-          >
-            {participantId === 'participant_a' ? 'COR' : 'CMS'}
-          </span>
-        </div>
+        isThumb ? (
+          /* Subtle bottom accent line on thumbnails to avoid obscuring the player's face/rating */
+          <div
+            className={`absolute bottom-0 inset-x-0 h-[2.5px] z-20 ${
+              participantId === 'participant_a' ? 'bg-[#f43f5e]' : 'bg-[#06b6d4]'
+            }`}
+          />
+        ) : (
+          /* Prominent pill badge for larger cards */
+          <div className="absolute top-1 right-1 z-20 pointer-events-none">
+            <span
+              className={`inline-block font-mono font-black uppercase tracking-wider rounded-[3px] shadow-sm leading-none ${
+                participantId === 'participant_a'
+                  ? 'bg-[#f43f5e] text-white border border-rose-300/40'
+                  : 'bg-[#06b6d4] text-black border border-cyan-200/50'
+              } text-[8px] px-1.5 py-0.5`}
+            >
+              {participantId === 'participant_a' ? 'COR' : 'CMS'}
+            </span>
+          </div>
+        )
       )}
 
       {/* 4. Luxury Holographic Foil Sheen on Hover */}
