@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getCachedStatisticsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
+import { PlayerCardVisual } from '@/components/PlayerCardVisual';
 import { EmptyState } from '@/components/EmptyState';
 import { Trophy, Shield, Award, Flame, Sparkles } from 'lucide-react';
 import { RollingNumber } from '@/components/fx/RollingNumber';
@@ -32,9 +33,17 @@ export default async function StatisticsPage() {
     topScorers,
     topAssisters,
     topGoalkeepers,
+    playersMeta = {},
     paStreak,
     pbStreak,
   } = await getCachedStatisticsData();
+
+  const getMeta = (cardId?: string | null, baseId?: number | null, name?: string) => {
+    if (cardId && playersMeta[cardId]) return playersMeta[cardId];
+    if (baseId && playersMeta[`base_${baseId}`]) return playersMeta[`base_${baseId}`];
+    if (name && playersMeta[`name_${name.toLowerCase()}`]) return playersMeta[`name_${name.toLowerCase()}`];
+    return null;
+  };
 
   const pA = participants.find((p) => p.id === 'participant_a') || {
     id: 'participant_a',
@@ -114,6 +123,15 @@ export default async function StatisticsPage() {
                       }`}>
                         #{s.rank}
                       </span>
+                      <PlayerCardVisual
+                        cardId={s.card_id}
+                        basePlayerId={s.base_player_id}
+                        name={s.player_name}
+                        participantId={s.participant_id}
+                        metadata={getMeta(s.card_id, s.base_player_id, s.player_name)}
+                        cardVersion={s.card_versions[0]}
+                        size="thumb"
+                      />
                       <div className="min-w-0">
                         <span className="font-semibold text-sm text-[var(--text)] block truncate">
                           {s.player_name}
@@ -183,6 +201,15 @@ export default async function StatisticsPage() {
                       }`}>
                         #{a.rank}
                       </span>
+                      <PlayerCardVisual
+                        cardId={a.card_id}
+                        basePlayerId={a.base_player_id}
+                        name={a.player_name}
+                        participantId={a.participant_id}
+                        metadata={getMeta(a.card_id, a.base_player_id, a.player_name)}
+                        cardVersion={a.card_versions[0]}
+                        size="thumb"
+                      />
                       <div className="min-w-0">
                         <span className="font-semibold text-sm text-[var(--text)] block truncate">
                           {a.player_name}
@@ -252,6 +279,14 @@ export default async function StatisticsPage() {
                       }`}>
                         #{g.rank}
                       </span>
+                      <PlayerCardVisual
+                        cardId={g.card_id}
+                        basePlayerId={g.base_player_id}
+                        name={g.goalkeeper_name}
+                        participantId={g.participant_id}
+                        metadata={getMeta(g.card_id, g.base_player_id, g.goalkeeper_name)}
+                        size="thumb"
+                      />
                       <div className="min-w-0">
                         <span className="font-semibold text-sm text-[var(--text)] block truncate">
                           {g.goalkeeper_name}

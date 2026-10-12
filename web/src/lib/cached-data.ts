@@ -27,6 +27,8 @@ import {
   getAllGoalkeeperRecords,
   getAllGoalNominations,
   getAllAwardBallots,
+  getPlayersMetadata,
+  PlayerCardMetadata,
 } from './db';
 import {
   calculateStandings,
@@ -118,6 +120,19 @@ export const getCachedStatisticsData = unstable_cache(
     const paStreak = calculateWinningStreak(matches, 'participant_a');
     const pbStreak = calculateWinningStreak(matches, 'participant_b');
 
+    const allCardIds = [
+      ...topScorers.map((s) => s.card_id),
+      ...topAssisters.map((a) => a.card_id),
+      ...topGoalkeepers.map((g) => g.card_id),
+    ];
+    const allBaseIds = [
+      ...topScorers.map((s) => s.base_player_id),
+      ...topAssisters.map((a) => a.base_player_id),
+      ...topGoalkeepers.map((g) => g.base_player_id),
+    ];
+    const rawMetaMap = await getPlayersMetadata(allCardIds, allBaseIds);
+    const playersMeta: Record<string, PlayerCardMetadata> = Object.fromEntries(rawMetaMap.entries());
+
     return {
       matches,
       participants,
@@ -130,6 +145,7 @@ export const getCachedStatisticsData = unstable_cache(
       topScorers,
       topAssisters,
       topGoalkeepers,
+      playersMeta,
       paStreak,
       pbStreak,
       isCompleted,
@@ -181,6 +197,19 @@ export const getCachedAwardsData = unstable_cache(
     const paStreak = calculateWinningStreak(matches, 'participant_a');
     const pbStreak = calculateWinningStreak(matches, 'participant_b');
 
+    const allCardIds = [
+      ...bootLeaders.map((s) => s.card_id),
+      ...playmakerLeaders.map((a) => a.card_id),
+      ...gloveLeaders.map((g) => g.card_id),
+    ];
+    const allBaseIds = [
+      ...bootLeaders.map((s) => s.base_player_id),
+      ...playmakerLeaders.map((a) => a.base_player_id),
+      ...gloveLeaders.map((g) => g.base_player_id),
+    ];
+    const rawMetaMap = await getPlayersMetadata(allCardIds, allBaseIds);
+    const playersMeta: Record<string, PlayerCardMetadata> = Object.fromEntries(rawMetaMap.entries());
+
     return {
       participants,
       matches,
@@ -196,6 +225,7 @@ export const getCachedAwardsData = unstable_cache(
       playmakerLeaders,
       gloveLeaders,
       gotsResults,
+      playersMeta,
       paStreak,
       pbStreak,
       isCompleted,

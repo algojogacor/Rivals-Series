@@ -235,6 +235,7 @@ export interface EarlyChampionCalculation {
 }
 
 export interface GoldenBootEntry {
+  card_id?: string | null;
   base_player_id?: number | null;
   player_name: string;
   participant_id: ParticipantId;
@@ -243,6 +244,7 @@ export interface GoldenBootEntry {
 }
 
 export interface GoldenGloveEntry {
+  card_id?: string | null;
   base_player_id?: number | null;
   goalkeeper_name: string;
   participant_id: ParticipantId;
@@ -251,6 +253,7 @@ export interface GoldenGloveEntry {
 }
 
 export interface PlaymakerEntry {
+  card_id?: string | null;
   base_player_id?: number | null;
   player_name: string;
   participant_id: ParticipantId;

@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { getCachedAwardsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
+import { PlayerCardVisual } from '@/components/PlayerCardVisual';
 import { StatusChip } from '@/components/StatusChip';
 import { Trophy, Award, Shield, Zap, Sparkles, ArrowRight, Crown } from 'lucide-react';
 import { RollingNumber } from '@/components/fx/RollingNumber';
 import { ChampionTrophyShowcase, AwardTrophyShowcase } from '@/components/awards/TrophyShowcaseClient';
 import type { TrophyType } from '@/components/awards/TrophyViewer3D';
+import type { PlayerCardMetadata } from '@/lib/db';
 
 export const metadata = {
   title: 'Penghargaan | Rivals Series Season 1',
@@ -23,6 +25,10 @@ function WinnerRow({
   scoreColor = 'text-[var(--gold)]',
   cardVersions,
   subtext,
+  cardId,
+  basePlayerId,
+  metadata,
+  cardVisualSize = 'md',
 }: {
   participantId: 'participant_a' | 'participant_b';
   name: string;
@@ -32,7 +38,64 @@ function WinnerRow({
   scoreColor?: string;
   cardVersions?: string[];
   subtext?: string;
+  cardId?: string | number | null;
+  basePlayerId?: string | number | null;
+  metadata?: PlayerCardMetadata | null;
+  cardVisualSize?: 'sm' | 'md' | 'lg';
 }) {
+  const isPlayerCard = Boolean(cardId || basePlayerId || metadata || (cardVersions && cardVersions.length > 0));
+
+  if (isPlayerCard) {
+    return (
+      <div className="flex items-center gap-3.5 p-2.5 rounded-[14px] bg-[var(--ink-1)]/80 border border-[var(--line)] transition-all hover:border-[var(--line-strong)]">
+        <PlayerCardVisual
+          cardId={cardId}
+          basePlayerId={basePlayerId}
+          name={name}
+          participantId={participantId}
+          metadata={metadata}
+          cardVersion={cardVersions?.[0]}
+          size={cardVisualSize}
+        />
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2">
+            <PlayerTag
+              id={participantId}
+              name=""
+              monogram={monogram}
+              size="sm"
+            />
+            <span className="font-[family-name:var(--font-display)] font-bold text-base sm:text-lg text-[var(--text)] truncate">
+              {name}
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-1.5">
+            <span className={`font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl tabular-nums leading-none ${scoreColor}`}>
+              {score}
+            </span>
+            {scoreUnit && (
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-dim)]">
+                {scoreUnit}
+              </span>
+            )}
+          </div>
+
+          {cardVersions && cardVersions.length > 0 && (
+            <span className="text-[11px] text-[var(--text-faint)] block truncate font-mono">
+              Versi: {cardVersions.join(' + ')}
+            </span>
+          )}
+          {subtext && (
+            <span className="text-[11px] text-[var(--text-faint)] block truncate">
+              {subtext}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-0.5">
       <div className="flex items-center gap-2.5">
@@ -46,11 +109,6 @@ function WinnerRow({
           {score} {scoreUnit}
         </span>
       </div>
-      {cardVersions && cardVersions.length > 0 && (
-        <span className="text-[11px] text-[var(--text-faint)] block font-mono pl-[34px]">
-          Versi kartu: {cardVersions.join(' + ')}
-        </span>
-      )}
       {subtext && (
         <span className="text-[11px] text-[var(--text-faint)] block pl-[34px]">
           {subtext}
@@ -68,10 +126,18 @@ export default async function AwardsPage() {
     playmakerLeaders,
     gloveLeaders,
     gotsResults,
+    playersMeta = {},
     paStreak,
     pbStreak,
     isCompleted,
   } = await getCachedAwardsData();
+
+  const getMeta = (cardId?: string | null, baseId?: number | null, name?: string) => {
+    if (cardId && playersMeta[cardId]) return playersMeta[cardId];
+    if (baseId && playersMeta[`base_${baseId}`]) return playersMeta[`base_${baseId}`];
+    if (name && playersMeta[`name_${name.toLowerCase()}`]) return playersMeta[`name_${name.toLowerCase()}`];
+    return null;
+  };
 
   const pMap = new Map(participants.map((p) => [p.id, p]));
   const pA = pMap.get('participant_a') || {
@@ -280,6 +346,10 @@ export default async function AwardsPage() {
                 scoreUnit="Gol"
                 scoreColor="text-[var(--gold)]"
                 cardVersions={w.card_versions}
+                cardId={w.card_id}
+                basePlayerId={w.base_player_id}
+                metadata={getMeta(w.card_id, w.base_player_id, w.player_name)}
+                cardVisualSize={isBootTied ? 'sm' : 'md'}
               />
             ))}
           </div>
@@ -308,6 +378,10 @@ export default async function AwardsPage() {
                 scoreUnit="Asis"
                 scoreColor="text-[var(--p-b)]"
                 cardVersions={w.card_versions}
+                cardId={w.card_id}
+                basePlayerId={w.base_player_id}
+                metadata={getMeta(w.card_id, w.base_player_id, w.player_name)}
+                cardVisualSize={isPlaymakerTied ? 'sm' : 'md'}
               />
             ))}
           </div>
@@ -336,6 +410,10 @@ export default async function AwardsPage() {
                 scoreUnit="Clean Sheet"
                 scoreColor="text-[var(--p-a)]"
                 cardVersions={w.card_versions}
+                cardId={w.card_id}
+                basePlayerId={w.base_player_id}
+                metadata={getMeta(w.card_id, w.base_player_id, w.goalkeeper_name)}
+                cardVisualSize={isGloveTied ? 'sm' : 'md'}
               />
             ))}
           </div>

@@ -443,6 +443,7 @@ export function calculateGoldenBoot(
   const map = new Map<
     string,
     {
+      cardId: string | null;
       basePlayerId: number | null;
       playerName: string;
       participantId: ParticipantId;
@@ -469,6 +470,7 @@ export function calculateGoldenBoot(
 
     if (!map.has(key)) {
       map.set(key, {
+        cardId: ev.scorer_card_id || null,
         basePlayerId: baseId,
         playerName: cleanName,
         participantId: ev.scoring_participant_id,
@@ -479,12 +481,16 @@ export function calculateGoldenBoot(
 
     const entry = map.get(key)!;
     entry.totalGoals += 1;
+    if (ev.scorer_card_id && !entry.cardId) {
+      entry.cardId = ev.scorer_card_id;
+    }
     if (ev.scorer_card_version) {
       entry.versions.add(ev.scorer_card_version);
     }
   }
 
   const results: GoldenBootEntry[] = Array.from(map.values()).map((data) => ({
+    card_id: data.cardId,
     base_player_id: data.basePlayerId,
     player_name: data.playerName,
     participant_id: data.participantId,
@@ -508,6 +514,7 @@ export function calculatePlaymakerAward(
   const map = new Map<
     string,
     {
+      cardId: string | null;
       basePlayerId: number | null;
       playerName: string;
       participantId: ParticipantId;
@@ -536,6 +543,7 @@ export function calculatePlaymakerAward(
 
     if (!map.has(key)) {
       map.set(key, {
+        cardId: ev.assist_card_id || null,
         basePlayerId: baseId,
         playerName: cleanName,
         participantId: ev.scoring_participant_id,
@@ -546,12 +554,16 @@ export function calculatePlaymakerAward(
 
     const entry = map.get(key)!;
     entry.totalAssists += 1;
+    if (ev.assist_card_id && !entry.cardId) {
+      entry.cardId = ev.assist_card_id;
+    }
     if (ev.assist_card_version) {
       entry.versions.add(ev.assist_card_version);
     }
   }
 
   const results: PlaymakerEntry[] = Array.from(map.values()).map((data) => ({
+    card_id: data.cardId,
     base_player_id: data.basePlayerId,
     player_name: data.playerName,
     participant_id: data.participantId,
@@ -576,6 +588,7 @@ export function calculateGoldenGlove(
   const map = new Map<
     string,
     {
+      cardId: string | null;
       basePlayerId: number | null;
       goalkeeperName: string;
       participantId: ParticipantId;
@@ -620,6 +633,7 @@ export function calculateGoldenGlove(
 
       if (!map.has(key)) {
         map.set(key, {
+          cardId: rec.goalkeeper_card_id || null,
           basePlayerId: baseId,
           goalkeeperName: cleanName,
           participantId: rec.participant_id,
@@ -629,6 +643,9 @@ export function calculateGoldenGlove(
       }
       const entry = map.get(key)!;
       entry.cleanSheets += 1;
+      if (rec.goalkeeper_card_id && !entry.cardId) {
+        entry.cardId = rec.goalkeeper_card_id;
+      }
       if (rec.goalkeeper_card_version) {
         entry.versions.add(rec.goalkeeper_card_version);
       }
@@ -636,6 +653,7 @@ export function calculateGoldenGlove(
   }
 
   const results: GoldenGloveEntry[] = Array.from(map.values()).map((data) => ({
+    card_id: data.cardId,
     base_player_id: data.basePlayerId,
     goalkeeper_name: data.goalkeeperName,
     participant_id: data.participantId,

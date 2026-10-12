@@ -973,4 +973,84 @@ export async function getSeasonInviteByTokenHash(tokenHash: string): Promise<Sea
   }
 }
 
+export interface PlayerCardMetadata {
+  card_id: string;
+  base_player_id: number;
+  name: string;
+  card_type_label: string;
+  variation_name: string | null;
+  position_label: string;
+  overall_max: number;
+  is_trending: number;
+  is_indonesian: number;
+}
+
+/**
+ * Batch-fetch player card metadata from efootball_players for visual card rendering.
+ * Indexed by card_id, base_${base_player_id}, and name_${lowercase_name}.
+ */
+export const getPlayersMetadata = cache(async function getPlayersMetadata(
+  cardIds: (string | null | undefined)[],
+  basePlayerIds: (number | null | undefined)[] = []
+): Promise<Map<string, PlayerCardMetadata>> {
+  const map = new Map<string, PlayerCardMetadata>();
+  const validCardIds = Array.from(new Set(cardIds.filter(Boolean) as string[]));
+  const validBaseIds = Array.from(new Set(basePlayerIds.filter(Boolean) as number[]));
+
+  if (validCardIds.length === 0 && validBaseIds.length === 0) {
+    return map;
+  }
+
+  try {
+    const db = getDbClient();
+    const whereClauses: string[] = [];
+    const args: (string | number)[] = [];
+
+    if (validCardIds.length > 0) {
+      const placeholders = validCardIds.map(() => '?').join(',');
+      whereClauses.push(`card_id IN (${placeholders})`);
+      args.push(...validCardIds);
+    }
+    if (validBaseIds.length > 0) {
+      const placeholders = validBaseIds.map(() => '?').join(',');
+      whereClauses.push(`base_player_id IN (${placeholders})`);
+      args.push(...validBaseIds);
+    }
+
+    const res = await db.execute({
+      sql: `SELECT card_id, base_player_id, name, card_type_label, variation_name, position_label, overall_max, is_trending, is_indonesian
+            FROM efootball_players
+            WHERE ${whereClauses.join(' OR ')};`,
+      args,
+    });
+
+    for (const r of res.rows) {
+      const meta: PlayerCardMetadata = {
+        card_id: String(r.card_id),
+        base_player_id: Number(r.base_player_id),
+        name: String(r.name),
+        card_type_label: String(r.card_type_label || 'Standard'),
+        variation_name: r.variation_name ? String(r.variation_name) : null,
+        position_label: String(r.position_label || 'CM'),
+        overall_max: Number(r.overall_max || 85),
+        is_trending: Number(r.is_trending || 0),
+        is_indonesian: Number(r.is_indonesian || 0),
+      };
+
+      map.set(meta.card_id, meta);
+      if (!map.has(`base_${meta.base_player_id}`)) {
+        map.set(`base_${meta.base_player_id}`, meta);
+      }
+      const lowerName = meta.name.toLowerCase();
+      if (!map.has(`name_${lowerName}`)) {
+        map.set(`name_${lowerName}`, meta);
+      }
+    }
+  } catch (err) {
+    console.error('getPlayersMetadata error:', err);
+  }
+
+  return map;
+});
+
 
