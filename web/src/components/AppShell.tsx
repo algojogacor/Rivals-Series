@@ -15,6 +15,7 @@ import {
   LogOut, 
   User, 
   RotateCcw,
+  Users,
   X 
 } from 'lucide-react';
 import { ParticipantId, Participant } from '@/lib/types';
@@ -63,6 +64,7 @@ export function AppShell({ session, children }: AppShellProps) {
   const navLinks = [
     { href: '/', label: 'Beranda' },
     { href: '/standings', label: 'Klasemen' },
+    { href: '/squad', label: 'Skuad' },
     { href: '/matches', label: 'Match Center' },
     { href: '/statistics', label: 'Statistik' },
     { href: '/awards', label: 'Penghargaan' },
@@ -174,10 +176,18 @@ export function AppShell({ session, children }: AppShellProps) {
 
                   <div className="py-1">
                     <Link
+                      href="/squad"
+                      className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors"
+                    >
+                      <Users className="w-4 h-4 text-[var(--p-a)]" />
+                      <span>Lembar Skuad Resmi</span>
+                    </Link>
+
+                    <Link
                       href="/control"
                       className="flex items-center gap-2.5 px-4 py-2 text-[14px] text-[var(--text)] hover:bg-[var(--ink-2)] transition-colors"
                     >
-                      <Sliders className="w-4 h-4 text-[var(--p-a)]" />
+                      <Sliders className="w-4 h-4 text-[var(--text-dim)]" />
                       <span>Pusat Kontrol & Lapor</span>
                     </Link>
 
@@ -300,6 +310,15 @@ export function AppShell({ session, children }: AppShellProps) {
             </div>
 
             <div className="space-y-2">
+              <Link
+                href="/squad"
+                onClick={() => setMobileMoreOpen(false)}
+                className="flex items-center gap-3 p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-[var(--text)] font-medium text-[15px]"
+              >
+                <Users className="w-5 h-5 text-[var(--p-a)]" />
+                <span>Lembar Skuad Resmi</span>
+              </Link>
+
               <Link
                 href="/statistics"
                 onClick={() => setMobileMoreOpen(false)}
