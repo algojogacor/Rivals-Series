@@ -133,14 +133,35 @@ export function PlayerCardVisual({
   }, [cardId, basePlayerId]);
 
   const [candidateIndex, setCandidateIndex] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     setCandidateIndex(0);
+    setRetryCount(0);
     setImageLoaded(false);
   }, [cardId, basePlayerId]);
 
-  const activeUrl = candidateIndex < candidates.length ? candidates[candidateIndex] : null;
+  const rawActiveUrl = candidateIndex < candidates.length ? candidates[candidateIndex] : null;
+  const activeUrl = rawActiveUrl
+    ? retryCount > 0
+      ? `${rawActiveUrl}${rawActiveUrl.includes('?') ? '&' : '?'}r=${retryCount}`
+      : rawActiveUrl
+    : null;
+
+  const handleImageError = () => {
+    // If we're on the primary CDN URL (index 0), give Nginx reverse proxy a moment
+    // to finish caching the image from upstream eFHUB before falling back or giving up.
+    if (candidateIndex === 0 && retryCount < 2) {
+      setTimeout(() => {
+        setRetryCount((prev) => prev + 1);
+      }, 800);
+      return;
+    }
+    // Proceed to next fallback URL candidate
+    setCandidateIndex((prev) => prev + 1);
+    setRetryCount(0);
+  };
 
   // Initials for fallback
   const initials = useMemo(() => {
@@ -186,7 +207,7 @@ export function PlayerCardVisual({
             alt={name}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
-            onError={() => setCandidateIndex((prev) => prev + 1)}
+            onError={handleImageError}
             className={`w-full h-full object-cover rounded-[inherit] transition-opacity duration-200 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}

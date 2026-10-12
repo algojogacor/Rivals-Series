@@ -36,10 +36,30 @@ export function PlayerAvatar({
   }, [cardId, basePlayerId, variant]);
 
   const [candidateIndex, setCandidateIndex] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     setCandidateIndex(0);
+    setRetryCount(0);
   }, [cardId, basePlayerId, variant]);
+
+  const rawActiveUrl = candidateIndex < candidates.length ? candidates[candidateIndex] : null;
+  const activeUrl = rawActiveUrl
+    ? retryCount > 0
+      ? `${rawActiveUrl}${rawActiveUrl.includes('?') ? '&' : '?'}r=${retryCount}`
+      : rawActiveUrl
+    : null;
+
+  const handleImageError = () => {
+    if (candidateIndex === 0 && retryCount < 2) {
+      setTimeout(() => {
+        setRetryCount((prev) => prev + 1);
+      }, 800);
+      return;
+    }
+    setCandidateIndex((prev) => prev + 1);
+    setRetryCount(0);
+  };
 
   const initials = React.useMemo(() => {
     const cleaned = (name || 'P').trim();
@@ -63,8 +83,6 @@ export function PlayerAvatar({
     ? 'border-[var(--ok)]/60 bg-[var(--ok)]/10'
     : 'border-[var(--line)] bg-[var(--ink-1)]';
 
-  const activeUrl = candidateIndex < candidates.length ? candidates[candidateIndex] : null;
-
   return (
     <div
       className={`relative shrink-0 overflow-hidden border flex items-center justify-center select-none ${sizeMap[size]} ${borderStyle} ${className}`}
@@ -75,7 +93,7 @@ export function PlayerAvatar({
           src={activeUrl}
           alt={name}
           loading="lazy"
-          onError={() => setCandidateIndex((prev) => prev + 1)}
+          onError={handleImageError}
           className="w-full h-full object-contain"
         />
       ) : (
