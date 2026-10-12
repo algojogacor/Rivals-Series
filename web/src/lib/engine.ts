@@ -860,11 +860,21 @@ export function calculateGoalOfTheSeason(
     const winners = results.filter(r => r.total_points === topScore && r.opponent_points === topOpponent);
     const isCo = winners.length > 1;
 
+    let currentRank = 1;
     results.forEach((r, idx) => {
-      r.rank = idx + 1;
+      if (idx > 0) {
+        const prev = results[idx - 1];
+        if (r.total_points < prev.total_points || r.opponent_points < prev.opponent_points) {
+          currentRank = idx + 1;
+        }
+      }
+      r.rank = currentRank;
       if (r.total_points === topScore && r.opponent_points === topOpponent) {
         r.is_winner = true;
         r.is_co_winner = isCo;
+      } else {
+        r.is_winner = false;
+        r.is_co_winner = false;
       }
     });
   }

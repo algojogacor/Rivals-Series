@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getCachedStatisticsData } from '@/lib/cached-data';
 import { PlayerTag } from '@/components/PlayerTag';
 import { EmptyState } from '@/components/EmptyState';
-import { Trophy, Shield, Zap, Award, Flame, Sparkles } from 'lucide-react';
+import { Trophy, Shield, Award, Flame, Sparkles } from 'lucide-react';
 import { RollingNumber } from '@/components/fx/RollingNumber';
 
 export const metadata = {
@@ -12,6 +12,18 @@ export const metadata = {
 };
 
 export const revalidate = 300;
+
+function assignTiedRanks<T>(items: T[], getScore: (item: T) => number): Array<T & { rank: number }> {
+  let currentRank = 1;
+  const result: Array<T & { rank: number }> = [];
+  for (let i = 0; i < items.length; i++) {
+    if (i > 0 && getScore(items[i]) < getScore(items[i - 1])) {
+      currentRank = i + 1;
+    }
+    result.push({ ...items[i], rank: currentRank });
+  }
+  return result;
+}
 
 export default async function StatisticsPage() {
   const {
@@ -40,6 +52,11 @@ export default async function StatisticsPage() {
   const standingA = standings.find((s) => s.participant_id === 'participant_a') || standings[0];
   const standingB = standings.find((s) => s.participant_id === 'participant_b') || standings[1];
 
+  // Compute tied ranks (standard competition ranking: 1, 1, 3...)
+  const rankedScorers = assignTiedRanks(topScorers, (s) => s.total_goals);
+  const rankedAssisters = assignTiedRanks(topAssisters, (a) => a.total_assists);
+  const rankedGoalkeepers = assignTiedRanks(topGoalkeepers, (g) => g.clean_sheets);
+
   // Streak metrics for H2H visual bar
   const streakTotal = paStreak + pbStreak;
   const paStreakPct = streakTotal > 0 ? (paStreak / streakTotal) * 100 : 50;
@@ -60,7 +77,7 @@ export default async function StatisticsPage() {
           </h1>
         </div>
         <p className="text-[15px] text-[var(--text-dim)] max-w-xl">
-          Data performa individual pemain virtual dan rekor kompetisi resmi yang disahkan dari 20 matchday.
+          Data performa individual pemain virtual dihitung per pemilik tim dan rekor kompetisi resmi yang disahkan dari 20 matchday.
         </p>
       </div>
 
@@ -81,19 +98,21 @@ export default async function StatisticsPage() {
             </Link>
           </div>
 
-          {topScorers.length > 0 ? (
+          {rankedScorers.length > 0 ? (
             <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm flex-1">
-              {topScorers.map((s, idx) => {
+              {rankedScorers.map((s) => {
                 const isA = s.participant_id === 'participant_a';
                 const p = isA ? pA : pB;
                 return (
                   <div
-                    key={s.player_name}
+                    key={`${s.participant_id}-${s.base_player_id || s.player_name}`}
                     className="p-3.5 flex items-center justify-between gap-3 hover:bg-[var(--ink-2)]/40 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-[family-name:var(--font-display)] font-extrabold text-xl text-[var(--text-dim)] tabular-nums w-6 shrink-0 text-center">
-                        #{idx + 1}
+                      <span className={`font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums w-6 shrink-0 text-center ${
+                        s.rank === 1 ? 'text-[var(--gold)]' : 'text-[var(--text-dim)]'
+                      }`}>
+                        #{s.rank}
                       </span>
                       <div className="min-w-0">
                         <span className="font-semibold text-sm text-[var(--text)] block truncate">
@@ -126,7 +145,7 @@ export default async function StatisticsPage() {
             <EmptyState
               motif="boot"
               title="Perburuan Golden Boot"
-              description="Pemain virtual dengan jumlah gol sah terbanyak. Seluruh versi kartu digabungkan."
+              description="Pemain virtual dengan jumlah gol sah terbanyak per pemilik tim. Seluruh versi kartu digabung dalam satu pemilik (tidak lintas pemilik)."
               nextStep="Otomatis diagregasi saat laporan disahkan kedua pemain (Pasal 42)."
               className="flex-1"
             />
@@ -148,19 +167,21 @@ export default async function StatisticsPage() {
             </Link>
           </div>
 
-          {topAssisters.length > 0 ? (
+          {rankedAssisters.length > 0 ? (
             <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm flex-1">
-              {topAssisters.map((a, idx) => {
+              {rankedAssisters.map((a) => {
                 const isA = a.participant_id === 'participant_a';
                 const p = isA ? pA : pB;
                 return (
                   <div
-                    key={a.player_name}
+                    key={`${a.participant_id}-${a.base_player_id || a.player_name}`}
                     className="p-3.5 flex items-center justify-between gap-3 hover:bg-[var(--ink-2)]/40 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-[family-name:var(--font-display)] font-extrabold text-xl text-[var(--text-dim)] tabular-nums w-6 shrink-0 text-center">
-                        #{idx + 1}
+                      <span className={`font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums w-6 shrink-0 text-center ${
+                        a.rank === 1 ? 'text-[var(--p-b)]' : 'text-[var(--text-dim)]'
+                      }`}>
+                        #{a.rank}
                       </span>
                       <div className="min-w-0">
                         <span className="font-semibold text-sm text-[var(--text)] block truncate">
@@ -193,7 +214,7 @@ export default async function StatisticsPage() {
             <EmptyState
               motif="playmaker"
               title="Perburuan Top Asis"
-              description="Pemain virtual dengan catatan asis terbanyak. Seluruh versi kartu digabungkan."
+              description="Pemain virtual dengan catatan asis terbanyak per pemilik tim. Seluruh versi kartu digabung dalam satu pemilik (tidak lintas pemilik)."
               nextStep="Otomatis diagregasi dari asis sah pada formulir laporan hasil (Pasal 42A)."
               className="flex-1"
             />
@@ -215,19 +236,21 @@ export default async function StatisticsPage() {
             </Link>
           </div>
 
-          {topGoalkeepers.length > 0 ? (
+          {rankedGoalkeepers.length > 0 ? (
             <div className="rounded-[16px] bg-[var(--ink-1)] border border-[var(--line)] divide-y divide-[var(--line)] overflow-hidden shadow-sm flex-1">
-              {topGoalkeepers.map((g, idx) => {
+              {rankedGoalkeepers.map((g) => {
                 const isA = g.participant_id === 'participant_a';
                 const p = isA ? pA : pB;
                 return (
                   <div
-                    key={g.goalkeeper_name}
+                    key={`${g.participant_id}-${g.base_player_id || g.goalkeeper_name}`}
                     className="p-3.5 flex items-center justify-between gap-3 hover:bg-[var(--ink-2)]/40 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-[family-name:var(--font-display)] font-extrabold text-xl text-[var(--text-dim)] tabular-nums w-6 shrink-0 text-center">
-                        #{idx + 1}
+                      <span className={`font-[family-name:var(--font-display)] font-extrabold text-xl tabular-nums w-6 shrink-0 text-center ${
+                        g.rank === 1 ? 'text-[var(--p-a)]' : 'text-[var(--text-dim)]'
+                      }`}>
+                        #{g.rank}
                       </span>
                       <div className="min-w-0">
                         <span className="font-semibold text-sm text-[var(--text)] block truncate">
@@ -258,7 +281,7 @@ export default async function StatisticsPage() {
             <EmptyState
               motif="glove"
               title="Perburuan Golden Glove"
-              description="Kiper starter yang bermain 90 menit reguler penuh tanpa kebobolan."
+              description="Kiper starter yang bermain 90 menit reguler penuh tanpa kebobolan per pemilik tim."
               nextStep="Tercatat otomatis dari pemilihan nama kiper starter di laporan laga (Pasal 44)."
               className="flex-1"
             />
@@ -305,7 +328,7 @@ export default async function StatisticsPage() {
           <div className="flex items-center justify-between h-[58px] px-4 sm:px-5 rounded-[10px] bg-[var(--ink-2)] border border-[var(--line)]">
             <span
               className={`w-12 sm:w-16 font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl tabular-nums ${
-                paStreak > pbStreak ? 'text-[var(--p-a)] drop-shadow-[0_0_8px_var(--p-a-glow)]' : 'text-[var(--text-dim)]'
+                paStreak >= pbStreak && paStreak > 0 ? 'text-[var(--p-a)] drop-shadow-[0_0_8px_var(--p-a-glow)]' : 'text-[var(--text-dim)]'
               }`}
             >
               <RollingNumber value={paStreak} />
@@ -345,7 +368,7 @@ export default async function StatisticsPage() {
 
             <span
               className={`w-12 sm:w-16 text-right font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl tabular-nums ${
-                pbStreak > paStreak ? 'text-[var(--p-b)] drop-shadow-[0_0_8px_var(--p-b-glow)]' : 'text-[var(--text-dim)]'
+                pbStreak >= paStreak && pbStreak > 0 ? 'text-[var(--p-b)] drop-shadow-[0_0_8px_var(--p-b-glow)]' : 'text-[var(--text-dim)]'
               }`}
             >
               <RollingNumber value={pbStreak} />
@@ -356,7 +379,7 @@ export default async function StatisticsPage() {
           <div className="flex items-center justify-between h-[58px] px-4 sm:px-5 rounded-[10px] bg-[var(--ink-2)] border border-[var(--line)]">
             <span
               className={`w-12 sm:w-16 font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl tabular-nums ${
-                (standingA?.clean_sheets || 0) > (standingB?.clean_sheets || 0)
+                (standingA?.clean_sheets || 0) >= (standingB?.clean_sheets || 0) && (standingA?.clean_sheets || 0) > 0
                   ? 'text-[var(--p-a)] drop-shadow-[0_0_8px_var(--p-a-glow)]'
                   : 'text-[var(--text-dim)]'
               }`}
@@ -398,7 +421,7 @@ export default async function StatisticsPage() {
 
             <span
               className={`w-12 sm:w-16 text-right font-[family-name:var(--font-display)] font-extrabold text-2xl sm:text-3xl tabular-nums ${
-                (standingB?.clean_sheets || 0) > (standingA?.clean_sheets || 0)
+                (standingB?.clean_sheets || 0) >= (standingA?.clean_sheets || 0) && (standingB?.clean_sheets || 0) > 0
                   ? 'text-[var(--p-b)] drop-shadow-[0_0_8px_var(--p-b-glow)]'
                   : 'text-[var(--text-dim)]'
               }`}

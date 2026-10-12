@@ -246,7 +246,7 @@ Semua pertandingan reguler menggunakan ketentuan berikut:
 
 1. Skuad yang terdaftar sebelum MD1 menjadi skuad yang berlaku untuk MD1–MD10.
 2. Setelah MD10 selesai, masing-masing peserta mendapatkan kesempatan memperbarui daftar skuad sebelum memainkan MD11.
-3. Perubahan pada jendela tersebut bebas, sepanjang jumlah kartu dalam skuad tidak melebihi 26, tidak terdapat kartu kembar dari pemain virtual yang sama dalam skuad tersebut, dan seluruh persyaratan kartu Trending (minimal 2 kartu) serta pemain Indonesia tetap dapat dipenuhi. Penggantian kartu setelah MD10 diperbolehkan mengganti suatu kartu ke versi kartu lain dari pemain virtual yang sama; gol serta clean sheet dari versi kartu yang berbeda milik pemain virtual yang sama tetap digabungkan untuk perhitungan Golden Boot dan Golden Glove.
+3. Perubahan pada jendela tersebut bebas, sepanjang jumlah kartu dalam skuad tidak melebihi 26, tidak terdapat kartu kembar dari pemain virtual yang sama dalam skuad tersebut, dan seluruh persyaratan kartu Trending (minimal 2 kartu) serta pemain Indonesia tetap dapat dipenuhi. Penggantian kartu setelah MD10 diperbolehkan mengganti suatu kartu ke versi kartu lain dari pemain virtual yang sama; gol serta clean sheet dari versi kartu yang berbeda milik pemain virtual yang sama dalam satu pemilik tetap digabungkan untuk perhitungan Golden Boot dan Golden Glove (statistik dihitung per pemilik dan tidak pernah digabung lintas pemilik).
 4. Setelah skuad untuk fase MD11–MD20 dikunci, daftar skuad tetap berlaku sampai Season 1 selesai. Pergantian lebih lanjut hanya diperbolehkan jika kedua peserta menyetujui amendemen karena keadaan teknis yang luar biasa.
 5. Perubahan Starting XI, formasi, taktik, dan pemain cadangan antarpertandingan diperbolehkan selama menggunakan pemain dalam skuad yang sah untuk fase tersebut.
 6. Snapshot skuad yang diperbarui wajib disimpan pada jendela perubahan pertengahan musim.
@@ -570,7 +570,7 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 5. Gol administratif dalam hasil forfeit hanya berfungsi untuk skor tim pada klasemen; gol tersebut tidak dikreditkan kepada pemain virtual.
 6. Technical Win dari undian tidak menciptakan GF/GA, gol individual, clean sheet, atau kemenangan sportif untuk streak.
 7. Jika statistik tidak dapat dibuktikan, website harus menunjukkan data tidak tersedia daripada mengarangnya.
-8. Untuk catatan pemain, identitas pemain di log skuad menggunakan nama dan versi kartu. Untuk penghargaan individual Golden Boot, Playmaker of the Season, dan Golden Glove, statistik dari versi kartu yang berbeda milik pemain virtual dengan nama pemain yang sama digabungkan, sementara versi kartu tetap tercatat dalam rincian statistik.
+8. Untuk catatan pemain, identitas pemain di log skuad menggunakan nama dan versi kartu. Untuk seluruh penghargaan individual (Golden Boot, Playmaker of the Season, dan Golden Glove), statistik dihitung terpisah per pemilik tim. Statistik dari versi kartu yang berbeda milik pemain virtual yang sama digabungkan dalam satu pemilik yang sama (tidak pernah digabung lintas pemilik, karena kedua pemilik berhak memakai pemain virtual yang sama). Versi kartu tetap tercatat dalam rincian statistik.
 
 ## Pasal 41 — RS Champion S1
 
@@ -584,8 +584,8 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 1. Golden Boot diberikan kepada pemain virtual dengan jumlah gol terbanyak dalam pertandingan resmi yang dimainkan.
 2. Gol waktu reguler dan Extra Time dihitung.
 3. Gol adu penalti, gol administratif, dan gol bunuh diri rekonstruksi tidak dihitung.
-4. Versi kartu yang berbeda dari pemain virtual bernama sama digabungkan untuk penghargaan ini, tetapi rincian gol tetap dapat menampilkan versi kartu yang digunakan.
-5. Jika pemain teratas mempunyai jumlah gol sama, penghargaan dapat diberikan bersama. Tidak perlu menciptakan tiebreaker dari statistik yang tidak dicatat.
+4. Versi kartu yang berbeda dari pemain virtual bernama sama (atau ber-base player ID sama) digabungkan per pemilik tim (dalam satu pemilik yang sama). Jika kedua pemilik memainkan pemain virtual yang sama, catatan gol keduanya dihitung terpisah sebagai dua entri independen dan tidak digabungkan. Rincian gol tetap dapat menampilkan versi kartu yang digunakan.
+5. Jika dua atau lebih pemain teratas mempunyai jumlah gol sama, penghargaan diberikan bersama (co-winner/gelar dibagi). Tidak ada tiebreaker (seperti menit bermain atau rasio gol) karena menit bermain tidak tercatat di dalam game dan tidak dapat dihitung.
 
 ## Pasal 42A — Playmaker of the Season S1
 
@@ -593,8 +593,8 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 2. Asis pada waktu reguler dan Extra Time dihitung.
 3. Asis pada adu penalti, gol administratif, dan gol bunuh diri (own goal) tidak dihitung.
 4. Pencatatan asis bersifat opsional pada formulir pelaporan hasil pertandingan. Asis yang sah diakui adalah asis yang dicantumkan saat pelaporan dan disahkan oleh kedua peserta.
-5. Versi kartu yang berbeda dari pemain virtual bernama sama (base player ID yang sama) digabungkan untuk penghargaan ini, dengan rincian asis tetap dapat menampilkan versi kartu yang digunakan.
-6. Jika dua atau lebih pemain teratas memiliki jumlah asis yang sama, penghargaan diberikan bersama (co-winner). Tidak ada tiebreaker fiktif yang diciptakan.
+5. Versi kartu yang berbeda dari pemain virtual bernama sama (base player ID yang sama) digabungkan per pemilik tim (dalam satu pemilik yang sama, tidak digabung lintas pemilik). Rincian asis tetap dapat menampilkan versi kartu yang digunakan.
+6. Jika dua atau lebih pemain teratas memiliki jumlah asis yang sama, penghargaan diberikan bersama (co-winner/gelar dibagi). Tidak ada tiebreaker fiktif yang digunakan.
 
 ## Pasal 43 — Goal of the Season S1
 
@@ -634,14 +634,14 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 3. Jika penjaga gawang starter diganti sebelum akhir pertandingan, ia tidak memperoleh clean sheet individual untuk pertandingan tersebut. Penjaga gawang pengganti juga tidak memperoleh clean sheet individual untuk pertandingan yang sama.
 4. Gol adu penalti tidak dihitung sebagai gol yang kebobolan untuk tujuan clean sheet.
 5. Forfeit dan Technical Win tidak menghasilkan clean sheet individual.
-6. Jika jumlah clean sheet tertinggi sama, penghargaan dapat diberikan bersama.
+6. Versi kartu penjaga gawang yang berbeda dari pemain virtual yang sama digabungkan dalam satu pemilik yang sama (tidak lintas pemilik). Jika jumlah clean sheet individual tertinggi sama, penghargaan diberikan bersama (co-winner/gelar dibagi) tanpa tiebreaker.
 
 ## Pasal 45 — Best Defence S1
 
 1. Best Defence diberikan kepada peserta yang timnya memiliki jumlah GA paling rendah dalam klasemen resmi setelah Season 1 selesai.
 2. GA mencakup skor administratif forfeit 0–3 sesuai klasemen, tetapi gol adu penalti tidak dihitung.
 3. Jika GA sama, jumlah clean sheet tim terbanyak menjadi pembeda.
-4. Jika masih sama, penghargaan diberikan bersama.
+4. Jika masih sama, penghargaan diberikan bersama (co-winner/gelar dibagi).
 
 ## Pasal 46 — Longest Winning Streak S1
 
@@ -649,7 +649,7 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 2. Kemenangan normal, termasuk kemenangan setelah Extra Time atau adu penalti, dihitung.
 3. Seri atau kekalahan memutus rangkaian kemenangan.
 4. Forfeit yang diterima karena pelanggaran, Technical Win melalui undian, dan kemenangan administratif tidak dihitung sebagai kemenangan sportif dalam streak.
-5. Jika streak terpanjang sama, penghargaan diberikan bersama.
+5. Jika streak terpanjang sama, penghargaan diberikan bersama (co-winner/gelar dibagi).
 
 ## Pasal 47 — Most Clean Sheets S1
 
@@ -657,7 +657,7 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
 2. Clean sheet tim hanya dihitung dalam pertandingan yang diselesaikan secara normal atau melalui rekonstruksi yang sah dan tim tidak kebobolan dalam waktu reguler maupun Extra Time jika Extra Time dimainkan.
 3. Gol adu penalti tidak dihitung sebagai gol kebobolan untuk clean sheet.
 4. Forfeit dan Technical Win tidak menghasilkan clean sheet.
-5. Jika jumlah clean sheet tertinggi sama, penghargaan diberikan bersama.
+5. Jika jumlah clean sheet tertinggi sama, penghargaan diberikan bersama (co-winner/gelar dibagi).
 
 ## Pasal 48 — Publikasi Penghargaan
 
@@ -672,7 +672,7 @@ Sanksi hanya dapat dijatuhkan sesuai ketentuan eksplisit dalam BAB IX. Perilaku 
    - Most Clean Sheets S1.
 2. Penghargaan tidak memberikan bonus poin klasemen.
 3. Website menampilkan pemenang, metode penentuan, dan statistik pendukung yang tersedia.
-4. Jika suatu penghargaan seri sesuai ketentuan, website harus mencatat co-winner secara eksplisit.
+4. Jika suatu penghargaan berbasis angka berakhir seri, ketentuan "seri = gelar dibagi" (co-winner) berlaku tanpa tiebreaker yang tidak tercatat di dalam game. Website wajib mencatat dan menampilkan seluruh pemegang gelar bersama secara eksplisit beserta badge pemilik masing-masing (COR/CMS).
 5. Hasil penghargaan tidak boleh diubah tanpa koreksi data yang dapat dibuktikan atau penerapan aturan yang jelas.
 
 ---
@@ -865,5 +865,6 @@ Tautan atau catatan keputusan:
 |---|---|---|---|---|---|---|---|
 | 1.0-draft | — | — | Draft awal | Penyusunan regulasi | Menunggu | Menunggu | Setelah disetujui |
 | 1.1 | 2026-10-11 | Pasal 40(8), 42A, 48(1) | Penambahan gelar kehormatan Playmaker of the Season S1 (Top Asis) dan penggabungan versi kartu pengasis | Menghargai kreator peluang dan melengkapi penghargaan individual liga | Disetujui | Disetujui | MD1 ke atas |
+| 1.2 | 2026-10-12 | Pasal 15(3), 40(8), 42(4–5), 42A(5–6), 44(6), 45(4), 46(5), 47(5), 48(4) | Penegasan pemisahan statistik per pemilik tim (tidak digabung lintas pemilik) dan penetapan resmi ketentuan gelar dibagi (co-winner) tanpa tiebreaker untuk seluruh penghargaan berbasis angka | Menghindari ambiguitas penggabungan lintas pemilik dan memastikan kasus seri ditangani secara adil dan seragam | Disetujui | Disetujui | MD1 ke atas |
 
 **Catatan sebelum MD1:** catat model/layanan AI Adjudicator yang dipilih, template adjudikasi yang digunakan, alat undian digital, pemetaan Peserta A/B ke Heads/Tails, dan snapshot skuad masing-masing peserta.

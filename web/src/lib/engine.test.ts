@@ -854,5 +854,234 @@ describe('Rivals Series Season 1: Calculation Engine Test Suite', () => {
     expect(playmakers[1].participant_id).toBe('participant_b');
     expect(playmakers[1].total_assists).toBe(1);
   });
+
+  // Test 20: Per-Owner Statistics Isolation (Virtual players shared by different owners are NEVER merged)
+  it('Criterion 20: Per-owner statistics isolation separates identical virtual players across different participants', () => {
+    const goals: MatchGoalEvent[] = [
+      // Messi scores 2 goals for participant_a
+      {
+        id: 'g1',
+        match_id: 'MD1',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Lionel Messi',
+        scorer_base_player_id: 7511,
+        scorer_card_version: 'Epic Barcelona',
+        period: 'regular_first_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+      {
+        id: 'g2',
+        match_id: 'MD2',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Lionel Messi',
+        scorer_base_player_id: 7511,
+        scorer_card_version: 'Epic Barcelona',
+        period: 'regular_second_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+      // Messi ALSO scores 3 goals for participant_b
+      {
+        id: 'g3',
+        match_id: 'MD1',
+        scoring_participant_id: 'participant_b',
+        scorer_player_name: 'Lionel Messi',
+        scorer_base_player_id: 7511,
+        scorer_card_version: 'Big Time Argentina',
+        period: 'regular_second_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+      {
+        id: 'g4',
+        match_id: 'MD3',
+        scoring_participant_id: 'participant_b',
+        scorer_player_name: 'Lionel Messi',
+        scorer_base_player_id: 7511,
+        scorer_card_version: 'Big Time Argentina',
+        period: 'regular_first_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+      {
+        id: 'g5',
+        match_id: 'MD4',
+        scoring_participant_id: 'participant_b',
+        scorer_player_name: 'Lionel Messi',
+        scorer_base_player_id: 7511,
+        scorer_card_version: 'Big Time Argentina',
+        period: 'regular_second_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+      // Dembele scores 3 goals for participant_a (tied with Messi in participant_b)
+      {
+        id: 'g6',
+        match_id: 'MD1',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Ousmane Dembele',
+        scorer_base_player_id: 110022,
+        scorer_card_version: 'Highlight',
+        period: 'regular_first_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+      {
+        id: 'g7',
+        match_id: 'MD2',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Ousmane Dembele',
+        scorer_base_player_id: 110022,
+        scorer_card_version: 'Highlight',
+        period: 'regular_second_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+      {
+        id: 'g8',
+        match_id: 'MD3',
+        scoring_participant_id: 'participant_a',
+        scorer_player_name: 'Ousmane Dembele',
+        scorer_base_player_id: 110022,
+        scorer_card_version: 'Highlight',
+        period: 'regular_first_half',
+        is_own_goal: 0,
+        is_reconstruction_only: 0,
+      },
+    ];
+
+    const confirmedIds = new Set(['MD1', 'MD2', 'MD3', 'MD4']);
+    const boot = calculateGoldenBoot(goals, confirmedIds);
+
+    // Messi must NOT be merged to 5 goals!
+    // There must be 3 distinct entries:
+    // 1. Dembele (participant_a) - 3 goals
+    // 2. Messi (participant_b) - 3 goals
+    // 3. Messi (participant_a) - 2 goals
+    expect(boot).toHaveLength(3);
+
+    const pAMessi = boot.find(b => b.base_player_id === 7511 && b.participant_id === 'participant_a');
+    const pBMessi = boot.find(b => b.base_player_id === 7511 && b.participant_id === 'participant_b');
+    const pADembele = boot.find(b => b.player_name === 'Ousmane Dembele');
+
+    expect(pAMessi).toBeDefined();
+    expect(pBMessi).toBeDefined();
+    expect(pADembele).toBeDefined();
+
+    expect(pAMessi?.total_goals).toBe(2);
+    expect(pBMessi?.total_goals).toBe(3);
+    expect(pADembele?.total_goals).toBe(3);
+
+    // Both top scorers have 3 goals (co-winners of the boot)
+    expect(boot[0].total_goals).toBe(3);
+    expect(boot[1].total_goals).toBe(3);
+  });
+
+  // Test 21: Goal of the Season Co-Winners share rank 1
+  it('Criterion 21: Goal of the Season co-winners both receive rank 1 and is_co_winner true', () => {
+    const nominations: GoalNomination[] = [
+      {
+        id: 'nom1',
+        participant_id: 'participant_a',
+        match_id: 'MD1',
+        scorer_name: 'Ousmane Dembele',
+        title: 'Solo Run Dembele',
+        video_url: 'https://example.com/v1',
+        status: 'official',
+        submitted_at: '2026-10-10',
+      },
+      {
+        id: 'nom2',
+        participant_id: 'participant_b',
+        match_id: 'MD2',
+        scorer_name: 'Mateo Retegui',
+        title: 'Bicycle Kick Retegui',
+        video_url: 'https://example.com/v2',
+        status: 'official',
+        submitted_at: '2026-10-10',
+      },
+    ];
+
+    // Both participants rank the opponent first
+    const ballots: AwardBallot[] = [
+      {
+        participant_id: 'participant_a',
+        is_locked: true,
+        rankings: ['nom2', 'nom1'], // PB gets 4 pts from PA, PA gets 3 pts
+      },
+      {
+        participant_id: 'participant_b',
+        is_locked: true,
+        rankings: ['nom1', 'nom2'], // PA gets 4 pts from PB, PB gets 3 pts
+      },
+    ];
+
+    const results = calculateGoalOfTheSeason(nominations, ballots);
+    expect(results).toHaveLength(2);
+
+    // Both nominations have 7 total points (4 + 3) and 4 opponent points!
+    expect(results[0].total_points).toBe(7);
+    expect(results[1].total_points).toBe(7);
+    expect(results[0].opponent_points).toBe(4);
+    expect(results[1].opponent_points).toBe(4);
+
+    expect(results[0].rank).toBe(1);
+    expect(results[1].rank).toBe(1);
+    expect(results[0].is_winner).toBe(true);
+    expect(results[1].is_winner).toBe(true);
+    expect(results[0].is_co_winner).toBe(true);
+    expect(results[1].is_co_winner).toBe(true);
+  });
+
+  // Test 22: Exact Season 1 tie scenario (Mateo Retegui & Ousmane Dembele tied at 3 goals, Messi 2 goals each)
+  it('Criterion 22: Golden Boot co-winners Mateo Retegui (CMS) and Ousmane Dembele (COR) both have 3 goals, with Messi 2 goals in each team', () => {
+    const goals: MatchGoalEvent[] = [
+      // Dembele: 3 goals for participant_a
+      { id: '1', match_id: 'MD1', scoring_participant_id: 'participant_a', scorer_player_name: 'Ousmane Dembele', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      { id: '2', match_id: 'MD2', scoring_participant_id: 'participant_a', scorer_player_name: 'Ousmane Dembele', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      { id: '3', match_id: 'MD3', scoring_participant_id: 'participant_a', scorer_player_name: 'Ousmane Dembele', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      // Retegui: 3 goals for participant_b
+      { id: '4', match_id: 'MD1', scoring_participant_id: 'participant_b', scorer_player_name: 'Mateo Retegui', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      { id: '5', match_id: 'MD2', scoring_participant_id: 'participant_b', scorer_player_name: 'Mateo Retegui', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      { id: '6', match_id: 'MD4', scoring_participant_id: 'participant_b', scorer_player_name: 'Mateo Retegui', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      // Messi: 2 goals for participant_a
+      { id: '7', match_id: 'MD2', scoring_participant_id: 'participant_a', scorer_player_name: 'Lionel Messi', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      { id: '8', match_id: 'MD4', scoring_participant_id: 'participant_a', scorer_player_name: 'Lionel Messi', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      // Messi: 2 goals for participant_b
+      { id: '9', match_id: 'MD1', scoring_participant_id: 'participant_b', scorer_player_name: 'Lionel Messi', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+      { id: '10', match_id: 'MD3', scoring_participant_id: 'participant_b', scorer_player_name: 'Lionel Messi', period: 'regular_first_half', is_own_goal: 0, is_reconstruction_only: 0 },
+    ];
+
+    const confirmedIds = new Set(['MD1', 'MD2', 'MD3', 'MD4']);
+    const boot = calculateGoldenBoot(goals, confirmedIds);
+
+    // Filter max goals
+    const maxGoals = boot[0].total_goals;
+    const coWinners = boot.filter(b => b.total_goals === maxGoals);
+
+    expect(maxGoals).toBe(3);
+    expect(coWinners).toHaveLength(2);
+
+    const winnerNames = coWinners.map(w => w.player_name);
+    expect(winnerNames).toContain('Mateo Retegui');
+    expect(winnerNames).toContain('Ousmane Dembele');
+
+    const retegui = coWinners.find(w => w.player_name === 'Mateo Retegui');
+    const dembele = coWinners.find(w => w.player_name === 'Ousmane Dembele');
+
+    expect(retegui?.participant_id).toBe('participant_b');
+    expect(dembele?.participant_id).toBe('participant_a');
+
+    // Messi entries must be separate (2 goals for PA, 2 goals for PB)
+    const messiEntries = boot.filter(b => b.player_name === 'Lionel Messi');
+    expect(messiEntries).toHaveLength(2);
+    expect(messiEntries[0].total_goals).toBe(2);
+    expect(messiEntries[1].total_goals).toBe(2);
+    expect(messiEntries.map(m => m.participant_id)).toEqual(
+      expect.arrayContaining(['participant_a', 'participant_b'])
+    );
+  });
 });
+
 

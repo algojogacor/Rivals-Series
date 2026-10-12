@@ -158,7 +158,7 @@ const BAB_LIST: BabItem[] = [
         heading: 'Bursa Transfer Tengah Musim (Setelah MD10)',
         body: [
           'Pergantian roster kartu hanya diizinkan pada jeda tengah musim setelah MD10 selesai dan sebelum MD11 dimulai.',
-          'Penggantian kartu setelah MD10 diperbolehkan mengganti ke versi kartu lain dari pemain virtual yang sama (selama di dalam skuad aktif Fase 2 tetap hanya terdapat satu kartu untuk setiap pemain virtual), serta perolehan gol dan clean sheet tetap digabung per pemain virtual untuk Golden Boot dan Golden Glove.',
+          'Penggantian kartu setelah MD10 diperbolehkan mengganti ke versi kartu lain dari pemain virtual yang sama (selama di dalam skuad aktif Fase 2 tetap hanya terdapat satu kartu untuk setiap pemain virtual), serta perolehan gol dan clean sheet tetap digabung per pemain virtual dalam satu pemilik untuk Golden Boot dan Golden Glove (tidak digabung lintas pemilik).',
         ],
       },
       {
@@ -318,7 +318,9 @@ const BAB_LIST: BabItem[] = [
         pasal: 'Pasal 42',
         heading: 'Golden Boot S1 (Top Scorer)',
         body: [
-          'Diberikan kepada pemain virtual dengan jumlah gol sah terbanyak. Seluruh versi kartu digabung per pemain virtual.',
+          'Diberikan kepada pemain virtual dengan jumlah gol sah terbanyak dalam satu pemilik tim.',
+          'Seluruh versi kartu digabung per pemain virtual dalam satu pemilik yang sama (tidak digabung lintas pemilik).',
+          'Jika dua atau lebih pemain teratas memiliki jumlah gol yang sama, penghargaan diberikan bersama (co-winner/gelar dibagi) tanpa tiebreaker.',
         ],
       },
       {
@@ -327,15 +329,17 @@ const BAB_LIST: BabItem[] = [
         body: [
           'Diberikan kepada pemain virtual dengan jumlah asis sah terbanyak dalam pertandingan resmi yang disahkan.',
           'Pencatatan asis bersifat opsional pada pelaporan hasil pertandingan.',
-          'Versi kartu yang berbeda dari pemain virtual bernama sama (base player ID yang sama) digabungkan untuk penghargaan ini.',
-          'Jika jumlah asis tertinggi sama, penghargaan diberikan bersama (co-winner) tanpa tiebreaker fiktif.',
+          'Versi kartu yang berbeda dari pemain virtual bernama sama digabungkan dalam satu pemilik tim (tidak digabung lintas pemilik).',
+          'Jika jumlah asis tertinggi sama, penghargaan diberikan bersama (co-winner/gelar dibagi) tanpa tiebreaker fiktif.',
         ],
       },
       {
         pasal: 'Pasal 44',
         heading: 'Golden Glove S1 (Kiper Terbaik)',
         body: [
-          'Diberikan kepada kiper starter yang bermain 90 menit reguler penuh dengan clean sheet terbanyak.',
+          'Diberikan kepada kiper starter yang bermain 90 menit reguler penuh dengan clean sheet terbanyak per pemilik tim.',
+          'Versi kartu kiper digabungkan dalam satu pemilik yang sama (tidak lintas pemilik).',
+          'Jika jumlah clean sheet tertinggi sama, penghargaan diberikan bersama (co-winner/gelar dibagi) tanpa tiebreaker.',
         ],
       },
       {
@@ -343,6 +347,7 @@ const BAB_LIST: BabItem[] = [
         heading: 'Goal of the Season S1',
         body: [
           'Gol terbaik hasil pemeringkatan rahasia kedua peserta (bobot 4–3–2–1).',
+          'Jika seri pada poin total, perbandingan nilai dari peserta lawan menjadi penentu tiebreaker (Pasal 43). Jika masih seri, gelar diberikan bersama (co-winner).',
         ],
       },
       {
@@ -350,6 +355,7 @@ const BAB_LIST: BabItem[] = [
         heading: 'Best Defence S1',
         body: [
           'Peserta dengan jumlah kebobolan (GA) paling sedikit dalam klasemen akhir.',
+          'Jika GA seri, jumlah clean sheet tim terbanyak menjadi pembeda (Pasal 45). Jika masih seri, penghargaan diberikan bersama (co-winner/gelar dibagi).',
         ],
       },
       {
@@ -357,6 +363,7 @@ const BAB_LIST: BabItem[] = [
         heading: 'Longest Winning Streak S1',
         body: [
           'Rangkaian kemenangan pertandingan sportif beruntun paling panjang sepanjang musim.',
+          'Jika streak kemenangan terpanjang sama, penghargaan diberikan bersama (co-winner/gelar dibagi) tanpa tiebreaker.',
         ],
       },
       {
@@ -364,6 +371,7 @@ const BAB_LIST: BabItem[] = [
         heading: 'Most Clean Sheets S1',
         body: [
           'Peserta dengan jumlah clean sheet tim terbanyak di seluruh musim.',
+          'Jika jumlah clean sheet tertinggi sama, penghargaan diberikan bersama (co-winner/gelar dibagi) tanpa tiebreaker.',
         ],
       },
     ],
