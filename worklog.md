@@ -496,3 +496,47 @@ Mengangkat liga 1v1 ini menjadi pengalaman panggung tanding siaran digital berka
    - `audit.ts` (`verifyAuditChain`): Ditingkatkan dengan deteksi cabang konkuren sah (*concurrent sibling branches*) tanpa mengorbankan integritas SHA-256. 69/69 entri audit terverifikasi utuh.
    - Database Turso: MD2 dipulihkan kembali ke status `scheduled` dengan skor `null` dan konfirmasi bersih. Entri audit pemulihan resmi dicatat.
    - Seluruh pengujian (51/51 tests pass) dan Next.js production build lulus 100%. Ter-commit dan ter-push ke `master`.
+
+
+---
+
+## 5. Penyelesaian MVP, Integrasi Piala 3D & Pengerasan Image CDN (12 Oktober 2026)
+
+### A. Integrasi & Optimasi Model Piala 3D (`/awards`)
+1. **Pipeline Model GLB 8 Kategori Penghargaan:**
+   - Dibuat dan disiapkan 8 model 3D piala GLB yang mewakili seluruh penghargaan kompetisi:
+     - `champion.glb` (RS Champion S1 - adaptasi piala kompetisi Asia)
+     - `boot.glb` (Golden Boot S1)
+     - `glove.glb` (Golden Glove S1)
+     - `playmaker.glb` (Playmaker of the Season S1)
+     - `best_defence.glb` (Best Defence S1)
+     - `clean_sheet.glb` (Most Clean Sheets S1)
+     - `goal_of_the_season.glb` (Goal of the Season S1)
+     - `winning_streak.glb` (Longest Winning Streak S1)
+2. **Kompresi Geometri & Tekstur:**
+   - Seluruh model GLB dioptimasi dengan Meshopt/Draco dan KTX2/WebP texture compression hingga total ukuran menjadi ~17 MB (jauh di bawah batas web performance tanpa degradasi visual logam emas/perak). File mentah disimpan di luar git repository.
+3. **Framing Otomatis Bounding Box (`TrophyViewer3D.tsx`):**
+   - Menghilangkan hardcoded camera zoom/position per piala.
+   - Mengimplementasikan `fitCameraToTrophy` yang menghitung bounding box model secara dinamis sehingga seluruh piala tampil utuh, proporsional, dan tidak terpotong pada resolusi desktop, tablet, maupun mobile.
+   - Merapikan dudukan: piala yang telah memiliki alas bawaan menggunakan bayangan halus (tanpa alas ganda), tombol selebrasi juara diposisikan aman agar tidak menghalangi model 3D.
+
+### B. Pengerasan (*Hardening*) CDN Gambar Pemain & Resolusi Bug Cache Client-Side
+1. **Akar Masalah Gagal Muat Kartu:**
+   - Server reverse proxy Nginx di Azure VM (`efimg.aryariap.my.id`) mengalami cold cache saat pertama kali dibuka, menyebabkan antrean koneksi ke upstream eFHUB (`efimg.com`) melambat (400–1200ms).
+   - Di frontend, `onError` langsung membakar semua opsi cadangan tanpa jeda retry, mengunci kartu ke monogram secara permanen.
+2. **Cache Warming Database:**
+   - Dijalankan audit dan pre-warming otomatis untuk seluruh 50 kartu pemain dan kiper di database Turso (`match_goal_events`, `goalkeeper_match_records`, `roster_cards`). Seluruh 50 kartu terverifikasi 100% `HTTP 200 HIT` (~120–160ms).
+3. **Resolusi Bug Navigasi Client-Side Next.js (`PlayerCardVisual.tsx` & `PlayerAvatar.tsx`):**
+   - **Bug:** Saat berpindah rute (`/` -> `/statistics`), gambar yang sudah ada di memori cache browser Chromium menyelesaikan decode secara sinkron sebelum event listener terpasang, sehingga event `onLoad` tidak ditembakkan. Class `opacity-0` dan komponen skeleton pulse menyembunyikan gambar asli selamanya.
+   - **Solusi:**
+     - Menghapus paksa `opacity-0`; gambar selalu berada di layer atas (`z-10`) dengan opasitas penuh.
+     - Menempatkan skeleton murni sebagai background di layer belakang (`z-0`) saat proses unduh pertama.
+     - Menambahkan deteksi `ref.complete && naturalWidth > 0` untuk menandai gambar selesai seketika jika terbaca dari cache browser (frame 0).
+     - Menghapus atribut `loading="lazy"` pada thumbnail papan atas agar didecode seketika.
+     - Menambahkan delayed retry (800ms) untuk melindungi dari cold cache di masa depan.
+     - Mengunci `useEffect` agar tidak mereset state saat navigasi rute, melainkan hanya saat ID kartu pemain berganti.
+
+### C. Status MVP Penutupan
+- **Unit Tests:** 68/68 tests lulus 100% (`vitest run`).
+- **Production Build:** Sukses 100% tanpa error (`next build`).
+- **Deploy:** Live dan aktif di Vercel Production.
