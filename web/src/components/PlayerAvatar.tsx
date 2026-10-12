@@ -92,7 +92,6 @@ export function PlayerAvatar({
         <img
           src={activeUrl}
           alt={name}
-          loading="lazy"
           onError={handleImageError}
           className="w-full h-full object-contain"
         />

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getPlayerImageCandidateUrls } from '@/lib/efhub-constants';
 import type { PlayerCardMetadata } from '@/lib/db';
 
@@ -136,10 +136,16 @@ export function PlayerCardVisual({
   const [retryCount, setRetryCount] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  // Only reset state if the card ID actually changes between renders (prevents resetting on client route transitions)
+  const prevCardKey = useRef(`${cardId}-${basePlayerId}`);
   useEffect(() => {
-    setCandidateIndex(0);
-    setRetryCount(0);
-    setImageLoaded(false);
+    const currentKey = `${cardId}-${basePlayerId}`;
+    if (prevCardKey.current !== currentKey) {
+      prevCardKey.current = currentKey;
+      setCandidateIndex(0);
+      setRetryCount(0);
+      setImageLoaded(false);
+    }
   }, [cardId, basePlayerId]);
 
   const rawActiveUrl = candidateIndex < candidates.length ? candidates[candidateIndex] : null;
@@ -195,22 +201,25 @@ export function PlayerCardVisual({
       {/* 1. Official eFootball Vertical Card Image */}
       {activeUrl ? (
         <>
-          {/* Skeleton loader until loaded */}
+          {/* Skeleton loader sits behind the image while downloading */}
           {!imageLoaded && (
-            <div className="absolute inset-0 bg-[var(--ink-0)] animate-pulse flex items-center justify-center">
+            <div className="absolute inset-0 bg-[var(--ink-0)] animate-pulse flex items-center justify-center z-0">
               <span className="text-[10px] font-bold text-[var(--gold)]/60">{initials}</span>
             </div>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            ref={(node) => {
+              // If already cached by browser, immediately mark as loaded without waiting for onLoad
+              if (node && node.complete && node.naturalWidth > 0 && !imageLoaded) {
+                setImageLoaded(true);
+              }
+            }}
             src={activeUrl}
             alt={name}
-            loading="lazy"
             onLoad={() => setImageLoaded(true)}
             onError={handleImageError}
-            className={`w-full h-full object-cover rounded-[inherit] transition-opacity duration-200 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            className="w-full h-full object-cover rounded-[inherit] relative z-10"
           />
         </>
       ) : (
