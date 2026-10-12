@@ -540,3 +540,35 @@ Mengangkat liga 1v1 ini menjadi pengalaman panggung tanding siaran digital berka
 - **Unit Tests:** 68/68 tests lulus 100% (`vitest run`).
 - **Production Build:** Sukses 100% tanpa error (`next build`).
 - **Deploy:** Live dan aktif di Vercel Production.
+
+
+---
+
+## 6. Fitur Lembar Skuad Resmi / Dedicated Squad Viewer (`/squad`) (13 Oktober 2026)
+
+### A. Latar Belakang & Kebutuhan Pengguna
+- Pengguna melaporkan bahwa memeriksa daftar pemain skuad terasa tidak nyaman dan "seperti tidak ada" karena sebelumnya tersembunyi di dalam Pusat Kontrol (`/control` -> "Manajemen Skuad"), yang dirancang sebagai workbench drafting teknis pencarian eFHUB, bukan tampilan lembar tim (*team sheet*).
+- Di bilah navigasi utama (navbar) juga belum terdapat tautan khusus untuk memeriksa komposisi pemain.
+
+### B. Implementasi Fitur Baru
+1. **Halaman Publik `/squad` (`web/src/app/squad/page.tsx`):**
+   - Server Component yang memuat data peserta resmi (`algojogacor` & `CHarmed`), susunan kartu Fase 1 & Fase 2 terverifikasi, dan metadata lengkap atribut pemain eFootball.
+2. **Komponen Klien Interaktif (`web/src/components/squad/SquadViewerClient.tsx`):**
+   - **Duel Team Switcher:** Tombol tab besar untuk beralih antara skuad `algojogacor` (Cyan) dan `CHarmed` (Ungu), serta opsi perbandingan berdampingan (*Side-by-Side Comparison*).
+   - **Ringkasan Komposisi & Kuota Regulasi:** Indikator total 26/26 kartu resmi, rata-rata OVR, pemain OVR tertinggi, kuota Trending (Pasal 17, $\ge 2$), dan kuota pemain Indonesia (Pasal 18 & 20, $\ge 1$).
+   - **Pengelompokan Lini Taktis Lapangan:**
+     - 🧤 Penjaga Gawang (*Goalkeepers*)
+     - 🛡️ Lini Pertahanan (*Defenders* - CB, LB, RB)
+     - ⚙️ Lini Tengah (*Midfielders* - DMF, CMF, AMF, WMF)
+     - ⚡ Lini Serang (*Forwards* - CF, SS, LWF, RWF)
+   - **Pencarian Cepat & Filter:** Filter pencarian nama pemain, filter baris posisi, serta tombol filter cepat *Trending* dan *Indonesia*.
+   - **Toggle Tampilan:** Pilihan tampilan *Grid Kartu Visual* (menggunakan `PlayerCardVisual`) atau *Daftar Taktis (List)*.
+   - **Modal Detail Pemain:** Mengintegrasikan `PlayerDetailModal` eFootball interaktif saat kartu pemain diklik.
+3. **Integrasi Navigasi Global (`web/src/components/AppShell.tsx`):**
+   - Menambahkan menu **"Skuad"** di navbar utama desktop di antara *Klasemen* dan *Match Center*.
+   - Menambahkan tautan langsung **"Lembar Skuad Resmi"** pada menu dropdown profil pengguna dan laci navigasi mobile *Lainnya*.
+
+### C. Verifikasi & Status
+- **Unit Tests:** 68/68 tests lulus 100% (`vitest run`).
+- **Production Build:** Next.js Turbopack build lulus 100% dengan rute baru `ƒ /squad`.
+- **Deploy:** Live dan aktif di Vercel Production (`https://rs.aryariap.my.id/squad`).
