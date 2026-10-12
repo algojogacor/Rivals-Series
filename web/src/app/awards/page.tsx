@@ -651,7 +651,7 @@ export default async function AwardsPage() {
           </div>
 
           {/* Right Column: 3D Interactive Grand Champion Trophy (AFC Asian Cup Inspired) */}
-          <div className="flex flex-col items-center justify-center p-2 rounded-[16px] bg-[var(--ink-0)]/40 border border-[var(--line)] min-h-[300px] sm:min-h-[360px]">
+          <div className="flex flex-col items-center justify-center p-3 sm:p-5 rounded-[16px] bg-[var(--ink-0)]/40 border border-[var(--line)] min-h-[420px] sm:min-h-[500px]">
             <ChampionTrophyShowcase isCompleted={isCompleted} isTied={isChampionTied} />
           </div>
         </div>

@@ -126,6 +126,7 @@ export default function TrophyViewer3D({
   const [hasWebGL, setHasWebGL] = useState<boolean>(true);
   const [celebrated, setCelebrated] = useState<boolean>(false);
   const resetRotationRef = useRef<() => void>(() => {});
+  const celebrateSpinRef = useRef<() => void>(() => {});
 
   const handleCelebrate = (e?: React.MouseEvent) => {
     let clientX = 0.5;
@@ -136,6 +137,9 @@ export default function TrophyViewer3D({
     }
     burstTrophyConfetti(clientX, clientY);
     setCelebrated(true);
+    if (celebrateSpinRef.current) {
+      celebrateSpinRef.current();
+    }
     setTimeout(() => setCelebrated(false), 2400);
     if (onCelebrate) onCelebrate();
   };
@@ -167,15 +171,13 @@ export default function TrophyViewer3D({
     // Scene & Camera
     const scene = new THREE.Scene();
 
-    // Enlarged, proportional camera framing to fill the viewport
+    // 34 degrees vertical FOV delivers luxury gallery product perspective with minimal distortion
     const isHero = size === 'hero';
-    const cameraFov = isHero ? 40 : 36;
-    const cameraDistance = isHero ? 4.3 : 4.45;
-    const cameraY = isHero ? 0.85 : 0.72;
+    const cameraFov = 34;
 
     const camera = new THREE.PerspectiveCamera(cameraFov, width / height, 0.1, 100);
-    camera.position.set(0, cameraY, cameraDistance);
-    camera.lookAt(0, isHero ? 0.55 : 0.42, 0);
+    camera.position.set(0, 0.8, 4.6);
+    camera.lookAt(0, 0.4, 0);
 
     // Renderer
     let renderer: THREE.WebGLRenderer;
@@ -249,35 +251,81 @@ export default function TrophyViewer3D({
     scene.add(trophyRoot);
 
     // Contact Ground Shadow
-    const shadowGeo = new THREE.PlaneGeometry(3.2, 3.2);
+    const shadowGeo = new THREE.PlaneGeometry(1, 1);
     const shadowMat = new THREE.MeshBasicMaterial({
       map: createShadowTexture(),
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.65,
       depthWrite: false,
     });
     const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
     shadowMesh.rotation.x = -Math.PI / 2;
-    shadowMesh.position.y = -0.92;
+    shadowMesh.position.y = -0.75;
     scene.add(shadowMesh);
 
     // Dynamic rotation nodes for specific animated sub-parts
     const animatedNodes: { update: (clock: number) => void }[] = [];
 
-    // Common luxury pedestal foundation for all trophies
+    // General automated bounding box framing function
+    // Guarantees generous margins and prevents clipping across all 360° rotation angles
+    function fitCameraToTrophy(cam: THREE.PerspectiveCamera, rendererWidth: number, rendererHeight: number) {
+      if (rendererWidth <= 0 || rendererHeight <= 0) return;
+
+      const bbox = new THREE.Box3().setFromObject(trophyRoot);
+      if (bbox.isEmpty()) return;
+
+      const size = bbox.getSize(new THREE.Vector3());
+      const center = bbox.getCenter(new THREE.Vector3());
+
+      // Maximum horizontal radius from central vertical Y rotation axis (0, y, 0)
+      // Checks all 4 corners of the XZ bounding footprint to guarantee full 360° rotation clearance
+      const maxRotRadius = Math.max(
+        Math.sqrt(bbox.min.x * bbox.min.x + bbox.min.z * bbox.min.z),
+        Math.sqrt(bbox.max.x * bbox.max.x + bbox.min.z * bbox.min.z),
+        Math.sqrt(bbox.min.x * bbox.min.x + bbox.max.z * bbox.max.z),
+        Math.sqrt(bbox.max.x * bbox.max.x + bbox.max.z * bbox.max.z),
+        Math.sqrt((size.x / 2) ** 2 + (size.z / 2) ** 2)
+      );
+      const maxRotWidth = maxRotRadius * 2;
+      const totalHeight = size.y;
+      const centerY = center.y;
+
+      const aspect = rendererWidth / rendererHeight;
+      const fovRad = THREE.MathUtils.degToRad(cam.fov);
+
+      // Generous margin multiplier (1.34 = ~15% safety padding above, below, and on the sides)
+      const margin = 1.34;
+
+      const distVertical = (totalHeight * margin) / (2 * Math.tan(fovRad / 2));
+      const distHorizontal = (maxRotWidth * margin) / (2 * Math.tan(fovRad / 2) * aspect);
+      const distance = Math.max(distVertical, distHorizontal);
+
+      // Gentle studio downward angle (~7 degrees) for elegant three-quarter perspective
+      const pitchAngle = THREE.MathUtils.degToRad(7);
+
+      cam.position.set(
+        0,
+        centerY + distance * Math.sin(pitchAngle),
+        distance * Math.cos(pitchAngle)
+      );
+      cam.lookAt(0, centerY, 0);
+      cam.updateProjectionMatrix();
+    }
+
+    // Refined architectural pedestal plinth (only for GotS, Streak, and procedural fallbacks)
     function createPedestalBase(): THREE.Group {
       const baseGroup = new THREE.Group();
 
-      // Tier 1: Heavy Obsidian Base
-      const baseGeo = new THREE.CylinderGeometry(0.95, 1.15, 0.45, 8);
+      // Tier 1: Sleek Architectural Heavy Obsidian Base
+      const baseGeo = new THREE.CylinderGeometry(0.70, 0.82, 0.28, 8);
       const baseMesh = new THREE.Mesh(baseGeo, obsidianMat);
-      baseMesh.position.y = -0.68;
+      baseMesh.position.y = -0.58;
       baseGroup.add(baseMesh);
 
       // Tier 2: Metal Inset Trim Ring
-      const trimGeo = new THREE.CylinderGeometry(0.85, 0.95, 0.12, 32);
+      const trimGeo = new THREE.CylinderGeometry(0.60, 0.68, 0.08, 32);
       const trimMesh = new THREE.Mesh(trimGeo, type === 'champion' ? silverMat : goldMat);
-      trimMesh.position.y = -0.42;
+      trimMesh.position.y = -0.40;
       baseGroup.add(trimMesh);
 
       return baseGroup;
@@ -285,6 +333,7 @@ export default function TrophyViewer3D({
 
     // PROCEDURAL MODEL GENERATOR
     function buildProceduralTrophy() {
+      trophyRoot.clear();
       trophyRoot.add(createPedestalBase());
 
       // Specific Sculpted Trophies
@@ -736,6 +785,33 @@ export default function TrophyViewer3D({
           break;
         }
       }
+
+      // Universal floor alignment and auto-framing for procedural model
+      const Y_floor = -0.75;
+      const rawBbox = new THREE.Box3().setFromObject(trophyRoot);
+      const rawSize = rawBbox.getSize(new THREE.Vector3());
+
+      const targetHeight = isHero ? 2.5 : 2.1;
+      const halfX = rawSize.x / 2;
+      const halfZ = rawSize.z / 2;
+      const rawRotRadius = Math.sqrt(halfX * halfX + halfZ * halfZ);
+      const rawRotWidth = rawRotRadius * 2;
+      const effectiveDim = Math.max(rawSize.y, rawRotWidth * 0.78);
+      const targetScale = targetHeight / (effectiveDim || 1);
+      trophyRoot.scale.setScalar(targetScale);
+
+      // Recompute scaled bbox and center
+      const scaledBbox = new THREE.Box3().setFromObject(trophyRoot);
+      const scaledCenter = scaledBbox.getCenter(new THREE.Vector3());
+      trophyRoot.position.x = -scaledCenter.x;
+      trophyRoot.position.z = -scaledCenter.z;
+      trophyRoot.position.y = Y_floor - scaledBbox.min.y;
+
+      // Position ground shadow under floor
+      shadowMesh.position.set(0, Y_floor + 0.003, 0);
+      shadowMesh.scale.set(2.4, 2.4, 1);
+
+      fitCameraToTrophy(camera, container?.clientWidth || width, container?.clientHeight || height);
     }
 
     // Attempt to load external GLB model if present in /models/trophies/${type}.glb
@@ -750,21 +826,31 @@ export default function TrophyViewer3D({
         isUsingExternalGLB = true;
         const loadedModel = gltf.scene;
 
-        // Auto-center and fit to bounding box with enlarged, majestic framing
-        const bbox = new THREE.Box3().setFromObject(loadedModel);
-        const center = bbox.getCenter(new THREE.Vector3());
-        const sizeBox = bbox.getSize(new THREE.Vector3());
+        // Auto-center and fit to bounding box with uniform collection visual weight
+        const rawBbox = new THREE.Box3().setFromObject(loadedModel);
+        const rawSize = rawBbox.getSize(new THREE.Vector3());
+        const rawCenter = rawBbox.getCenter(new THREE.Vector3());
 
-        const maxDim = Math.max(sizeBox.x, sizeBox.y, sizeBox.z);
-        const targetScale = isHero ? 2.5 / maxDim : 2.2 / maxDim;
+        const targetHeight = isHero ? 2.5 : 2.1;
+        const halfX = rawSize.x / 2;
+        const halfZ = rawSize.z / 2;
+        const rawRotRadius = Math.sqrt(halfX * halfX + halfZ * halfZ);
+        const rawRotWidth = rawRotRadius * 2;
+        const effectiveDim = Math.max(rawSize.y, rawRotWidth * 0.78);
+        const targetScale = targetHeight / (effectiveDim || 1);
 
         loadedModel.scale.setScalar(targetScale);
 
-        // Position model to sit seamlessly on top of the luxury pedestal base (top trim at y = -0.36)
-        const scaledBottomY = (center.y - sizeBox.y / 2) * targetScale;
-        loadedModel.position.x = -center.x * targetScale;
-        loadedModel.position.z = -center.z * targetScale;
-        loadedModel.position.y = -0.36 - scaledBottomY;
+        // Position model bottom on floor Y_floor = -0.75
+        const Y_floor = -0.75;
+        loadedModel.position.x = -rawCenter.x * targetScale;
+        loadedModel.position.z = -rawCenter.z * targetScale;
+        loadedModel.position.y = Y_floor - rawBbox.min.y * targetScale;
+
+        // Ground contact shadow tailored to model base footprint
+        const baseRadius = Math.max(rawSize.x, rawSize.z) * targetScale * 0.5;
+        shadowMesh.position.set(0, Y_floor + 0.003, 0);
+        shadowMesh.scale.set(Math.max(baseRadius * 3.0, 1.8), Math.max(baseRadius * 3.0, 1.8), 1);
 
         // Apply PBR environment to all loaded meshes with enhanced reflection
         loadedModel.traverse((child) => {
@@ -779,9 +865,11 @@ export default function TrophyViewer3D({
           }
         });
 
+        // Mount directly to trophyRoot WITHOUT redundant code pedestal!
         trophyRoot.clear();
-        trophyRoot.add(createPedestalBase());
         trophyRoot.add(loadedModel);
+
+        fitCameraToTrophy(camera, container?.clientWidth || width, container?.clientHeight || height);
         setLoading(false);
       },
       undefined,
@@ -858,6 +946,10 @@ export default function TrophyViewer3D({
     };
     resetRotationRef.current = resetRotation;
 
+    celebrateSpinRef.current = () => {
+      rotationVelocity += 0.08;
+    };
+
     const dom = renderer.domElement;
     dom.style.cursor = 'grab';
     dom.addEventListener('mousedown', onPointerDown);
@@ -867,17 +959,29 @@ export default function TrophyViewer3D({
     window.addEventListener('touchmove', onPointerMove, { passive: true });
     window.addEventListener('touchend', onPointerUp);
 
-    // Resize Handler
+    // Dynamic Resize & Orientation Handler with Bounding Box Auto-Framing
     const handleResize = () => {
       if (!container || !renderer) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
       if (w === 0 || h === 0) return;
       camera.aspect = w / h;
-      camera.updateProjectionMatrix();
+      fitCameraToTrophy(camera, w, h);
       renderer.setSize(w, h);
     };
     window.addEventListener('resize', handleResize);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width: w, height: h } = entry.contentRect;
+        if (w > 0 && h > 0) {
+          camera.aspect = w / h;
+          fitCameraToTrophy(camera, w, h);
+          renderer.setSize(w, h, false);
+        }
+      }
+    });
+    resizeObserver.observe(container);
 
     // Intersection Observer for GPU Efficiency
     const observer = new IntersectionObserver(
@@ -916,6 +1020,7 @@ export default function TrophyViewer3D({
     return () => {
       cancelAnimationFrame(animationFrameId);
       observer.disconnect();
+      resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
       dom.removeEventListener('mousedown', onPointerDown);
       window.removeEventListener('mousemove', onPointerMove);
@@ -939,47 +1044,50 @@ export default function TrophyViewer3D({
     );
   }
 
+  // Generously expanded height classes so trophies stand tall and majestic with ample headroom
   const heightClasses = {
-    sm: 'h-[180px]',
-    md: 'h-[240px]',
-    lg: 'h-[290px]',
-    hero: 'h-[320px] sm:h-[380px]',
+    sm: 'h-[200px]',
+    md: 'h-[290px] sm:h-[340px]',
+    lg: 'h-[340px] sm:h-[400px]',
+    hero: 'h-[380px] sm:h-[460px]',
   }[size];
 
   return (
-    <div className={`relative w-full ${heightClasses} select-none group ${className}`}>
-      {/* 3D Canvas Mount Point */}
-      <div ref={mountRef} className="w-full h-full relative z-10" />
+    <div className={`relative w-full flex flex-col items-center select-none group ${className}`}>
+      {/* 3D Canvas Viewport */}
+      <div className={`relative w-full ${heightClasses} overflow-hidden rounded-[14px]`}>
+        <div ref={mountRef} className="w-full h-full relative z-10" />
 
-      {/* Elegant Loading State */}
-      {loading && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--ink-0)]/60 backdrop-blur-xs transition-opacity">
-          <div className="w-8 h-8 rounded-full border-2 border-[var(--gold)]/20 border-t-[var(--gold)] animate-spin" />
-          <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--gold)] animate-pulse">
-            Memuat Objek 3D...
-          </span>
+        {/* Elegant Loading State */}
+        {loading && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--ink-0)]/60 backdrop-blur-xs transition-opacity">
+            <div className="w-8 h-8 rounded-full border-2 border-[var(--gold)]/20 border-t-[var(--gold)] animate-spin" />
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--gold)] animate-pulse">
+              Memuat Objek 3D...
+            </span>
+          </div>
+        )}
+
+        {/* Floating Interaction Controls (Rotate reset hint) */}
+        <div className="absolute bottom-2.5 right-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 pointer-events-auto">
+          <button
+            onClick={() => resetRotationRef.current()}
+            className="p-1.5 rounded-[6px] bg-[var(--ink-0)]/80 hover:bg-[var(--ink-2)] text-[var(--text-dim)] hover:text-white border border-[var(--line)] text-[10px] transition-colors"
+            title="Reset Sudut Pandang"
+            aria-label="Reset rotasi"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
         </div>
-      )}
-
-      {/* Floating Interaction Controls (Rotate reset hint) */}
-      <div className="absolute bottom-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
-        <button
-          onClick={() => resetRotationRef.current()}
-          className="p-1.5 rounded-[6px] bg-[var(--ink-0)]/80 hover:bg-[var(--ink-2)] text-[var(--text-dim)] hover:text-white border border-[var(--line)] text-[10px] transition-colors"
-          title="Reset Sudut Pandang"
-          aria-label="Reset rotasi"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
       </div>
 
-      {/* Grand Celebration Button (For Champion Trophy) */}
+      {/* Grand Celebration Button (For Champion Trophy) - Positioned below viewport so it never obscures the trophy or pedestal */}
       {showCelebrateButton && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20">
+        <div className="w-full pt-3.5 flex justify-center z-20">
           <button
             onClick={handleCelebrate}
             disabled={celebrated}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-[10px] font-[family-name:var(--font-display)] font-extrabold text-xs uppercase tracking-wider transition-all duration-300 shadow-[0_4px_20px_rgba(251,191,36,0.25)] ${
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-[12px] font-[family-name:var(--font-display)] font-extrabold text-xs uppercase tracking-wider transition-all duration-300 shadow-[0_4px_24px_rgba(251,191,36,0.3)] ${
               celebrated
                 ? 'bg-[var(--ok)] text-black scale-95'
                 : 'bg-gradient-to-r from-[var(--gold)] via-[#fef08a] to-[var(--gold)] text-black hover:brightness-110 hover:scale-105 active:scale-95'
