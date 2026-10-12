@@ -1,55 +1,68 @@
 import confetti from 'canvas-confetti';
 
 /**
- * Triggers a triumphant golden confetti celebration for championships and awards.
+ * Triggers a triumphant multi-stage golden confetti celebration for championships and awards.
  */
-export function burstTrophyConfetti(originX = 0.5, originY = 0.6) {
+export function burstTrophyConfetti(originX = 0.5, originY = 0.5) {
   if (typeof window === 'undefined') return;
 
-  const count = 120;
   const defaults = {
-    origin: { x: originX, y: originY },
-    zIndex: 9999,
+    zIndex: 99999,
     disableForReducedMotion: false,
   };
 
-  function fire(particleRatio: number, opts: confetti.Options) {
+  // Stage 1: Immediate central golden geyser
+  confetti({
+    ...defaults,
+    particleCount: 80,
+    spread: 45,
+    startVelocity: 60,
+    origin: { x: originX, y: originY },
+    colors: ['#ffd700', '#fbbf24', '#f59e0b', '#ffffff'],
+    shapes: ['star', 'circle'],
+    scalar: 1.1,
+  });
+
+  // Stage 2: Dual stadium cross-fire cannons from left and right flanks (200ms delay)
+  setTimeout(() => {
+    // Left cannon
     confetti({
       ...defaults,
-      ...opts,
-      particleCount: Math.floor(count * particleRatio),
+      particleCount: 65,
+      angle: 60,
+      spread: 55,
+      startVelocity: 55,
+      origin: { x: 0.1, y: 0.7 },
+      colors: ['#fbbf24', '#d97706', '#fef3c7', '#ffffff'],
     });
-  }
 
-  // Golden shower of stars and flakes
-  fire(0.25, {
-    spread: 30,
-    startVelocity: 55,
-    colors: ['#fbbf24', '#f59e0b', '#d97706', '#fef3c7'],
-  });
-  fire(0.2, {
-    spread: 60,
-    colors: ['#ffd700', '#fef08a', '#eab308', '#ffffff'],
-  });
-  fire(0.35, {
-    spread: 100,
-    decay: 0.91,
-    scalar: 0.8,
-    colors: ['#f59e0b', '#fbbf24', '#fffbeb'],
-  });
-  fire(0.1, {
-    spread: 120,
-    startVelocity: 25,
-    decay: 0.92,
-    scalar: 1.2,
-    shapes: ['star', 'circle'],
-    colors: ['#ffd700', '#fbbf24', '#ffffff'],
-  });
-  fire(0.1, {
-    spread: 120,
-    startVelocity: 45,
-    colors: ['#eab308', '#ca8a04', '#fef08a'],
-  });
+    // Right cannon
+    confetti({
+      ...defaults,
+      particleCount: 65,
+      angle: 120,
+      spread: 55,
+      startVelocity: 55,
+      origin: { x: 0.9, y: 0.7 },
+      colors: ['#ffd700', '#f59e0b', '#fef08a', '#ffffff'],
+    });
+  }, 200);
+
+  // Stage 3: Slow-drifting golden glitter shower from overhead (450ms delay)
+  setTimeout(() => {
+    confetti({
+      ...defaults,
+      particleCount: 90,
+      spread: 140,
+      startVelocity: 30,
+      origin: { x: 0.5, y: 0.2 },
+      decay: 0.94,
+      gravity: 0.7,
+      scalar: 1.2,
+      shapes: ['star'],
+      colors: ['#ffd700', '#fbbf24', '#ffffff', '#eab308'],
+    });
+  }, 450);
 }
 
 /**
