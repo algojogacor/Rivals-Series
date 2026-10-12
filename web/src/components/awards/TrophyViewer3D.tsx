@@ -36,27 +36,53 @@ function getOrCreateStudioEnv(renderer: THREE.WebGLRenderer): THREE.Texture {
   pmremGenerator.compileEquirectangularShader();
 
   const envScene = new THREE.Scene();
-  envScene.background = new THREE.Color(0x06080c);
+  // Soft ambient studio environment gradient instead of pitch black
+  envScene.background = new THREE.Color(0x384252);
 
-  // Overhead warm softbox
-  const topLight = new THREE.DirectionalLight(0xfff7ed, 4.0);
+  // 1. Overhead softbox panel (pure brilliant white)
+  const topPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+  );
+  topPanel.position.set(0, 8, 0);
+  topPanel.rotation.x = Math.PI / 2;
+  envScene.add(topPanel);
+
+  // 2. Key light softbox panel (front-right, warm radiant)
+  const keyPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(10, 14),
+    new THREE.MeshBasicMaterial({ color: 0xfffaf0, side: THREE.DoubleSide })
+  );
+  keyPanel.position.set(6, 4, 7);
+  keyPanel.lookAt(0, 0, 0);
+  envScene.add(keyPanel);
+
+  // 3. Rim / kicker softbox panel (left-rear, cool crisp white)
+  const rimPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(8, 14),
+    new THREE.MeshBasicMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide })
+  );
+  rimPanel.position.set(-7, 3, -4);
+  rimPanel.lookAt(0, 0, 0);
+  envScene.add(rimPanel);
+
+  // 4. Fill bounce panel (right-flank, champagne warmth)
+  const fillPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(8, 12),
+    new THREE.MeshBasicMaterial({ color: 0xfef3c7, side: THREE.DoubleSide })
+  );
+  fillPanel.position.set(7, 2, -2);
+  fillPanel.lookAt(0, 0, 0);
+  envScene.add(fillPanel);
+
+  // Directional lights for specular highlights
+  const topLight = new THREE.DirectionalLight(0xffffff, 5.0);
   topLight.position.set(0, 10, 2);
   envScene.add(topLight);
 
-  // Key light panel
-  const keyPanel = new THREE.DirectionalLight(0xffecc7, 3.5);
-  keyPanel.position.set(5, 5, 5);
-  envScene.add(keyPanel);
-
-  // Cool rim panel
-  const rimPanel = new THREE.DirectionalLight(0x93c5fd, 2.5);
-  rimPanel.position.set(-6, 3, -5);
-  envScene.add(rimPanel);
-
-  // Subtle floor fill
-  const floorLight = new THREE.DirectionalLight(0x1e293b, 1.2);
-  floorLight.position.set(0, -6, 0);
-  envScene.add(floorLight);
+  const keyLight = new THREE.DirectionalLight(0xfff7ed, 4.5);
+  keyLight.position.set(6, 5, 6);
+  envScene.add(keyLight);
 
   const envTarget = pmremGenerator.fromScene(envScene, 0.04);
   cachedEnvMap = envTarget.texture;
@@ -141,15 +167,15 @@ export default function TrophyViewer3D({
     // Scene & Camera
     const scene = new THREE.Scene();
 
-    // Adjust camera FOV and position by trophy size
+    // Enlarged, proportional camera framing to fill the viewport
     const isHero = size === 'hero';
-    const cameraFov = isHero ? 42 : 38;
-    const cameraDistance = isHero ? 5.6 : 5.8;
-    const cameraY = isHero ? 1.15 : 0.95;
+    const cameraFov = isHero ? 40 : 36;
+    const cameraDistance = isHero ? 4.3 : 4.45;
+    const cameraY = isHero ? 0.85 : 0.72;
 
     const camera = new THREE.PerspectiveCamera(cameraFov, width / height, 0.1, 100);
     camera.position.set(0, cameraY, cameraDistance);
-    camera.lookAt(0, isHero ? 0.65 : 0.5, 0);
+    camera.lookAt(0, isHero ? 0.55 : 0.42, 0);
 
     // Renderer
     let renderer: THREE.WebGLRenderer;
@@ -158,7 +184,8 @@ export default function TrophyViewer3D({
       renderer.setSize(width, height);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = isCompleted ? 1.4 : 1.1;
+      // Bright, luminous tone mapping exposure (never dim or lifeless in provisional mode)
+      renderer.toneMappingExposure = isCompleted ? 1.75 : 1.6;
       container.appendChild(renderer.domElement);
     } catch {
       setHasWebGL(false);
@@ -171,40 +198,40 @@ export default function TrophyViewer3D({
     scene.environment = envTexture;
 
     // Unified Luxury Materials Library
-    // 1. Sterling Silver / Rhodium (for Champion cup inspired by AFC Asian Cup)
+    // 1. Sterling Silver / White Rhodium (Radiant, gleaming mirror-finish silver)
     const silverMat = new THREE.MeshStandardMaterial({
-      color: 0xf3f4f6,
-      metalness: 0.98,
-      roughness: 0.12,
-    });
-
-    // 2. 24K Polished Gold (for Boot, Glove, Playmaker, and Champion Accents)
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: isCompleted ? 0xf5b027 : 0xd4a024,
-      emissive: isCompleted ? 0x221503 : 0x0f0b02,
-      metalness: 0.95,
+      color: 0xffffff,
+      metalness: 0.94,
       roughness: 0.16,
     });
 
-    // 3. Satin Brushed Gold (for secondary details and badges)
+    // 2. 24K Polished Gold (Rich, luminous, vibrant royal gold)
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: isCompleted ? 0xffc83b : 0xfbbf24,
+      emissive: isCompleted ? 0x221503 : 0x180f02,
+      metalness: 0.90,
+      roughness: 0.18,
+    });
+
+    // 3. Satin Brushed Gold (Refined architectural accents)
     const satinGoldMat = new THREE.MeshStandardMaterial({
-      color: 0xfbbf24,
-      metalness: 0.88,
+      color: 0xf59e0b,
+      metalness: 0.85,
+      roughness: 0.28,
+    });
+
+    // 4. Heavy Obsidian / Black Granite Base
+    const obsidianMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      metalness: 0.35,
       roughness: 0.32,
     });
 
-    // 4. Heavy Obsidian / Black Granite (for pedestal base)
-    const obsidianMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0f12,
-      metalness: 0.25,
-      roughness: 0.38,
-    });
-
-    // 5. Titanium Dark Armor (for Best Defence shield body)
+    // 5. Titanium Dark Armor (for fortress & defense structures)
     const titaniumMat = new THREE.MeshStandardMaterial({
       color: 0x334155,
-      metalness: 0.85,
-      roughness: 0.26,
+      metalness: 0.88,
+      roughness: 0.22,
     });
 
     // 6. Refractive Core Material (for Astrolabe, Citadel and GotS)
@@ -237,9 +264,8 @@ export default function TrophyViewer3D({
     // Dynamic rotation nodes for specific animated sub-parts
     const animatedNodes: { update: (clock: number) => void }[] = [];
 
-    // PROCEDURAL MODEL GENERATOR
-    function buildProceduralTrophy() {
-      // Pedestal Base (Common luxury foundation for all trophies)
+    // Common luxury pedestal foundation for all trophies
+    function createPedestalBase(): THREE.Group {
       const baseGroup = new THREE.Group();
 
       // Tier 1: Heavy Obsidian Base
@@ -254,95 +280,115 @@ export default function TrophyViewer3D({
       trimMesh.position.y = -0.42;
       baseGroup.add(trimMesh);
 
-      trophyRoot.add(baseGroup);
+      return baseGroup;
+    }
+
+    // PROCEDURAL MODEL GENERATOR
+    function buildProceduralTrophy() {
+      trophyRoot.add(createPedestalBase());
 
       // Specific Sculpted Trophies
       switch (type) {
         case 'champion': {
-          // AFC ASIAN CUP INSPIRED SCULPTED STERLING SILVER TROPHY
-          // 1. Tiered Silver Collar Stem
-          const stemCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.45, 0.35, 32), silverMat);
-          stemCollar.position.y = -0.2;
+          // AFC ASIAN CUP SCULPTED STERLING SILVER TROPHY
+          // 1. Tapered obsidian pedestal collar
+          const stemCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.58, 0.38, 32), obsidianMat);
+          stemCollar.position.y = -0.22;
           trophyRoot.add(stemCollar);
 
-          const stemRing = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.05, 16, 32), satinGoldMat);
-          stemRing.rotation.x = Math.PI / 2;
-          stemRing.position.y = -0.05;
-          trophyRoot.add(stemRing);
+          const stemTrim = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.08, 32), silverMat);
+          stemTrim.position.y = -0.04;
+          trophyRoot.add(stemTrim);
 
-          // 2. Central Fluted Chalice Core (curving upward)
-          const chaliceGeo = new THREE.CylinderGeometry(1.0, 0.35, 1.45, 32, 1, true);
+          // 2. Tulip Chalice Body via LatheGeometry (authentic smooth curved silhouette)
+          const lathePoints: THREE.Vector2[] = [];
+          lathePoints.push(new THREE.Vector2(0.40, -0.35));
+          lathePoints.push(new THREE.Vector2(0.36, -0.15));
+          lathePoints.push(new THREE.Vector2(0.34, 0.02));
+          lathePoints.push(new THREE.Vector2(0.38, 0.22));
+          lathePoints.push(new THREE.Vector2(0.48, 0.48));
+          lathePoints.push(new THREE.Vector2(0.60, 0.76));
+          lathePoints.push(new THREE.Vector2(0.74, 1.05));
+          lathePoints.push(new THREE.Vector2(0.88, 1.32));
+          lathePoints.push(new THREE.Vector2(0.98, 1.52));
+          // Inner wall
+          lathePoints.push(new THREE.Vector2(0.92, 1.52));
+          lathePoints.push(new THREE.Vector2(0.82, 1.32));
+          lathePoints.push(new THREE.Vector2(0.68, 1.05));
+          lathePoints.push(new THREE.Vector2(0.54, 0.76));
+          lathePoints.push(new THREE.Vector2(0.42, 0.48));
+          lathePoints.push(new THREE.Vector2(0.32, 0.22));
+          lathePoints.push(new THREE.Vector2(0.26, 0.02));
+          lathePoints.push(new THREE.Vector2(0.00, -0.05));
+          const chaliceGeo = new THREE.LatheGeometry(lathePoints, 48);
           const chaliceMesh = new THREE.Mesh(chaliceGeo, silverMat);
-          chaliceMesh.position.y = 0.75;
           trophyRoot.add(chaliceMesh);
 
-          // Top Chalice Rim Ring
-          const rimGeo = new THREE.TorusGeometry(1.0, 0.06, 16, 48);
-          rimGeo.rotateX(Math.PI / 2);
-          const rimMesh = new THREE.Mesh(rimGeo, silverMat);
-          rimMesh.position.y = 1.48;
-          trophyRoot.add(rimMesh);
-
-          // 3. Iconic Sculpted Lotus Petals (6 fluted petal blades radiating around the chalice)
-          const petalCount = 6;
+          // 3. Iconic 5 Sculpted Lotus Petals (Asian Cup Petal Fins)
+          const petalCount = 5;
           for (let i = 0; i < petalCount; i++) {
             const angle = (i * Math.PI * 2) / petalCount;
             const petalGroup = new THREE.Group();
             petalGroup.rotation.y = angle;
 
-            // Curved outer petal blade
-            const petalBladeGeo = new THREE.CylinderGeometry(0.12, 0.04, 1.4, 8);
-            const petalBlade = new THREE.Mesh(petalBladeGeo, silverMat);
-            petalBlade.position.set(0.68, 0.8, 0);
-            petalBlade.rotation.z = -0.22;
-            petalGroup.add(petalBlade);
+            // Arched central ridge spine
+            const spineCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(0.38, 0.02, 0),
+              new THREE.Vector3(0.52, 0.48, 0),
+              new THREE.Vector3(0.70, 0.95, 0),
+              new THREE.Vector3(0.90, 1.36, 0),
+              new THREE.Vector3(1.04, 1.62, 0),
+            ]);
+            const spineGeo = new THREE.TubeGeometry(spineCurve, 20, 0.045, 8, false);
+            const spineMesh = new THREE.Mesh(spineGeo, silverMat);
+            petalGroup.add(spineMesh);
 
-            // Flared regal petal tip peaking above the rim
-            const tipGeo = new THREE.ConeGeometry(0.15, 0.45, 6);
-            const tipMesh = new THREE.Mesh(tipGeo, silverMat);
-            tipMesh.position.set(0.92, 1.55, 0);
-            tipMesh.rotation.z = -0.28;
-            petalGroup.add(tipMesh);
+            // Flared crown peak tip extending above rim
+            const peakGeo = new THREE.ConeGeometry(0.12, 0.35, 4);
+            peakGeo.rotateY(Math.PI / 4);
+            const peakMesh = new THREE.Mesh(peakGeo, silverMat);
+            peakMesh.position.set(1.02, 1.66, 0);
+            peakMesh.rotation.z = -0.22;
+            petalGroup.add(peakMesh);
+
+            // Horizontal relief ribs curving across petal body
+            [-0.2, 0, 0.2].forEach((offsetAngle) => {
+              const ribCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0.62, 0.75, 0),
+                new THREE.Vector3(0.68, 0.82, offsetAngle * 0.45),
+                new THREE.Vector3(0.78, 0.95, offsetAngle * 0.75),
+              ]);
+              const ribGeo = new THREE.TubeGeometry(ribCurve, 12, 0.022, 6, false);
+              const ribMesh = new THREE.Mesh(ribGeo, silverMat);
+              petalGroup.add(ribMesh);
+            });
 
             trophyRoot.add(petalGroup);
           }
 
-          // 4. Two Sleek Aerodynamic Geometric Handles
-          const handleCurve = new THREE.TorusGeometry(0.72, 0.065, 16, 32, Math.PI * 0.95);
-          // Left handle
-          const leftHandle = new THREE.Mesh(handleCurve, silverMat);
-          leftHandle.rotation.z = Math.PI * 0.45;
-          leftHandle.position.set(-1.18, 0.95, 0);
-          trophyRoot.add(leftHandle);
-
-          // Right handle
-          const rightHandle = new THREE.Mesh(handleCurve, silverMat);
-          rightHandle.rotation.z = -Math.PI * 0.45;
-          rightHandle.position.set(1.18, 0.95, 0);
-          trophyRoot.add(rightHandle);
-
-          // 5. Crown Star hovering above the chalice
-          const starGeo = new THREE.OctahedronGeometry(0.24, 0);
-          const starMesh = new THREE.Mesh(starGeo, satinGoldMat);
-          starMesh.position.y = 1.95;
-          trophyRoot.add(starMesh);
-
-          animatedNodes.push({
-            update: (clock) => {
-              starMesh.rotation.y = clock * 1.5;
-              starMesh.position.y = 1.95 + Math.sin(clock * 2) * 0.06;
-            },
+          // 4. Two Sleek Angular/Curved Asian Cup Handles
+          [-1, 1].forEach((dir) => {
+            const handleCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(dir * 0.96, 1.45, 0), // Upper rim mount
+              new THREE.Vector3(dir * 1.35, 1.38, 0), // Sharp elbow peak
+              new THREE.Vector3(dir * 1.32, 1.05, 0), // Outer sweep
+              new THREE.Vector3(dir * 0.95, 0.65, 0), // Inward taper
+              new THREE.Vector3(dir * 0.48, 0.28, 0), // Lower waist mount
+            ]);
+            const handleGeo = new THREE.TubeGeometry(handleCurve, 28, 0.052, 10, false);
+            const handleMesh = new THREE.Mesh(handleGeo, silverMat);
+            trophyRoot.add(handleMesh);
           });
           break;
         }
 
         case 'boot': {
-          // GOLDEN BOOT (Solid 24k Gold Cleat on Plinth)
+          // GOLDEN BOOT: Aerodynamic Polished 24K Gold Cleat
           const bootGroup = new THREE.Group();
-          bootGroup.position.set(0, 0.25, 0);
+          bootGroup.position.set(0, 0.22, 0);
           bootGroup.rotation.y = 0.25;
 
-          // Main Boot Sole Plate
+          // Sculpted Outsole Chassis
           const soleGeo = new THREE.BoxGeometry(2.1, 0.12, 0.82);
           const soleMesh = new THREE.Mesh(soleGeo, goldMat);
           soleMesh.position.set(0, -0.3, 0);
@@ -363,30 +409,30 @@ export default function TrophyViewer3D({
             bootGroup.add(stud);
           });
 
-          // Aerodynamic Upper (Forefoot / Toe Box)
-          const forefootGeo = new THREE.ConeGeometry(0.48, 1.0, 16);
+          // Aerodynamic Upper (Swept Forefoot / Toe Box)
+          const forefootGeo = new THREE.ConeGeometry(0.48, 1.15, 20);
           const forefootMesh = new THREE.Mesh(forefootGeo, goldMat);
           forefootMesh.rotation.z = Math.PI / 2;
-          forefootMesh.position.set(0.45, -0.15, 0);
-          forefootMesh.scale.set(0.9, 1.2, 0.75);
+          forefootMesh.position.set(0.42, -0.12, 0);
+          forefootMesh.scale.set(0.85, 1.25, 0.78);
           bootGroup.add(forefootMesh);
 
-          // Midfoot & Heel Section
-          const heelGeo = new THREE.CylinderGeometry(0.45, 0.42, 0.9, 16);
+          // Contoured Heel & Instep Section
+          const heelGeo = new THREE.CylinderGeometry(0.45, 0.42, 0.95, 20);
           const heelMesh = new THREE.Mesh(heelGeo, goldMat);
-          heelMesh.rotation.z = 0.18;
-          heelMesh.position.set(-0.45, 0.05, 0);
-          heelMesh.scale.set(1.0, 1.0, 0.72);
+          heelMesh.rotation.z = 0.16;
+          heelMesh.position.set(-0.45, 0.08, 0);
+          heelMesh.scale.set(1.0, 1.0, 0.75);
           bootGroup.add(heelMesh);
 
-          // Padded Ankle Collar & Tongue
+          // Ankle Collar & Tongue Opening
           const collarGeo = new THREE.TorusGeometry(0.34, 0.08, 12, 24);
           collarGeo.rotateX(Math.PI / 2);
           const collarMesh = new THREE.Mesh(collarGeo, satinGoldMat);
-          collarMesh.position.set(-0.35, 0.48, 0);
+          collarMesh.position.set(-0.35, 0.52, 0);
           bootGroup.add(collarMesh);
 
-          // Dynamic Speed Stripe Accent
+          // Dynamic Silver Speed Swishes
           const stripeGeo = new THREE.TorusGeometry(0.65, 0.035, 12, 24, Math.PI * 0.4);
           const stripeMesh = new THREE.Mesh(stripeGeo, silverMat);
           stripeMesh.rotation.z = 0.4;
@@ -398,11 +444,11 @@ export default function TrophyViewer3D({
         }
 
         case 'glove': {
-          // GOLDEN GLOVE (Sculpted Open-Hand Goalkeeper Glove)
+          // GOLDEN GLOVE: Sculpted Open-Hand Goalkeeper Glove
           const gloveGroup = new THREE.Group();
           gloveGroup.position.set(0, 0.35, 0);
 
-          // Wide Wrist Collar Band
+          // Ergonomic Wrist Collar
           const wristGeo = new THREE.CylinderGeometry(0.42, 0.46, 0.45, 24);
           const wristMesh = new THREE.Mesh(wristGeo, satinGoldMat);
           wristMesh.position.y = -0.32;
@@ -410,18 +456,18 @@ export default function TrophyViewer3D({
           gloveGroup.add(wristMesh);
 
           // Wrist Strap Fastener
-          const strapGeo = new THREE.BoxGeometry(0.9, 0.15, 0.65);
+          const strapGeo = new THREE.BoxGeometry(0.92, 0.15, 0.68);
           const strapMesh = new THREE.Mesh(strapGeo, goldMat);
           strapMesh.position.set(0, -0.32, 0.1);
           gloveGroup.add(strapMesh);
 
-          // Palm Main Body (Curved Catching Cup)
-          const palmGeo = new THREE.BoxGeometry(0.85, 0.75, 0.32);
+          // Curved Catching Palm Cup
+          const palmGeo = new THREE.BoxGeometry(0.88, 0.75, 0.34);
           const palmMesh = new THREE.Mesh(palmGeo, goldMat);
           palmMesh.position.set(0, 0.22, 0);
           gloveGroup.add(palmMesh);
 
-          // 4 Articulated Fingers (Index, Middle, Ring, Pinky)
+          // 4 Articulated Pre-Curved Fingers
           const fingerConfigs = [
             { x: -0.28, len: 0.65, rotZ: 0.08 },
             { x: -0.09, len: 0.76, rotZ: 0.02 },
@@ -433,9 +479,9 @@ export default function TrophyViewer3D({
             const fingerMesh = new THREE.Mesh(fingerGeo, goldMat);
             fingerMesh.position.set(cfg.x, 0.6 + cfg.len / 2, 0.02);
             fingerMesh.rotation.z = cfg.rotZ;
+            fingerMesh.rotation.x = -0.15; // Natural catching curve
             gloveGroup.add(fingerMesh);
 
-            // Knuckle segment caps
             const tipGeo = new THREE.SphereGeometry(0.082, 12, 12);
             const tipMesh = new THREE.Mesh(tipGeo, satinGoldMat);
             tipMesh.position.set(cfg.x, 0.6 + cfg.len, 0.02);
@@ -455,7 +501,7 @@ export default function TrophyViewer3D({
         }
 
         case 'playmaker': {
-          // PLAYMAKER: THE MAESTRO'S CELESTIAL ASTROLABE / VISION SPHERE
+          // PLAYMAKER: THE MAESTRO'S CELESTIAL ASTROLABE
           const astrolabeGroup = new THREE.Group();
           astrolabeGroup.position.set(0, 0.45, 0);
 
@@ -476,7 +522,7 @@ export default function TrophyViewer3D({
           meridianRingMesh.rotation.x = Math.PI / 4;
           astrolabeGroup.add(meridianRingMesh);
 
-          // Center Vision Crystal Orb (Emerald/Gold facet)
+          // Center Vision Crystal Orb
           const coreGeo = new THREE.DodecahedronGeometry(0.35, 0);
           const coreMesh = new THREE.Mesh(coreGeo, crystalMat);
           astrolabeGroup.add(coreMesh);
@@ -500,11 +546,11 @@ export default function TrophyViewer3D({
         }
 
         case 'gots': {
-          // GOAL OF THE SEASON: THE ARC OF GLORY (BALL FROZEN ON SUPERSONIC TRAJECTORY VORTEX)
+          // GOAL OF THE SEASON: THE ARC OF GLORY
           const gotsGroup = new THREE.Group();
           gotsGroup.position.set(0, 0.1, 0);
 
-          // Parabolic Trajectory Ribbon Trail (rising from base into sky)
+          // Parabolic Trajectory Ribbon Trail
           const curve = new THREE.CatmullRomCurve3([
             new THREE.Vector3(-0.6, -0.4, -0.4),
             new THREE.Vector3(-0.2, 0.1, -0.1),
@@ -515,7 +561,6 @@ export default function TrophyViewer3D({
           const tubeMesh = new THREE.Mesh(tubeGeo, goldMat);
           gotsGroup.add(tubeMesh);
 
-          // Secondary energy vortex ribbon
           const curve2 = new THREE.CatmullRomCurve3([
             new THREE.Vector3(0.5, -0.4, 0.3),
             new THREE.Vector3(0.4, 0.2, 0.0),
@@ -551,143 +596,139 @@ export default function TrophyViewer3D({
         }
 
         case 'best_defence': {
-          // BEST DEFENCE: THE AEGIS OF IRON & GOLD (FACETED FORTRESS SHIELD)
+          // BEST DEFENCE: THE HEXAGONAL AEGIS MONOLITH (HIGH-END ARCHITECTURAL FORTRESS)
           const shieldGroup = new THREE.Group();
-          shieldGroup.position.set(0, 0.45, 0);
+          shieldGroup.position.set(0, 0.42, 0);
 
-          // Heavy Titanium Faceted Shield Plate
-          const shieldShape = new THREE.Shape();
-          shieldShape.moveTo(-0.7, 0.8);
-          shieldShape.lineTo(0.7, 0.8);
-          shieldShape.lineTo(0.7, 0.0);
-          shieldShape.lineTo(0.0, -0.9);
-          shieldShape.lineTo(-0.7, 0.0);
-          shieldShape.closePath();
+          // Hexagonal Faceted Fortress Shield Chassis (Titanium + Bevels)
+          const hexShape = new THREE.Shape();
+          const sides = 6;
+          const r = 0.92;
+          for (let i = 0; i < sides; i++) {
+            const a = (i * Math.PI) / 3 - Math.PI / 6;
+            const x = Math.cos(a) * r;
+            const y = Math.sin(a) * r * 1.15;
+            if (i === 0) hexShape.moveTo(x, y);
+            else hexShape.lineTo(x, y);
+          }
+          hexShape.closePath();
 
-          const extrudeSettings = { depth: 0.15, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.06, bevelThickness: 0.06 };
-          const shieldGeo = new THREE.ExtrudeGeometry(shieldShape, extrudeSettings);
-          shieldGeo.center();
-          const shieldMesh = new THREE.Mesh(shieldGeo, titaniumMat);
-          shieldGroup.add(shieldMesh);
+          const extrudeOpts = { depth: 0.14, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.05, bevelThickness: 0.05 };
+          const mainShieldMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(hexShape, extrudeOpts), titaniumMat);
+          mainShieldMesh.geometry.center();
+          shieldGroup.add(mainShieldMesh);
 
-          // 24K Gold Beveled Border Frame
-          const frameGeo = new THREE.TorusGeometry(0.75, 0.06, 12, 32);
-          const frameMesh = new THREE.Mesh(frameGeo, goldMat);
-          frameMesh.position.z = 0.08;
-          shieldGroup.add(frameMesh);
+          // Concentric Polished 24K Gold Armor Frame Rings
+          const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.045, 12, 32), goldMat);
+          ring1.position.z = 0.12;
+          shieldGroup.add(ring1);
 
-          // Raised Central Lion / Fortress Boss Emblem
-          const bossGeo = new THREE.OctahedronGeometry(0.26, 0);
-          const bossMesh = new THREE.Mesh(bossGeo, goldMat);
-          bossMesh.position.set(0, 0.05, 0.18);
+          const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.035, 12, 32), satinGoldMat);
+          ring2.position.z = 0.15;
+          shieldGroup.add(ring2);
+
+          // Central Heraldic Faceted Boss Emblem (Mounted flush)
+          const bossMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), goldMat);
+          bossMesh.position.set(0, 0, 0.22);
           shieldGroup.add(bossMesh);
 
-          // Twin Defensive Guard Blades flanking the shield
-          const bladeGeo = new THREE.CylinderGeometry(0.03, 0.05, 1.8, 8);
-          const bladeLeft = new THREE.Mesh(bladeGeo, silverMat);
-          bladeLeft.position.set(-0.78, 0, -0.05);
-          bladeLeft.rotation.z = -0.08;
-          shieldGroup.add(bladeLeft);
+          // Precision Flanking Guard Pylons (Twin angled platinum defense vanes)
+          [-1, 1].forEach((dir) => {
+            const pylonCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(dir * 0.78, -0.85, 0),
+              new THREE.Vector3(dir * 0.98, 0.0, 0.05),
+              new THREE.Vector3(dir * 0.78, 0.85, 0),
+            ]);
+            const pylonGeo = new THREE.TubeGeometry(pylonCurve, 20, 0.045, 6, false);
+            const pylonMesh = new THREE.Mesh(pylonGeo, silverMat);
+            shieldGroup.add(pylonMesh);
+          });
 
-          const bladeRight = new THREE.Mesh(bladeGeo, silverMat);
-          bladeRight.position.set(0.78, 0, -0.05);
-          bladeRight.rotation.z = 0.08;
-          shieldGroup.add(bladeRight);
+          animatedNodes.push({
+            update: (clock) => {
+              bossMesh.rotation.z = clock * 0.6;
+            },
+          });
 
           trophyRoot.add(shieldGroup);
           break;
         }
 
         case 'streak': {
-          // LONGEST WINNING STREAK: THE ASCENDING MOMENTUM SPIRE
+          // LONGEST WINNING STREAK: THE ASCENDING MOMENTUM SPIRE (SOLID MONOLITH, NO PLUMBOB)
           const streakGroup = new THREE.Group();
-          streakGroup.position.set(0, 0.1, 0);
+          streakGroup.position.set(0, 0.15, 0);
 
           // 5 Escalating Staircase / Monolith Pillars in a golden helix
           const stepCount = 5;
           for (let i = 0; i < stepCount; i++) {
-            const h = 0.45 + i * 0.32;
+            const h = 0.55 + i * 0.36;
             const angle = (i * Math.PI) / 3 - Math.PI / 3;
-            const radius = 0.45;
+            const radius = 0.48;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
 
-            const pillarGeo = new THREE.BoxGeometry(0.24, h, 0.24);
+            const pillarGeo = new THREE.BoxGeometry(0.26, h, 0.26);
             const pillarMesh = new THREE.Mesh(pillarGeo, i === stepCount - 1 ? goldMat : satinGoldMat);
             pillarMesh.position.set(x, -0.35 + h / 2, z);
             pillarMesh.rotation.y = angle;
             streakGroup.add(pillarMesh);
 
-            // Platinum crown edge
-            const capGeo = new THREE.ConeGeometry(0.16, 0.22, 4);
-            const capMesh = new THREE.Mesh(capGeo, silverMat);
+            // Platinum beveled crown cap on top of each pillar
+            const capGeo = new THREE.ConeGeometry(0.18, 0.22, 4);
+            const capMesh = new THREE.Mesh(capGeo, i === stepCount - 1 ? goldMat : silverMat);
             capMesh.position.set(x, -0.35 + h + 0.1, z);
             streakGroup.add(capMesh);
           }
-
-          // Apex Victor Star hovering above the highest pillar
-          const apexStarGeo = new THREE.OctahedronGeometry(0.28, 0);
-          const apexStarMesh = new THREE.Mesh(apexStarGeo, goldMat);
-          apexStarMesh.position.set(0.2, 1.85, 0.2);
-          streakGroup.add(apexStarMesh);
-
-          animatedNodes.push({
-            update: (clock) => {
-              apexStarMesh.rotation.y = clock * 1.8;
-              apexStarMesh.position.y = 1.85 + Math.sin(clock * 2.5) * 0.05;
-            },
-          });
 
           trophyRoot.add(streakGroup);
           break;
         }
 
         case 'clean_sheet': {
-          // MOST CLEAN SHEETS: THE IMPENETRABLE CITADEL GATE
+          // MOST CLEAN SHEETS: THE PRISM OF ZERO / CITADEL SPIRE (HIGH-END GEOMETRIC MONOLITH)
           const citadelGroup = new THREE.Group();
-          citadelGroup.position.set(0, 0.3, 0);
+          citadelGroup.position.set(0, 0.25, 0);
 
-          // Twin Bastion Watchtowers
-          const towerGeo = new THREE.CylinderGeometry(0.28, 0.34, 1.3, 16);
-          const leftTower = new THREE.Mesh(towerGeo, obsidianMat);
-          leftTower.position.set(-0.65, 0.15, 0);
-          citadelGroup.add(leftTower);
+          // 3 Soaring Triangular Faceted Monolith Obelisks arranged symmetrically
+          for (let i = 0; i < 3; i++) {
+            const angle = (i * Math.PI * 2) / 3;
+            const x = Math.cos(angle) * 0.42;
+            const z = Math.sin(angle) * 0.42;
 
-          const rightTower = new THREE.Mesh(towerGeo, obsidianMat);
-          rightTower.position.set(0.65, 0.15, 0);
-          citadelGroup.add(rightTower);
+            const pylonGeo = new THREE.CylinderGeometry(0.18, 0.28, 1.65, 3);
+            const pylonMesh = new THREE.Mesh(pylonGeo, i === 0 ? obsidianMat : titaniumMat);
+            pylonMesh.position.set(x, 0.45, z);
+            pylonMesh.rotation.y = angle;
+            citadelGroup.add(pylonMesh);
 
-          // Tower Battlements (Gold Crown Rims)
-          const battleGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.2, 8);
-          const leftBattle = new THREE.Mesh(battleGeo, goldMat);
-          leftBattle.position.set(-0.65, 0.85, 0);
-          citadelGroup.add(leftBattle);
+            // Polished Silver Obelisk Beveled Tops
+            const capGeo = new THREE.ConeGeometry(0.24, 0.35, 3);
+            const capMesh = new THREE.Mesh(capGeo, silverMat);
+            capMesh.position.set(x, 1.42, z);
+            capMesh.rotation.y = angle;
+            citadelGroup.add(capMesh);
+          }
 
-          const rightBattle = new THREE.Mesh(battleGeo, goldMat);
-          rightBattle.position.set(0.65, 0.85, 0);
-          citadelGroup.add(rightBattle);
+          // Tiered Interlocking 24K Gold Fortress Bands
+          [0.15, 0.65, 1.15].forEach((h, idx) => {
+            const bandGeo = new THREE.TorusGeometry(0.55 - idx * 0.06, 0.04, 12, 32);
+            bandGeo.rotateX(Math.PI / 2);
+            const bandMesh = new THREE.Mesh(bandGeo, idx === 1 ? goldMat : satinGoldMat);
+            bandMesh.position.y = h;
+            citadelGroup.add(bandMesh);
+          });
 
-          // Arched Gate Portal
-          const gateArchGeo = new THREE.TorusGeometry(0.48, 0.08, 12, 24, Math.PI);
-          const gateArch = new THREE.Mesh(gateArchGeo, goldMat);
-          gateArch.position.set(0, 0.45, 0);
-          citadelGroup.add(gateArch);
-
-          // Portcullis Lattice Grid
-          const latticeGeo = new THREE.BoxGeometry(0.68, 0.8, 0.06);
-          const latticeMesh = new THREE.Mesh(latticeGeo, satinGoldMat);
-          latticeMesh.position.set(0, 0.05, 0);
-          citadelGroup.add(latticeMesh);
-
-          // Impregnable Sapphire Vault Core locked at the center
-          const coreGeo = new THREE.OctahedronGeometry(0.24, 0);
+          // Encased Pristine Sapphire Crystal Core (Zero Conceded Vault)
+          const coreGeo = new THREE.DodecahedronGeometry(0.26, 0);
           const coreMesh = new THREE.Mesh(coreGeo, crystalMat);
-          coreMesh.position.set(0, 0.15, 0.08);
+          coreMesh.position.set(0, 0.65, 0);
           citadelGroup.add(coreMesh);
 
           animatedNodes.push({
             update: (clock) => {
-              coreMesh.rotation.y = clock * 1.2;
+              coreMesh.rotation.y = clock * 1.0;
+              coreMesh.rotation.x = clock * 0.5;
             },
           });
 
@@ -709,7 +750,7 @@ export default function TrophyViewer3D({
         isUsingExternalGLB = true;
         const loadedModel = gltf.scene;
 
-        // Auto-center and fit to bounding box
+        // Auto-center and fit to bounding box with enlarged, majestic framing
         const bbox = new THREE.Box3().setFromObject(loadedModel);
         const center = bbox.getCenter(new THREE.Vector3());
         const sizeBox = bbox.getSize(new THREE.Vector3());
@@ -717,23 +758,29 @@ export default function TrophyViewer3D({
         const maxDim = Math.max(sizeBox.x, sizeBox.y, sizeBox.z);
         const targetScale = isHero ? 2.5 / maxDim : 2.2 / maxDim;
 
-        loadedModel.scale.multiplyScalar(targetScale);
-        loadedModel.position.sub(center.multiplyScalar(targetScale));
-        loadedModel.position.y += isHero ? 0.35 : 0.2;
+        loadedModel.scale.setScalar(targetScale);
 
-        // Apply PBR environment to all loaded meshes
+        // Position model to sit seamlessly on top of the luxury pedestal base (top trim at y = -0.36)
+        const scaledBottomY = (center.y - sizeBox.y / 2) * targetScale;
+        loadedModel.position.x = -center.x * targetScale;
+        loadedModel.position.z = -center.z * targetScale;
+        loadedModel.position.y = -0.36 - scaledBottomY;
+
+        // Apply PBR environment to all loaded meshes with enhanced reflection
         loadedModel.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             child.castShadow = true;
             child.receiveShadow = true;
             if (child.material) {
               child.material.envMap = envTexture;
+              child.material.envMapIntensity = 2.0;
               child.material.needsUpdate = true;
             }
           }
         });
 
         trophyRoot.clear();
+        trophyRoot.add(createPedestalBase());
         trophyRoot.add(loadedModel);
         setLoading(false);
       },
@@ -747,12 +794,12 @@ export default function TrophyViewer3D({
       }
     );
 
-    // Studio Lights Rig
-    const keyLight = new THREE.DirectionalLight(isCompleted ? 0xfff4d6 : 0xd1d5db, isCompleted ? 3.8 : 2.2);
-    keyLight.position.set(4, 5, 5);
+    // Studio Lights Rig (Luminous, radiant illumination)
+    const keyLight = new THREE.DirectionalLight(0xfff7ed, isCompleted ? 4.5 : 3.8);
+    keyLight.position.set(4, 6, 5);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xe2e8f0, 1.8);
+    const fillLight = new THREE.DirectionalLight(0xf1f5f9, 2.6);
     fillLight.position.set(-4, 3, 3);
     scene.add(fillLight);
 
@@ -769,16 +816,16 @@ export default function TrophyViewer3D({
       scene.add(teamBLight);
     } else {
       // Standard majestic gold / cyan rim
-      const rimLight = new THREE.DirectionalLight(0x3ec9e6, isCompleted ? 2.2 : 1.2);
+      const rimLight = new THREE.DirectionalLight(0x3ec9e6, isCompleted ? 2.6 : 2.0);
       rimLight.position.set(-5, 4, -4);
       scene.add(rimLight);
 
-      const goldBackLight = new THREE.PointLight(0xf59e0b, isCompleted ? 3.0 : 1.0, 8);
+      const goldBackLight = new THREE.PointLight(0xf59e0b, isCompleted ? 3.5 : 2.5, 8);
       goldBackLight.position.set(3, -1, 3);
       scene.add(goldBackLight);
     }
 
-    const ambientLight = new THREE.AmbientLight(0xfff7ed, isCompleted ? 0.9 : 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, isCompleted ? 1.5 : 1.35);
     scene.add(ambientLight);
 
     // INTERACTION: Smooth Drag to Spin with Inertia & Touch
@@ -893,10 +940,10 @@ export default function TrophyViewer3D({
   }
 
   const heightClasses = {
-    sm: 'h-[160px]',
-    md: 'h-[220px]',
-    lg: 'h-[280px]',
-    hero: 'h-[300px] sm:h-[360px]',
+    sm: 'h-[180px]',
+    md: 'h-[240px]',
+    lg: 'h-[290px]',
+    hero: 'h-[320px] sm:h-[380px]',
   }[size];
 
   return (
