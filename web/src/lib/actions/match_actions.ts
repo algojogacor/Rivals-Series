@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { InStatement } from '@libsql/client';
 import { invalidateCacheTags } from '../cached-data';
 import { getSession } from '../auth';
-import { getDbClient, executeWithAudit } from '../db';
+import { getDbClient, executeWithAudit, getRosterPhaseStatus } from '../db';
 import { calculateMatchPoints } from '../engine';
 import { Match } from '../types';
 import { validateMatchReportInput } from '../match_validator';
@@ -66,6 +66,23 @@ export async function submitMatchReportAction(formData: FormData) {
       pbTrendingFirst,
       pbTrendingSecond,
     } = validation.data;
+
+    // Enforce Phase 2 Squad lock gate for Knockout matches (MD11-MD20) (Pasal 15 ayat 1 & 4)
+    if (mdNumber >= 11) {
+      const phase2Status = await getRosterPhaseStatus(2);
+      if (!phase2Status.md10_completed) {
+        return {
+          error:
+            'Pertandingan MD11 ke atas belum dapat dilaporkan karena pertandingan Fase Grup (MD10) belum selesai dan disahkan (Pasal 15 ayat 1).',
+        };
+      }
+      if (!phase2Status.both_locked) {
+        return {
+          error:
+            'Pertandingan MD11 ke atas belum dapat dilaporkan karena Skuad Fase 2 belum resmi dikunci oleh kedua peserta (Pasal 15 ayat 1 & 4).',
+        };
+      }
+    }
 
     const db = getDbClient();
 

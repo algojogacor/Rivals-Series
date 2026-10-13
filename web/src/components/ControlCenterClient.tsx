@@ -222,6 +222,14 @@ export function ControlCenterClient({
   // LOGGED IN DASHBOARD
   const isA = session.participantId === 'participant_a';
 
+  // Mid-season transition state: MD10 finished and Phase 2 squad not yet locked by both
+  const md10Match = matches.find((m) => m.md_number === 10);
+  const md10Completed = Boolean(
+    md10Match && ['confirmed', 'reconstructed', 'forfeited', 'technical_win'].includes(md10Match.status)
+  );
+  const phase2BothLocked = Boolean(phase2Roster?.phaseStatus.both_locked);
+  const isPhase2TransitionActive = md10Completed && !phase2BothLocked;
+
   return (
     <div className="space-y-8 pb-24">
       {/* Top Banner: Logged-in State */}
@@ -294,7 +302,12 @@ export function ControlCenterClient({
               icon: CheckCircle,
               badge: pendingMatches.length + (pendingReset ? 1 : 0) || null,
             },
-            { id: 'roster', label: 'Manajemen Skuad', icon: Users },
+            {
+              id: 'roster',
+              label: 'Manajemen Skuad',
+              icon: Users,
+              badge: isPhase2TransitionActive ? 'Bursa Fase 2' : null,
+            },
             { id: 'disputes', label: 'Sengketa', icon: Scale, badge: disputes.length || null },
             { id: 'audit', label: 'Jejak Audit', icon: FileText, badge: unreadAuditBadge || null },
           ].map((tab) => {
@@ -315,7 +328,13 @@ export function ControlCenterClient({
                   <span>{tab.label}</span>
                 </div>
                 {tab.badge && (
-                  <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] bg-[var(--danger)] text-white font-mono">
+                  <span
+                    className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      tab.id === 'roster' && isPhase2TransitionActive
+                        ? 'bg-[var(--gold)]/20 text-[var(--gold)] border border-[var(--gold)]/40'
+                        : 'bg-[var(--danger)] text-white font-mono'
+                    }`}
+                  >
                     {tab.badge}
                   </span>
                 )}
@@ -325,7 +344,81 @@ export function ControlCenterClient({
         </nav>
 
         {/* Right Content Column */}
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-6">
+          {/* JEDA TENGAH MUSIM: TRANSITION BANNER WHEN MD10 COMPLETED & PHASE 2 NOT YET LOCKED */}
+          {isPhase2TransitionActive && (
+            <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--gold)]/35 p-5 sm:p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[var(--gold)]/15 text-[var(--gold)] border border-[var(--gold)]/30">
+                      Jeda Kompetisi · Pasal 15
+                    </span>
+                    <span className="text-xs text-[var(--text-faint)] font-mono">
+                      MD10 Selesai → Menuju MD11
+                    </span>
+                  </div>
+                  <h3 className="font-[family-name:var(--font-display)] font-extrabold text-xl sm:text-2xl uppercase tracking-tight text-[var(--text)]">
+                    Bursa Transfer Fase 2 Dibuka
+                  </h3>
+                  <p className="text-xs sm:text-[13px] text-[var(--text-dim)] max-w-2xl leading-relaxed">
+                    Fase Grup (MD1–MD10) telah resmi selesai dan disahkan! Sebelum putaran Babak Gugur (MD11–MD20) dimulai, kedua peserta dipersilakan merombak atau menyesuaikan 26 kartu skuad. Pertandingan MD11 baru dapat dilaporkan setelah kedua skuad dikunci.
+                  </p>
+                </div>
+
+                {activeTab !== 'roster' && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('roster')}
+                    className="h-10 px-4 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shrink-0 flex items-center justify-center gap-2 self-start sm:self-center"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Buka Skuad Fase 2</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Two participants lock status indicators */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-[var(--line)]">
+                <div className="flex items-center justify-between p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <PlayerTag id="participant_a" name={pA.display_name} monogram={pA.monogram} size="sm" />
+                    <span className="font-semibold text-[var(--text)]">
+                      {phase2Roster?.phaseStatus.pa_locked === 1 ? 'Skuad Terkunci' : 'Sedang Menyusun'}
+                    </span>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      phase2Roster?.phaseStatus.pa_locked === 1
+                        ? 'bg-[var(--ok)]/20 text-[var(--ok)]'
+                        : 'bg-[var(--ink-1)] border border-[var(--line)] text-[var(--text-dim)]'
+                    }`}
+                  >
+                    {phase2Roster?.phaseStatus.pa_locked === 1 ? '✓ Siap' : 'Menunggu Kunci'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <PlayerTag id="participant_b" name={pB.display_name} monogram={pB.monogram} size="sm" />
+                    <span className="font-semibold text-[var(--text)]">
+                      {phase2Roster?.phaseStatus.pb_locked === 1 ? 'Skuad Terkunci' : 'Sedang Menyusun'}
+                    </span>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      phase2Roster?.phaseStatus.pb_locked === 1
+                        ? 'bg-[var(--ok)]/20 text-[var(--ok)]'
+                        : 'bg-[var(--ink-1)] border border-[var(--line)] text-[var(--text-dim)]'
+                    }`}
+                  >
+                    {phase2Roster?.phaseStatus.pb_locked === 1 ? '✓ Siap' : 'Menunggu Kunci'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: LAPOR HASIL */}
           {activeTab === 'report' && (
             <MatchReportTab
@@ -339,6 +432,8 @@ export function ControlCenterClient({
               isPending={isPending}
               startTransition={startTransition}
               showMessage={showMessage}
+              session={session}
+              onNavigateToRoster={() => setActiveTab('roster')}
             />
           )}
 
@@ -365,6 +460,7 @@ export function ControlCenterClient({
               <SquadBuilderWorkbench
                 session={session}
                 participants={participants}
+                initialPhase={isPhase2TransitionActive ? 2 : 1}
                 phase1Status={phase1Roster?.phaseStatus || { phase: 1, is_locked: 0, pa_locked: 0, pb_locked: 0, both_locked: false, md10_completed: false }}
                 phase2Status={phase2Roster?.phaseStatus}
                 visibleCardsPhase1={phase1Roster?.cards || rosterCards.filter((c) => c.roster_phase === 1)}

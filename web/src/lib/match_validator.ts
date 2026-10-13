@@ -101,7 +101,10 @@ export function validateMatchReportInput(
   }
 
   // 3. Validasi Extra Time & Adu Penalti
-  const etPlayed = formData.get('et_played') === 'true' || formData.get('et_played') === 'on';
+  const etPlayed =
+    formData.get('et_played') === 'true' ||
+    formData.get('et_played') === 'on' ||
+    formData.get('et_played') === '1';
   let homeEtScore: number | null = null;
   let awayEtScore: number | null = null;
 
@@ -135,7 +138,10 @@ export function validateMatchReportInput(
     }
   }
 
-  const pkPlayed = formData.get('pk_played') === 'true' || formData.get('pk_played') === 'on';
+  const pkPlayed =
+    formData.get('pk_played') === 'true' ||
+    formData.get('pk_played') === 'on' ||
+    formData.get('pk_played') === '1';
   let homePkScore: number | null = null;
   let awayPkScore: number | null = null;
 

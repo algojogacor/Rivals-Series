@@ -572,3 +572,37 @@ Mengangkat liga 1v1 ini menjadi pengalaman panggung tanding siaran digital berka
 - **Unit Tests:** 68/68 tests lulus 100% (`vitest run`).
 - **Production Build:** Next.js Turbopack build lulus 100% dengan rute baru `ƒ /squad`.
 - **Deploy:** Live dan aktif di Vercel Production (`https://rs.aryariap.my.id/squad`).
+
+---
+
+## 7. Transisi Skuad MD10 ke MD11 & Proteksi Knockout Stage (13 Oktober 2026)
+
+### A. Latar Belakang & Masalah yang Ditemukan
+- Sesuai Regulasi Resmi RS S1 (Pasal 15), kompetisi memasuki jeda bursa transfer tengah musim setelah MD10 selesai dan sebelum MD11 dimulai.
+- Audit kode menemukan beberapa celah:
+  1. Alur transisi belum jelas di Pusat Kontrol (`/control`), peserta tidak diberi tahu secara eksplisit bahwa bursa Fase 2 telah dibuka.
+  2. Pertandingan MD11 berpotensi dilaporkan sebelum Skuad Fase 2 dikunci kedua pihak.
+  3. Dropdown pencetak gol di `MatchReportTab` berpotensi menampilkan draf Fase 2 yang belum dikunci secara rahasia oleh lawan.
+  4. Halaman publik `/squad` dan profil peserta belum secara ketat menjaga kerahasiaan draf Fase 2 sebelum status `both_locked`.
+
+### B. Perubahan & Penguatan
+1. **Transisi Jelas di Dashboard (`ControlCenterClient.tsx`):**
+   - Menambahkan deteksi otomatis kondisi transisi (`md10Completed && !phase2BothLocked`).
+   - Menampilkan banner resmi *Jeda Kompetisi · Pasal 15* di Pusat Kontrol dengan kartu status Pemain A & B dan tombol cepat *"Buka Skuad Fase 2"*.
+   - Badge penanda *"Bursa Fase 2"* pada tab navigasi samping *Manajemen Skuad*.
+   - Secara otomatis membuka tab Fase 2 pada penyusun skuad saat transisi berlangsung.
+2. **Penyekat Informatif Pelaporan MD11 (`MatchReportTab.tsx`):**
+   - Jika pengguna memilih MD11 ke atas saat Fase 2 belum terkunci, form pelaporan digantikan dengan kartu status kesiapan skuad yang informatif (menjelaskan status kunci masing-masing pihak dan panduan personal).
+   - Menghubungkan tombol CTA *"Buka Penyusun Skuad"* langsung ke tab manajemen skuad.
+3. **Penutupan Kebocoran Draf Lawan:**
+   - Dropdown pemain di form laporan MD1–MD10 secara ketat hanya membaca kartu Fase 1 (`roster_phase = 1`).
+   - Dropdown pemain MD11–MD20 hanya aktif setelah `both_locked = true`, menjamin draf rahasia lawan tidak pernah bocor.
+   - Halaman publik `/squad` dan profil peserta `/participants/[id]` hanya menampilkan Fase 2 setelah dikunci kedua belah pihak.
+4. **Validasi Keras Sisi Server (`match_actions.ts`):**
+   - Menolak submission MD11+ jika MD10 belum selesai atau Fase 2 belum `both_locked`.
+5. **Dukungan Format Nilai Boolean (`match_validator.ts`):**
+   - Mendukung string `'1'` di samping `'true'` dan `'on'` untuk `et_played` dan `pk_played`.
+
+### C. Verifikasi
+- **Unit Tests:** 70/70 tests lulus 100% (`vitest run`), termasuk tes format Knockout Stage.
+- **Production Build:** `npm run build` sukses 100% tanpa error di seluruh 14 rute Next.js.

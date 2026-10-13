@@ -341,4 +341,42 @@ describe('Match Report Validation & Data Integrity Suite', () => {
       expect(String(constraintError)).toContain('NOT NULL');
     });
   });
+
+  describe('6. Knockout Stage (MD11+) Stage Settings & Format', () => {
+    it('Correctly identifies MD11 as Knockout Stage with Extra Time & PK rules', () => {
+      const fd = createValidFormData({
+        md_number: '11',
+        et_played: '1',
+        home_et_score: '3',
+        away_et_score: '2',
+      });
+      const res = validateMatchReportInput(fd);
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.matchSettings.phase).toBe('knockout_stage');
+        expect(res.data.matchSettings.extraTimeAllowed).toBe(true);
+        expect(res.data.matchSettings.penaltiesAllowed).toBe(true);
+        expect(res.data.etPlayed).toBe(true);
+        expect(res.data.homeEtScore).toBe(3);
+        expect(res.data.awayEtScore).toBe(2);
+      }
+    });
+
+    it('Rejects drawn results in Knockout Stage when Extra Time is drawn without PK', () => {
+      const fd = createValidFormData({
+        md_number: '11',
+        home_score: '2',
+        away_score: '2',
+        et_played: '1',
+        home_et_score: '2',
+        away_et_score: '2',
+        pk_played: '0',
+      });
+      const res = validateMatchReportInput(fd);
+      expect(res.success).toBe(false);
+      if (!res.success) {
+        expect(res.error).toContain('wajib menghasilkan pemenang');
+      }
+    });
+  });
 });

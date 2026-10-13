@@ -512,8 +512,8 @@ export function SquadViewerClient({
           </p>
         </div>
 
-        {/* Phase selector if Fase 2 is ready/active */}
-        {md10Completed && phase2Cards.length > 0 && (
+        {/* Phase selector if Fase 2 is ready/active and locked by both */}
+        {md10Completed && Boolean(phase2Status?.both_locked) && phase2Cards.length > 0 && (
           <div className="flex items-center gap-2 p-1 rounded-[10px] bg-[var(--ink-1)] border border-[var(--line)] shrink-0 self-start md:self-auto">
             <button
               onClick={() => setActivePhase(1)}

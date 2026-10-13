@@ -55,9 +55,12 @@ export default async function ParticipantProfilePage({
   const md10Match = matches.find((m) => m.md_number === 10);
   const md10Completed = md10Match?.status === 'confirmed' || md10Match?.status === 'forfeited';
 
-  const activeRoster = md10Completed && phase2Roster.cards.some((c) => c.participant_id === participantId)
-    ? phase2Roster
-    : phase1Roster;
+  const phase2ActiveForProfile =
+    md10Completed &&
+    (Boolean(phase2Roster.phaseStatus.both_locked) || session?.participantId === participantId) &&
+    phase2Roster.cards.some((c) => c.participant_id === participantId);
+
+  const activeRoster = phase2ActiveForProfile ? phase2Roster : phase1Roster;
   const activePhaseNum = activeRoster === phase2Roster ? 2 : 1;
 
   const isViewingOwnProfile = session?.participantId === participantId;

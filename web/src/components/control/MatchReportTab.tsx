@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Send, 
   ChevronDown, 
@@ -8,7 +8,12 @@ import {
   Plus, 
   Trash2, 
   Sparkles, 
-  Flag 
+  Flag,
+  Lock,
+  Shield,
+  Clock,
+  Users,
+  ArrowRight
 } from 'lucide-react';
 import { 
   Participant, 
@@ -54,6 +59,12 @@ interface MatchReportTabProps {
   isPending: boolean;
   startTransition: (callback: () => Promise<void>) => void;
   showMessage: (type: 'success' | 'error', text: string) => void;
+  session?: {
+    participantId: ParticipantId;
+    participant: Participant;
+    isAdmin: boolean;
+  } | null;
+  onNavigateToRoster?: () => void;
 }
 
 export function MatchReportTab({
@@ -67,6 +78,8 @@ export function MatchReportTab({
   isPending,
   startTransition,
   showMessage,
+  session,
+  onNavigateToRoster,
 }: MatchReportTabProps) {
   const [selectedMd, setSelectedMd] = useState<number>(() => {
     const unplayed = matches.find((m) => m.status === 'scheduled');
@@ -82,10 +95,24 @@ export function MatchReportTab({
   const [stepQuotaOpen, setStepQuotaOpen] = useState(true);
   const [stepEvidenceOpen, setStepEvidenceOpen] = useState(false);
 
-  // Active phase squad cards for selected MD
-  const activePhaseForMd = selectedMd >= 11 && (phase2Roster?.cards?.length || 0) > 0 ? 2 : 1;
+  // Phase & squad readiness computation for selected MD
+  const isKnockout = selectedMd >= 11;
+  const md10Match = matches.find((m) => m.md_number === 10);
+  const md10Completed = Boolean(
+    md10Match && ['confirmed', 'reconstructed', 'forfeited', 'technical_win'].includes(md10Match.status)
+  );
+  const phase2Status = phase2Roster?.phaseStatus;
+  const phase2BothLocked = Boolean(phase2Status?.both_locked);
+  const isKnockoutBlocked = isKnockout && (!md10Completed || !phase2BothLocked);
+
+  // Active phase squad cards:
+  // - MD1-10: strictly Phase 1 cards
+  // - MD11-20: strictly Phase 2 cards (only once both_locked is true; otherwise empty to prevent draft leaks)
+  const activePhaseForMd = isKnockout && phase2BothLocked ? 2 : 1;
   const activeRosterForMd =
-    activePhaseForMd === 2 && phase2Roster ? phase2Roster.cards : phase1Roster?.cards || rosterCards;
+    activePhaseForMd === 2 && phase2Roster
+      ? phase2Roster.cards
+      : (phase1Roster?.cards || rosterCards).filter((c) => c.roster_phase === 1);
   const paSquadCards = activeRosterForMd.filter((c) => c.participant_id === 'participant_a');
   const pbSquadCards = activeRosterForMd.filter((c) => c.participant_id === 'participant_b');
 
@@ -96,6 +123,16 @@ export function MatchReportTab({
   const [pbSelectedGkCardId, setPbSelectedGkCardId] = useState<string>(pbDefaultGk?.id || 'manual');
   const [paManualGkName, setPaManualGkName] = useState<string>('Kiper A');
   const [pbManualGkName, setPbManualGkName] = useState<string>('Kiper B');
+
+  // Automatically update goalkeeper selections when matchday or active squad phase changes
+  useEffect(() => {
+    if (paDefaultGk && (!paSelectedGkCardId || paSelectedGkCardId === 'manual' || !paSquadCards.some((c) => c.id === paSelectedGkCardId))) {
+      setPaSelectedGkCardId(paDefaultGk.id);
+    }
+    if (pbDefaultGk && (!pbSelectedGkCardId || pbSelectedGkCardId === 'manual' || !pbSquadCards.some((c) => c.id === pbSelectedGkCardId))) {
+      setPbSelectedGkCardId(pbDefaultGk.id);
+    }
+  }, [selectedMd, activePhaseForMd]);
 
   const paChosenGkCard = paSquadCards.find((c) => c.id === paSelectedGkCardId) || null;
   const pbChosenGkCard = pbSquadCards.find((c) => c.id === pbSelectedGkCardId) || null;
@@ -118,7 +155,6 @@ export function MatchReportTab({
   const [pbTrendingH2, setPbTrendingH2] = useState<boolean>(false);
 
   const selectedMatch = matches.find((m) => m.md_number === selectedMd);
-  const isKnockout = selectedMd >= 11;
 
   const handleAddDraftGoal = () => {
     const squadPool = draftScorerParticipant === 'participant_a' ? paSquadCards : pbSquadCards;
@@ -218,12 +254,15 @@ export function MatchReportTab({
 
       {/* Match Setting Notice */}
       <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-4 text-[13px] text-[var(--text-dim)] space-y-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-bold text-[var(--text)] uppercase">
             Aturan MD{selectedMd}:
           </span>
           <span className="font-semibold text-xs">
             {isKnockout ? 'Knockout Stage (MD11–20)' : 'Group Stage (MD1–10)'}
+          </span>
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[var(--ink-1)] border border-[var(--line)] text-[var(--text)]">
+            {activePhaseForMd === 2 ? 'Skuad Fase 2 (Resmi & Sah)' : 'Skuad Fase 1 (Resmi)'}
           </span>
         </div>
         <p>
@@ -233,9 +272,124 @@ export function MatchReportTab({
         </p>
       </div>
 
-      <form
-        action={(formData) => {
-          startTransition(async () => {
+      {/* If Knockout match is blocked (either MD1-10 not completed or Phase 2 squad not both locked), show informative gate */}
+      {isKnockoutBlocked ? (
+        !md10Completed ? (
+          <div className="rounded-[12px] bg-[var(--ink-2)] border border-[var(--line)] p-8 sm:p-12 text-center space-y-4">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[var(--ink-1)] border border-[var(--line)] text-[var(--gold)]">
+              <Lock className="w-6 h-6" />
+            </div>
+            <div className="space-y-1.5 max-w-lg mx-auto">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[var(--gold)]/15 text-[var(--gold)] border border-[var(--gold)]/30">
+                Fase 1 Belum Selesai · Pasal 15
+              </div>
+              <h3 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)]">
+                MD{selectedMd} Terkunci Sampai MD10 Selesai
+              </h3>
+              <p className="text-xs sm:text-[13px] text-[var(--text-dim)] leading-relaxed">
+                Pertandingan Babak Gugur (MD11–MD20) baru dapat dibuka dan dilaporkan setelah seluruh pertandingan Fase Grup (MD1 sampai MD10) selesai dan disahkan secara resmi.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-[12px] bg-[var(--ink-2)] border border-[var(--line-strong)] p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[var(--gold)]/15 text-[var(--gold)] border border-[var(--gold)]/30">
+                    Syarat MD11 · Pasal 15 Ayat 1 & 4
+                  </span>
+                  <span className="text-xs text-[var(--text-faint)] font-mono">
+                    Jeda Tengah Musim
+                  </span>
+                </div>
+                <h3 className="font-[family-name:var(--font-display)] font-extrabold text-2xl uppercase tracking-tight text-[var(--text)]">
+                  Laporan MD{selectedMd} Menunggu Skuad Fase 2
+                </h3>
+                <p className="text-xs sm:text-[13px] text-[var(--text-dim)] max-w-2xl leading-relaxed">
+                  Pertandingan Babak Gugur menggunakan draf Skuad Fase 2. Sesuai regulasi resmi, pelaporan hasil pertandingan baru dapat dilakukan setelah kedua peserta resmi mengunci 26 kartu skuad Fase 2 masing-masing.
+                </p>
+              </div>
+
+              {onNavigateToRoster && (
+                <button
+                  type="button"
+                  onClick={onNavigateToRoster}
+                  className="h-10 px-4 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shrink-0 flex items-center justify-center gap-2 self-start sm:self-auto"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Buka Penyusun Skuad</span>
+                </button>
+              )}
+            </div>
+
+            {/* Status Cards for Participant A & B */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="rounded-[10px] bg-[var(--ink-1)] border border-[var(--line)] p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <PlayerTag id="participant_a" name={pA.display_name} monogram={pA.monogram} size="sm" />
+                  {phase2Status?.pa_locked === 1 ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--ok)]/20 text-[var(--ok)] text-xs font-bold">
+                      <Lock className="w-3 h-3" />
+                      <span>Terkunci ✓</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--ink-2)] text-[var(--text-dim)] text-xs font-bold">
+                      <Clock className="w-3 h-3" />
+                      <span>Sedang Menyusun</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[var(--text-faint)]">
+                  {phase2Status?.pa_locked === 1
+                    ? 'Skuad Fase 2 Pemain A sudah resmi terkunci dan tersimpan aman.'
+                    : 'Pemain A belum mengunci skuad Fase 2 (maks 26 kartu, min 2 Trending).'}
+                </p>
+              </div>
+
+              <div className="rounded-[10px] bg-[var(--ink-1)] border border-[var(--line)] p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <PlayerTag id="participant_b" name={pB.display_name} monogram={pB.monogram} size="sm" />
+                  {phase2Status?.pb_locked === 1 ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--ok)]/20 text-[var(--ok)] text-xs font-bold">
+                      <Lock className="w-3 h-3" />
+                      <span>Terkunci ✓</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--ink-2)] text-[var(--text-dim)] text-xs font-bold">
+                      <Clock className="w-3 h-3" />
+                      <span>Sedang Menyusun</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[var(--text-faint)]">
+                  {phase2Status?.pb_locked === 1
+                    ? 'Skuad Fase 2 Pemain B sudah resmi terkunci dan tersimpan aman.'
+                    : 'Pemain B belum mengunci skuad Fase 2 (maks 26 kartu, min 2 Trending).'}
+                </p>
+              </div>
+            </div>
+
+            {/* Personalized Guidance note */}
+            {session && (
+              <div className="rounded-[8px] bg-[var(--ink-1)] border border-[var(--line)] p-3.5 text-xs text-[var(--text-dim)] flex items-start gap-2.5">
+                <Shield className="w-4 h-4 text-[var(--gold)] shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-[var(--text)]">Status Skuad Anda</p>
+                  <p>
+                    {(session.participantId === 'participant_a' ? phase2Status?.pa_locked === 1 : phase2Status?.pb_locked === 1)
+                      ? 'Skuad Fase 2 Anda sudah berhasil dikunci. Menunggu lawan menyelesaikan dan mengunci skuadnya agar pertandingan MD11 dapat dilaporkan.'
+                      : 'Anda belum mengunci skuad Fase 2 Anda. Klik tombol "Buka Penyusun Skuad" di atas untuk menyalin kartu Fase 1, melakukan perubahan pemain, dan mengunci skuad Anda.'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      ) : (
+        <form
+          action={(formData) => {
+            startTransition(async () => {
             const res = await submitMatchReportAction(formData);
             if (res?.error) {
               showMessage('error', res.error);
@@ -1054,6 +1208,7 @@ export function MatchReportTab({
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 }
