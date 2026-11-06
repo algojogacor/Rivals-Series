@@ -19,6 +19,7 @@ import {
   RosterCard,
   RosterPhaseStatus,
   SeasonInvite,
+  SquadUnlockRequest,
 } from './types';
 import {
   AuditCategory,
@@ -1054,3 +1055,60 @@ export const getPlayersMetadata = cache(async function getPlayersMetadata(
 });
 
 
+
+
+export const getPendingSquadUnlockRequests = cache(async (): Promise<SquadUnlockRequest[]> => {
+  const db = getDbClient();
+  try {
+    const res = await db.execute({
+      sql: `SELECT id, phase, requested_by, reason, status, responded_by, responded_at, rejection_reason, created_at
+            FROM squad_unlock_requests
+            WHERE status = 'pending_approval'
+            ORDER BY created_at ASC;`,
+      args: [],
+    });
+    return res.rows.map((r) => ({
+      id: String(r.id),
+      phase: Number(r.phase),
+      requested_by: r.requested_by as ParticipantId,
+      reason: String(r.reason),
+      status: r.status as 'pending_approval' | 'approved' | 'rejected' | 'cancelled',
+      responded_by: (r.responded_by as ParticipantId) || null,
+      responded_at: r.responded_at ? String(r.responded_at) : null,
+      rejection_reason: r.rejection_reason ? String(r.rejection_reason) : null,
+      created_at: String(r.created_at),
+    }));
+  } catch (err) {
+    console.error('getPendingSquadUnlockRequests error:', err);
+    return [];
+  }
+});
+
+export const getSquadUnlockRequestById = cache(async (requestId: string): Promise<SquadUnlockRequest | null> => {
+  const db = getDbClient();
+  try {
+    const res = await db.execute({
+      sql: `SELECT id, phase, requested_by, reason, status, responded_by, responded_at, rejection_reason, created_at
+            FROM squad_unlock_requests
+            WHERE id = ?
+            LIMIT 1;`,
+      args: [requestId],
+    });
+    if (!res.rows[0]) return null;
+    const r = res.rows[0];
+    return {
+      id: String(r.id),
+      phase: Number(r.phase),
+      requested_by: r.requested_by as ParticipantId,
+      reason: String(r.reason),
+      status: r.status as 'pending_approval' | 'approved' | 'rejected' | 'cancelled',
+      responded_by: (r.responded_by as ParticipantId) || null,
+      responded_at: r.responded_at ? String(r.responded_at) : null,
+      rejection_reason: r.rejection_reason ? String(r.rejection_reason) : null,
+      created_at: String(r.created_at),
+    };
+  } catch (err) {
+    console.error('getSquadUnlockRequestById error:', err);
+    return null;
+  }
+});

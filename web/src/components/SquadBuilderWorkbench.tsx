@@ -7,6 +7,8 @@ import {
   ParticipantId,
   RosterCard,
   RosterPhaseStatus,
+  Match,
+  SquadUnlockRequest,
 } from '@/lib/types';
 import {
   addEfootballRosterCardAction,
@@ -36,6 +38,8 @@ interface SquadBuilderWorkbenchProps {
   shortlistCards?: any[];
   paSummaryPhase1: { count: number; trending: number; indo: number };
   pbSummaryPhase1: { count: number; trending: number; indo: number };
+  matches?: Match[];
+  pendingSquadUnlockRequests?: SquadUnlockRequest[];
   onSquadLockedChange?: () => void;
 }
 
@@ -50,6 +54,8 @@ export function SquadBuilderWorkbench({
   shortlistCards = [],
   paSummaryPhase1,
   pbSummaryPhase1,
+  matches = [],
+  pendingSquadUnlockRequests = [],
   onSquadLockedChange,
 }: SquadBuilderWorkbenchProps) {
   const [activePhase, setActivePhase] = useState<number>(initialPhase);
@@ -391,6 +397,8 @@ export function SquadBuilderWorkbench({
         startTransition={startTransition}
         handleLockMySquad={handleLockMySquad}
         showToast={showToast}
+        matches={matches}
+        pendingSquadUnlockRequests={pendingSquadUnlockRequests}
         onSquadLockedChange={onSquadLockedChange}
       />
 

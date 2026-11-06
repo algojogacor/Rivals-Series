@@ -341,3 +341,16 @@ export interface SeasonInvite {
 }
 
 
+
+
+export interface SquadUnlockRequest {
+  id: string;
+  phase: number;
+  requested_by: ParticipantId;
+  reason: string;
+  status: 'pending_approval' | 'approved' | 'rejected' | 'cancelled';
+  responded_by?: ParticipantId | null;
+  responded_at?: string | null;
+  rejection_reason?: string | null;
+  created_at: string;
+}

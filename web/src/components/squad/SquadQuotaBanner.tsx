@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sparkles,
   Flag,
@@ -10,9 +10,24 @@ import {
   LogIn,
   LogOut,
 } from 'lucide-react';
-import { Participant, ParticipantId, RosterCard, RosterPhaseStatus } from '@/lib/types';
+import {
+  Participant,
+  ParticipantId,
+  RosterCard,
+  RosterPhaseStatus,
+  Match,
+  SquadUnlockRequest,
+} from '@/lib/types';
 import { PlayerTag } from '../PlayerTag';
-import { loginParticipantAction, logoutParticipantAction, initializePhase2SquadAction } from '@/lib/actions';
+import {
+  loginParticipantAction,
+  logoutParticipantAction,
+  initializePhase2SquadAction,
+  unlockParticipantSquadAction,
+  requestSquadUnlockAction,
+  respondSquadUnlockAction,
+  cancelSquadUnlockAction,
+} from '@/lib/actions';
 
 interface SquadQuotaBannerProps {
   session: {
@@ -39,6 +54,8 @@ interface SquadQuotaBannerProps {
   startTransition: (callback: () => Promise<void>) => void;
   handleLockMySquad: () => void;
   showToast: (type: 'success' | 'error', text: string) => void;
+  matches?: Match[];
+  pendingSquadUnlockRequests?: SquadUnlockRequest[];
   onSquadLockedChange?: () => void;
 }
 
@@ -63,8 +80,103 @@ export function SquadQuotaBanner({
   startTransition,
   handleLockMySquad,
   showToast,
+  matches = [],
+  pendingSquadUnlockRequests = [],
   onSquadLockedChange,
 }: SquadQuotaBannerProps) {
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [unlockReason, setUnlockReason] = useState('');
+
+  const opponentId: ParticipantId =
+    session?.participantId === 'participant_a' ? 'participant_b' : 'participant_a';
+  const opponentName = opponentId === 'participant_a' ? pA.display_name : pB.display_name;
+
+  const openingMd = activePhase === 1 ? 1 : 11;
+  const openingMatch = matches.find((m) => m.md_number === openingMd);
+  const openingMatchScheduled = openingMatch ? openingMatch.status === 'scheduled' : true;
+
+  const activePendingRequest = pendingSquadUnlockRequests.find(
+    (r) => r.phase === activePhase && r.status === 'pending_approval'
+  );
+
+  const handleSelfUnlock = () => {
+    if (
+      !window.confirm(
+        `Batalkan kunci skuad Fase ${activePhase}? Skuad Anda akan kembali ke status draf sehingga dapat diedit kembali.`
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const res = await unlockParticipantSquadAction(activePhase);
+      if (res?.error) {
+        showToast('error', res.error);
+      } else {
+        showToast(
+          'success',
+          `Kunci skuad Fase ${activePhase} berhasil dibatalkan. Anda dapat menyesuaikan skuad kembali.`
+        );
+        onSquadLockedChange?.();
+      }
+    });
+  };
+
+  const handleSubmitUnlockRequest = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (unlockReason.trim().length < 5) {
+      showToast('error', 'Alasan permohonan buka kunci wajib diisi minimal 5 karakter.');
+      return;
+    }
+    const fd = new FormData();
+    fd.append('phase', String(activePhase));
+    fd.append('reason', unlockReason.trim());
+
+    startTransition(async () => {
+      const res = await requestSquadUnlockAction(fd);
+      if (res?.error) {
+        showToast('error', res.error);
+      } else {
+        showToast('success', 'Permohonan buka kunci skuad bersama berhasil dikirim ke lawan.');
+        setShowUnlockModal(false);
+        setUnlockReason('');
+        onSquadLockedChange?.();
+      }
+    });
+  };
+
+  const handleRespondUnlockRequest = (requestId: string, approved: boolean) => {
+    startTransition(async () => {
+      const res = await respondSquadUnlockAction({
+        requestId,
+        approved,
+        rejectionReason: approved ? undefined : 'Ditolak oleh lawan',
+      });
+      if (res?.error) {
+        showToast('error', res.error);
+      } else {
+        showToast(
+          'success',
+          approved
+            ? `Buka kunci skuad Fase ${activePhase} berhasil disetujui. Kedua skuad kembali ke mode draf.`
+            : 'Permohonan buka kunci skuad ditolak.'
+        );
+        onSquadLockedChange?.();
+      }
+    });
+  };
+
+  const handleCancelUnlockRequest = (requestId: string) => {
+    startTransition(async () => {
+      const res = await cancelSquadUnlockAction(requestId);
+      if (res?.error) {
+        showToast('error', res.error);
+      } else {
+        showToast('success', 'Permohonan buka kunci skuad berhasil dibatalkan.');
+        onSquadLockedChange?.();
+      }
+    });
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Status & Account Switcher Banner */}
@@ -330,6 +442,81 @@ export function SquadQuotaBanner({
             </div>
           )}
 
+          {/* Active Pending Squad Unlock Request Banner */}
+          {activePendingRequest && (
+            <>
+              {activePendingRequest.requested_by === session.participantId ? (
+                <div className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--gold)]/40 p-4 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <Unlock className="w-5 h-5 text-[var(--gold)] shrink-0" />
+                      <div>
+                        <div className="font-bold text-xs uppercase text-[var(--text)]">
+                          Permohonan Buka Kunci Skuad Fase {activePhase} Terkirim
+                        </div>
+                        <p className="text-[11px] text-[var(--text-dim)]">
+                          Menunggu persetujuan dari {opponentName}. Skuad akan kembali dapat diedit begitu disetujui.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleCancelUnlockRequest(activePendingRequest.id)}
+                      className="h-8 px-3 rounded-[6px] border border-[var(--line)] bg-[var(--ink-1)] text-xs font-bold text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors shrink-0"
+                    >
+                      Batalkan Permohonan
+                    </button>
+                  </div>
+                  <div className="text-xs text-[var(--text)] bg-[var(--ink-1)] px-3 py-2 rounded border border-[var(--line)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-faint)] block">
+                      Alasan Anda:
+                    </span>
+                    &ldquo;{activePendingRequest.reason}&rdquo;
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[8px] bg-[var(--gold)]/10 border border-[var(--gold)]/50 p-4 space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <Unlock className="w-5 h-5 text-[var(--gold)] shrink-0" />
+                    <div>
+                      <div className="font-bold text-xs uppercase text-[var(--text)]">
+                        Permohonan Buka Kunci Skuad dari {opponentName}
+                      </div>
+                      <p className="text-[11px] text-[var(--text-dim)]">
+                        Lawan meminta izin membuka kembali kunci skuad Fase {activePhase} bersama.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-[var(--text)] bg-[var(--ink-2)] px-3 py-2 rounded border border-[var(--line)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-faint)] block">
+                      Alasan dari {opponentName}:
+                    </span>
+                    &ldquo;{activePendingRequest.reason}&rdquo;
+                  </div>
+                  <div className="flex items-center gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleRespondUnlockRequest(activePendingRequest.id, true)}
+                      className="h-8 px-4 rounded-[6px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
+                    >
+                      Setujui Buka Kunci
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleRespondUnlockRequest(activePendingRequest.id, false)}
+                      className="h-8 px-3.5 rounded-[6px] border border-[var(--line)] text-xs font-bold text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
+                    >
+                      Tolak
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             {/* Three Distinct Counters: Total (max 26), Trending (min 2), Indonesian */}
             <div className="grid grid-cols-3 gap-3 flex-1">
@@ -394,12 +581,49 @@ export function SquadQuotaBanner({
               </div>
             </div>
 
-            {/* Lock My Squad Action */}
+            {/* Lock / Unlock My Squad Action */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
               {myLocked ? (
-                <div className="px-4 py-2.5 rounded-[8px] bg-[var(--ok)]/15 border border-[var(--ok)]/40 text-xs font-bold text-[var(--ok)] flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  <span>Skuad Fase {activePhase} Anda Sudah Terkunci</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="px-4 py-2.5 rounded-[8px] bg-[var(--ok)]/15 border border-[var(--ok)]/40 text-xs font-bold text-[var(--ok)] flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    <span>Skuad Fase {activePhase} Anda Sudah Terkunci</span>
+                  </div>
+
+                  {/* Case A: Self-unlock when opponent has not locked yet and opening match scheduled */}
+                  {!currentPhaseStatus.both_locked && openingMatchScheduled && (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={handleSelfUnlock}
+                      className="h-9 px-3.5 rounded-[8px] border border-[var(--line)] bg-[var(--ink-2)] text-xs font-bold text-[var(--text-dim)] hover:text-[var(--text)] hover:border-[var(--text-dim)] transition-colors flex items-center gap-1.5"
+                      title="Batalkan kunci skuad mandiri sebelum lawan mengunci"
+                    >
+                      <Unlock className="w-3.5 h-3.5" />
+                      <span>Batal Kunci</span>
+                    </button>
+                  )}
+
+                  {/* Case B: Mutual unlock request when both are locked, opening match scheduled, and no pending request */}
+                  {currentPhaseStatus.both_locked && openingMatchScheduled && !activePendingRequest && (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => setShowUnlockModal(true)}
+                      className="h-9 px-3.5 rounded-[8px] border border-[var(--gold)]/40 bg-[var(--gold)]/10 text-xs font-bold text-[var(--gold)] hover:bg-[var(--gold)]/20 transition-colors flex items-center gap-1.5"
+                      title="Ajukan pembukaan kunci skuad bersama kepada lawan sebelum kick-off"
+                    >
+                      <Unlock className="w-3.5 h-3.5" />
+                      <span>Ajukan Buka Kunci Bersama</span>
+                    </button>
+                  )}
+
+                  {/* Note if opening match is already played / reported */}
+                  {currentPhaseStatus.both_locked && !openingMatchScheduled && (
+                    <span className="text-[11px] text-[var(--text-faint)] italic">
+                      MD{openingMd} sudah berjalan · Skuad terkunci permanen
+                    </span>
+                  )}
                 </div>
               ) : (
                 <button
@@ -424,6 +648,75 @@ export function SquadQuotaBanner({
               </span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Mutual Squad Unlock Request Modal */}
+      {showUnlockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-[14px] bg-[var(--ink-1)] border border-[var(--line)] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
+              <div className="flex items-center gap-2.5">
+                <Unlock className="w-5 h-5 text-[var(--gold)]" />
+                <h3 className="font-[family-name:var(--font-display)] font-extrabold text-lg uppercase tracking-tight text-[var(--text)]">
+                  Ajukan Buka Kunci Skuad (Fase {activePhase})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUnlockModal(false);
+                  setUnlockReason('');
+                }}
+                className="text-xs font-bold text-[var(--text-faint)] hover:text-[var(--text)] transition-colors"
+              >
+                ✕ Tutup
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--text-dim)] leading-relaxed">
+              Karena kedua peserta telah mengunci skuad, pembatalan kunci memerlukan persetujuan bersama dari lawan tanding Anda ({opponentName}). Jika disetujui, kedua skuad Fase {activePhase} akan kembali ke mode draf dan bebas diedit sebelum MD{openingMd} dilaporkan.
+            </p>
+
+            <form onSubmit={handleSubmitUnlockRequest} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text)] mb-1.5">
+                  Alasan Pembukaan Kunci <span className="text-[var(--danger)]">*</span>
+                </label>
+                <textarea
+                  value={unlockReason}
+                  onChange={(e) => setUnlockReason(e.target.value)}
+                  placeholder="Contoh: Salah memilih varian kartu Lewandowski atau ingin menukar kartu cadangan sebelum kick-off..."
+                  required
+                  rows={3}
+                  className="w-full p-3 rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] text-xs text-[var(--text)] placeholder-[var(--text-faint)] focus:border-[var(--text)] focus:outline-none transition-colors resize-none"
+                />
+                <span className="text-[10px] text-[var(--text-faint)] mt-1 block">
+                  Minimal 5 karakter. Alasan ini akan dibaca oleh {opponentName}.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--line)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUnlockModal(false);
+                    setUnlockReason('');
+                  }}
+                  className="h-9 px-4 rounded-[6px] border border-[var(--line)] text-xs font-semibold text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || unlockReason.trim().length < 5}
+                  className="h-9 px-5 rounded-[6px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-40"
+                >
+                  {isPending ? 'Mengirim…' : 'Kirim Permohonan'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

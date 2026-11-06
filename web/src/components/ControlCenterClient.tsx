@@ -23,6 +23,7 @@ import {
   ResetRequest,
   RosterCard,
   RosterPhaseStatus,
+  SquadUnlockRequest,
 } from '@/lib/types';
 import {
   loginParticipantAction,
@@ -75,6 +76,7 @@ interface ControlCenterClientProps {
   goalNominations: GoalNomination[];
   pendingReset?: ResetRequest | null;
   goalEvents?: MatchGoalEvent[];
+  pendingSquadUnlockRequests?: SquadUnlockRequest[];
 }
 
 export function ControlCenterClient({
@@ -92,6 +94,7 @@ export function ControlCenterClient({
   lastAuditSeenAt = null,
   pendingReset,
   goalEvents = [],
+  pendingSquadUnlockRequests = [],
 }: ControlCenterClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'report' | 'pending' | 'roster' | 'disputes' | 'audit' | 'profile'>('report');
@@ -300,7 +303,7 @@ export function ControlCenterClient({
               id: 'pending',
               label: 'Konfirmasi',
               icon: CheckCircle,
-              badge: pendingMatches.length + (pendingReset ? 1 : 0) || null,
+              badge: pendingMatches.length + (pendingReset ? 1 : 0) + pendingSquadUnlockRequests.length || null,
             },
             {
               id: 'roster',

@@ -380,3 +380,18 @@ CREATE INDEX IF NOT EXISTS idx_season_invites_token ON season_invites(token_hash
 CREATE INDEX IF NOT EXISTS idx_season_invites_status ON season_invites(status);
 
 
+
+-- 20. SQUAD UNLOCK REQUESTS (Mutual approval workflow for squad reopen before phase kickoff)
+CREATE TABLE IF NOT EXISTS squad_unlock_requests (
+  id TEXT PRIMARY KEY,
+  phase INTEGER NOT NULL,
+  requested_by TEXT NOT NULL REFERENCES participants(id),
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending_approval' CHECK(status IN ('pending_approval', 'approved', 'rejected', 'cancelled')),
+  responded_by TEXT REFERENCES participants(id),
+  responded_at TEXT,
+  rejection_reason TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_squad_unlock_requests_phase_status ON squad_unlock_requests(phase, status);

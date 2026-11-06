@@ -1,9 +1,14 @@
 'use client';
 
 import React from 'react';
-import { AlertTriangle, CheckCircle, ExternalLink } from 'lucide-react';
-import { Participant, Match, ResetRequest, MatchGoalEvent } from '@/lib/types';
-import { confirmMatchReportAction, respondSeasonResetAction } from '@/lib/actions';
+import { AlertTriangle, CheckCircle, ExternalLink, Unlock, AlertCircle } from 'lucide-react';
+import { Participant, Match, ResetRequest, MatchGoalEvent, SquadUnlockRequest } from '@/lib/types';
+import {
+  confirmMatchReportAction,
+  respondSeasonResetAction,
+  respondSquadUnlockAction,
+  cancelSquadUnlockAction,
+} from '@/lib/actions';
 import { ControlSession } from './control-types';
 
 interface PendingMatchesTabProps {
@@ -11,6 +16,7 @@ interface PendingMatchesTabProps {
   participants: Participant[];
   pendingMatches: Match[];
   pendingReset?: ResetRequest | null;
+  pendingSquadUnlockRequests?: SquadUnlockRequest[];
   goalEvents?: MatchGoalEvent[];
   pA: Participant;
   pB: Participant;
@@ -25,6 +31,7 @@ export function PendingMatchesTab({
   participants,
   pendingMatches,
   pendingReset,
+  pendingSquadUnlockRequests = [],
   goalEvents = [],
   pA,
   pB,
@@ -108,6 +115,138 @@ export function PendingMatchesTab({
         </div>
       )}
 
+      {/* Mutual Squad Unlock Requests Box if any */}
+      {pendingSquadUnlockRequests.map((req) => {
+        const isRequester = session?.participantId === req.requested_by;
+        const requesterName = participants.find((p) => p.id === req.requested_by)?.display_name || req.requested_by;
+        const opponentName = participants.find((p) => p.id !== req.requested_by)?.display_name || 'Lawan';
+
+        if (isRequester) {
+          return (
+            <div
+              key={req.id}
+              className="rounded-[12px] border border-[var(--line)] bg-[var(--ink-2)] p-5 space-y-3"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Unlock className="w-5 h-5 text-[var(--gold)] shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-bold uppercase text-[var(--text)]">
+                      Permohonan Buka Kunci Skuad Fase {req.phase} Terkirim
+                    </h4>
+                    <p className="text-xs text-[var(--text-dim)]">
+                      Menunggu tanggapan dari {opponentName} · Dibuat {req.created_at}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    startTransition(async () => {
+                      const res = await cancelSquadUnlockAction(req.id);
+                      if (res?.error) {
+                        showMessage('error', res.error);
+                      } else {
+                        showMessage('success', 'Permohonan buka kunci skuad berhasil dibatalkan.');
+                        window.location.reload();
+                      }
+                    });
+                  }}
+                  disabled={isPending}
+                  className="px-3.5 py-1.5 rounded-[6px] border border-[var(--line)] text-xs font-bold text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors disabled:opacity-50 self-start sm:self-auto"
+                >
+                  {isPending ? 'Membatalkan…' : 'Batalkan Permohonan'}
+                </button>
+              </div>
+              <div className="text-xs text-[var(--text)] bg-[var(--ink-1)] p-3 rounded-[8px] border border-[var(--line)]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-faint)] block mb-1">
+                  Alasan yang Anda sampaikan:
+                </span>
+                &ldquo;{req.reason}&rdquo;
+              </div>
+            </div>
+          );
+        }
+
+        // Respondent card (opponent asked for unlock)
+        return (
+          <div
+            key={req.id}
+            className="rounded-[12px] border border-[var(--gold)]/50 bg-[var(--gold)]/10 p-6 space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <Unlock className="h-6 w-6 text-[var(--gold)] shrink-0" />
+              <div>
+                <h3 className="text-base font-bold uppercase tracking-tight text-[var(--text)]">
+                  Permohonan Buka Kunci Skuad Bersama (Fase {req.phase})
+                </h3>
+                <p className="text-xs text-[var(--text-dim)]">
+                  Diajukan oleh {requesterName} · Dibuat {req.created_at}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2 border-t border-[var(--gold)]/20">
+              <div className="rounded-[8px] bg-[var(--ink-2)] p-3 border border-[var(--line)] text-xs text-[var(--text)]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-faint)] block mb-1">
+                  Alasan Permohonan dari {requesterName}:
+                </span>
+                &ldquo;{req.reason}&rdquo;
+              </div>
+              <p className="text-xs text-[var(--text-dim)] leading-relaxed">
+                Lawan tanding Anda ingin membuka kunci skuad untuk melakukan penyesuaian kartu pemain. Jika Anda setujui, kedua skuad Fase {req.phase} akan kembali ke status draf sehingga Anda berdua dapat menyesuaikan kartu sebelum pertandingan pembuka dilaporkan.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    startTransition(async () => {
+                      const res = await respondSquadUnlockAction({
+                        requestId: req.id,
+                        approved: true,
+                      });
+                      if (res?.error) {
+                        showMessage('error', res.error);
+                      } else {
+                        showMessage('success', `Buka kunci skuad Fase ${req.phase} berhasil disetujui. Kedua skuad kembali ke mode draf.`);
+                        window.location.reload();
+                      }
+                    });
+                  }}
+                  disabled={isPending}
+                  className="px-5 py-2.5 rounded-[8px] bg-[var(--text)] text-[var(--ink-0)] text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isPending ? 'Memproses…' : 'Setujui Buka Kunci Skuad'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    startTransition(async () => {
+                      const res = await respondSquadUnlockAction({
+                        requestId: req.id,
+                        approved: false,
+                        rejectionReason: 'Ditolak oleh lawan',
+                      });
+                      if (res?.error) {
+                        showMessage('error', res.error);
+                      } else {
+                        showMessage('success', 'Permohonan buka kunci skuad ditolak.');
+                        window.location.reload();
+                      }
+                    });
+                  }}
+                  disabled={isPending}
+                  className="px-5 py-2.5 rounded-[8px] border border-[var(--line)] text-[var(--text)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--ink-2)] transition-colors disabled:opacity-50"
+                >
+                  Tolak Permohonan
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
       {/* Pending Matches Box */}
       <div className="rounded-[12px] bg-[var(--ink-1)] border border-[var(--line)] p-6 sm:p-8 space-y-6">
         <div>
@@ -128,75 +267,76 @@ export function PendingMatchesTab({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="divide-y divide-[var(--line)] border border-[var(--line)] rounded-[8px] overflow-hidden bg-[var(--ink-2)]">
             {pendingMatches.map((m) => {
-              const reportedByP = participants.find((p) => p.id === m.reported_by);
-              const isReportedByMe = m.reported_by === session.participantId;
+              const isReportedByMe = session && m.reported_by === session.participantId;
+              const isHome = m.home_participant_id === 'participant_a';
+              const pHome = isHome ? pA : pB;
+              const pAway = isHome ? pB : pA;
 
               return (
                 <div
                   key={m.id}
-                  className="rounded-[8px] bg-[var(--ink-2)] border border-[var(--line)] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-[family-name:var(--font-display)] font-bold text-base text-[var(--text)]">
-                        {m.id}
+                      <span className="font-[family-name:var(--font-display)] font-bold text-sm text-[var(--text)]">
+                        MD{m.md_number}
                       </span>
-                      <span className="font-bold text-base text-[var(--text)]">
-                        {pA.display_name} {m.home_score} : {m.away_score} {pB.display_name}
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[var(--ink-1)] text-[var(--text-dim)] border border-[var(--line)]">
+                        {m.phase === 'group_stage' ? 'Grup' : 'Knockout'}
+                      </span>
+                      <span className="text-xs text-[var(--text-faint)]">
+                        Dilaporkan oleh:{' '}
+                        <strong className="text-[var(--text-dim)]">
+                          {participants.find((p) => p.id === m.reported_by)?.display_name || m.reported_by}
+                        </strong>
                       </span>
                     </div>
-                    <p className="text-xs text-[var(--text-dim)]">
-                      Dilaporkan oleh: <strong>{reportedByP?.display_name || m.reported_by}</strong>
-                    </p>
+
+                    <div className="flex items-center gap-4 text-sm font-semibold text-[var(--text)]">
+                      <span>{pHome.display_name}</span>
+                      <span className="font-mono text-base font-bold bg-[var(--ink-1)] px-3 py-1 rounded border border-[var(--line)]">
+                        {m.home_score ?? '-'} : {m.away_score ?? '-'}
+                      </span>
+                      <span>{pAway.display_name}</span>
+                    </div>
+
                     {m.match_report_text && (
-                      <p className="text-xs text-[var(--text-faint)] italic">
-                        &ldquo;{m.match_report_text}&rdquo;
+                      <p className="text-xs text-[var(--text-dim)] italic">
+                        Catatan: &ldquo;{m.match_report_text}&rdquo;
                       </p>
                     )}
+
+                    {/* Goal events preview */}
                     {(() => {
-                      const mGoals = goalEvents.filter((g) => g.match_id === m.id);
-                      if (mGoals.length === 0) return null;
+                      const matchGoals = goalEvents.filter((g) => g.match_id === m.id);
+                      if (matchGoals.length === 0) return null;
                       return (
-                        <div className="pt-2 space-y-1.5">
-                          <span className="text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider block">
-                            Rincian Gol & Asis Terlapor:
+                        <div className="pt-2 text-xs space-y-1">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-dim)]">
+                            Daftar Gol ({matchGoals.length}):
                           </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {mGoals.map((g) => (
+                          <div className="flex flex-wrap gap-2">
+                            {matchGoals.map((g) => (
                               <div
                                 key={g.id}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[var(--ink-1)] border border-[var(--line)] text-xs"
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--ink-1)] border border-[var(--line)] text-xs"
                               >
-                                <span
-                                  className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
-                                  style={{
-                                    backgroundColor:
-                                      g.scoring_participant_id === 'participant_a'
-                                        ? 'var(--p-a-soft)'
-                                        : 'var(--p-b-soft)',
-                                    color:
-                                      g.scoring_participant_id === 'participant_a'
-                                        ? 'var(--p-a)'
-                                        : 'var(--p-b)',
-                                  }}
-                                >
-                                  {g.scoring_participant_id === 'participant_a' ? pA.display_name : pB.display_name}
+                                <span className="font-mono text-[10px] text-[var(--text-dim)]">
+                                  {g.minute}&apos;
                                 </span>
-                                <span className="font-mono font-bold text-[var(--text-dim)]">
-                                  {g.minute ? `${g.minute}'` : '—'}
-                                </span>
-                                <span className="font-semibold text-[var(--text)]">
+                                <span className="font-bold text-[var(--text)]">
                                   {g.scorer_player_name}
                                 </span>
                                 {g.scorer_card_version && (
-                                  <span className="text-[11px] text-[var(--text-faint)]">
+                                  <span className="text-[10px] text-[var(--text-faint)]">
                                     ({g.scorer_card_version})
                                   </span>
                                 )}
                                 {g.assist_player_name && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--ink-2)] border border-[var(--line)] text-[11px]">
+                                  <span className="text-[11px] text-[var(--text-dim)] border-l border-[var(--line)] pl-1.5 ml-0.5 inline-flex items-center gap-1">
                                     <span className="text-[9px] uppercase font-bold text-[var(--text-faint)]">Asis:</span>
                                     <span className="font-semibold text-[var(--text)]">{g.assist_player_name}</span>
                                     {g.assist_card_version && (
@@ -250,6 +390,7 @@ export function PendingMatchesTab({
 
                   <div className="flex items-center gap-3 shrink-0">
                     <button
+                      type="button"
                       onClick={() => {
                         startTransition(async () => {
                           const res = await confirmMatchReportAction(m.id);
@@ -267,6 +408,7 @@ export function PendingMatchesTab({
                     </button>
 
                     <button
+                      type="button"
                       onClick={onNavigateToDisputes}
                       className="h-10 px-4 rounded-[8px] border border-[var(--danger)] text-[var(--danger)] font-semibold text-xs uppercase tracking-wider hover:bg-[var(--danger)]/10 transition-colors"
                     >

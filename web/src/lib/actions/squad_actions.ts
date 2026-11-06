@@ -14,6 +14,7 @@ import {
   getAllRosterCards,
 } from '../db';
 import { validateSquadForLock } from '../engine';
+import { canSelfUnlockSquad, validateUnlockRequest, validateUnlockResponse } from '../squad_unlock';
 
 /**
  * 6. Add/Update Roster Card (Manual fallback or form submission)
@@ -686,4 +687,318 @@ export async function lockParticipantSquadAction(phase: number = 1) {
 
 export async function lockRosterPhaseAction(phase: number) {
   return lockParticipantSquadAction(phase);
+}
+
+
+/**
+ * 8. Self-Unlock Participant Squad
+ * Allowed only when user is locked, opponent is NOT locked, and opening match is still scheduled.
+ */
+export async function unlockParticipantSquadAction(phase: number = 1) {
+  const session = await getSession();
+  if (!session) {
+    return { error: 'Anda harus masuk ke akun peserta Anda sendiri untuk membatalkan kunci skuad.' };
+  }
+
+  const phaseStatus = await getRosterPhaseStatus(phase);
+  const myLocked =
+    session.participantId === 'participant_a' ? phaseStatus.pa_locked === 1 : phaseStatus.pb_locked === 1;
+  const opponentLocked =
+    session.participantId === 'participant_a' ? phaseStatus.pb_locked === 1 : phaseStatus.pa_locked === 1;
+
+  const db = getDbClient();
+  const openingMd = phase === 1 ? 1 : 11;
+  const matchRes = await db.execute({
+    sql: 'SELECT status FROM matches WHERE md_number = ? LIMIT 1;',
+    args: [openingMd],
+  });
+  const openingMatchStatus = matchRes.rows[0]?.status ? String(matchRes.rows[0].status) : null;
+
+  const check = canSelfUnlockSquad({
+    myLocked,
+    opponentLocked: opponentLocked || phaseStatus.both_locked || phaseStatus.is_locked === 1,
+    openingMatchStatus,
+  });
+
+  if (!check.allowed) {
+    return { error: check.reason || 'Pembatalan kunci skuad tidak diizinkan.' };
+  }
+
+  const statements: InStatement[] = [];
+
+  if (session.participantId === 'participant_a') {
+    statements.push({
+      sql: 'UPDATE roster_phases SET pa_locked = 0, pa_locked_at = NULL, is_locked = 0, locked_at = NULL, locked_by = NULL WHERE phase = ?;',
+      args: [phase],
+    });
+  } else {
+    statements.push({
+      sql: 'UPDATE roster_phases SET pb_locked = 0, pb_locked_at = NULL, is_locked = 0, locked_at = NULL, locked_by = NULL WHERE phase = ?;',
+      args: [phase],
+    });
+  }
+
+  // Cancel any pending unlock requests created by this participant for this phase
+  statements.push({
+    sql: "UPDATE squad_unlock_requests SET status = 'cancelled' WHERE phase = ? AND requested_by = ? AND status = 'pending_approval';",
+    args: [phase, session.participantId],
+  });
+
+  await executeWithAudit(statements, {
+    actorId: session.participantId,
+    actorName: session.participant.display_name,
+    category: 'squad',
+    action: 'unlock_participant_squad',
+    entityType: 'roster_phase',
+    entityId: `phase_${phase}_${session.participantId}`,
+    beforeJson: {
+      phase,
+      paLocked: Boolean(phaseStatus.pa_locked),
+      pbLocked: Boolean(phaseStatus.pb_locked),
+      bothLocked: phaseStatus.both_locked,
+    },
+    afterJson: {
+      phase,
+      participantId: session.participantId,
+      unlocked: true,
+      bothLocked: false,
+    },
+    reason: `${session.participant.display_name} membatalkan kunci skuad mandiri untuk Fase ${phase} sebelum lawan mengunci.`,
+    ruleArticle: phase === 1 ? 'Pasal 14' : 'Pasal 15',
+  });
+
+  invalidateCacheTags('participants');
+  invalidateCacheTags('matches');
+  revalidatePath('/setup');
+  revalidatePath('/control');
+  revalidatePath('/participants/participant_a');
+  revalidatePath('/participants/participant_b');
+
+  return { success: true };
+}
+
+/**
+ * 9. Request Mutual Squad Unlock
+ * Used when both participants have locked, but opening match is still scheduled.
+ */
+export async function requestSquadUnlockAction(formData: FormData) {
+  const session = await getSession();
+  if (!session) {
+    return { error: 'Anda harus masuk untuk mengajukan permohonan buka kunci skuad.' };
+  }
+
+  const phase = Number(formData.get('phase') || 1);
+  const reason = formData.get('reason')?.toString()?.trim() || '';
+
+  const db = getDbClient();
+  const openingMd = phase === 1 ? 1 : 11;
+  const [matchRes, pendingRes] = await Promise.all([
+    db.execute({
+      sql: 'SELECT status FROM matches WHERE md_number = ? LIMIT 1;',
+      args: [openingMd],
+    }),
+    db.execute({
+      sql: "SELECT id FROM squad_unlock_requests WHERE phase = ? AND status = 'pending_approval' LIMIT 1;",
+      args: [phase],
+    }),
+  ]);
+
+  const openingMatchStatus = matchRes.rows[0]?.status ? String(matchRes.rows[0].status) : null;
+  const hasActivePendingRequest = pendingRes.rows.length > 0;
+
+  const validation = validateUnlockRequest({
+    phase,
+    reason,
+    openingMatchStatus,
+    hasActivePendingRequest,
+  });
+
+  if (!validation.valid) {
+    return { error: validation.error || 'Permohonan buka kunci tidak valid.' };
+  }
+
+  const requestId = `sur_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const statements: InStatement[] = [
+    {
+      sql: "INSERT INTO squad_unlock_requests (id, phase, requested_by, reason, status, created_at) VALUES (?, ?, ?, ?, 'pending_approval', datetime('now'));",
+      args: [requestId, phase, session.participantId, reason],
+    },
+  ];
+
+  await executeWithAudit(statements, {
+    actorId: session.participantId,
+    actorName: session.participant.display_name,
+    category: 'squad',
+    action: 'request_squad_unlock',
+    entityType: 'squad_unlock_request',
+    entityId: requestId,
+    beforeJson: { phase, status: 'locked' },
+    afterJson: { requestId, phase, requested_by: session.participantId, reason, status: 'pending_approval' },
+    reason: `${session.participant.display_name} mengajukan permohonan buka kunci skuad bersama untuk Fase ${phase}: "${reason}".`,
+    ruleArticle: phase === 1 ? 'Pasal 14' : 'Pasal 15',
+  });
+
+  invalidateCacheTags('participants');
+  invalidateCacheTags('matches');
+  revalidatePath('/setup');
+  revalidatePath('/control');
+  return { success: true, requestId };
+}
+
+/**
+ * 10. Respond to Mutual Squad Unlock Request (Approve or Reject)
+ */
+export async function respondSquadUnlockAction(params: {
+  requestId: string;
+  approved: boolean;
+  rejectionReason?: string;
+}) {
+  const session = await getSession();
+  if (!session) {
+    return { error: 'Anda harus masuk untuk merespons permohonan buka kunci skuad.' };
+  }
+
+  const { requestId, approved, rejectionReason } = params;
+  if (!requestId) {
+    return { error: 'ID permohonan tidak ditemukan.' };
+  }
+
+  const db = getDbClient();
+  const reqRes = await db.execute({
+    sql: 'SELECT id, phase, requested_by, reason, status FROM squad_unlock_requests WHERE id = ? LIMIT 1;',
+    args: [requestId],
+  });
+
+  const request = reqRes.rows[0];
+  if (!request) {
+    return { error: 'Permohonan buka kunci tidak ditemukan.' };
+  }
+
+  const phase = Number(request.phase);
+  const openingMd = phase === 1 ? 1 : 11;
+  const matchRes = await db.execute({
+    sql: 'SELECT status FROM matches WHERE md_number = ? LIMIT 1;',
+    args: [openingMd],
+  });
+  const openingMatchStatus = matchRes.rows[0]?.status ? String(matchRes.rows[0].status) : null;
+
+  const validation = validateUnlockResponse({
+    requestStatus: String(request.status),
+    requesterId: request.requested_by as any,
+    responderId: session.participantId,
+    openingMatchStatus,
+    approved,
+  });
+
+  if (!validation.valid) {
+    return { error: validation.error || 'Respons permohonan tidak valid.' };
+  }
+
+  const statements: InStatement[] = [];
+
+  if (approved) {
+    statements.push({
+      sql: "UPDATE squad_unlock_requests SET status = 'approved', responded_by = ?, responded_at = datetime('now') WHERE id = ?;",
+      args: [session.participantId, requestId],
+    });
+    statements.push({
+      sql: 'UPDATE roster_phases SET pa_locked = 0, pa_locked_at = NULL, pb_locked = 0, pb_locked_at = NULL, is_locked = 0, locked_at = NULL, locked_by = NULL WHERE phase = ?;',
+      args: [phase],
+    });
+  } else {
+    statements.push({
+      sql: "UPDATE squad_unlock_requests SET status = 'rejected', responded_by = ?, responded_at = datetime('now'), rejection_reason = ? WHERE id = ?;",
+      args: [session.participantId, rejectionReason?.trim() || 'Ditolak oleh lawan', requestId],
+    });
+  }
+
+  await executeWithAudit(statements, {
+    actorId: session.participantId,
+    actorName: session.participant.display_name,
+    category: 'squad',
+    action: approved ? 'approve_squad_unlock' : 'reject_squad_unlock',
+    entityType: 'squad_unlock_request',
+    entityId: requestId,
+    beforeJson: { requestId, phase, status: 'pending_approval' },
+    afterJson: {
+      requestId,
+      phase,
+      status: approved ? 'approved' : 'rejected',
+      responded_by: session.participantId,
+      rejectionReason: approved ? null : (rejectionReason?.trim() || null),
+    },
+    reason: approved
+      ? `${session.participant.display_name} menyetujui permohonan buka kunci skuad Fase ${phase} bersama. Kedua skuad kembali ke mode draf.`
+      : `${session.participant.display_name} menolak permohonan buka kunci skuad Fase ${phase}: "${rejectionReason?.trim() || 'Ditolak'}".`,
+    ruleArticle: phase === 1 ? 'Pasal 14' : 'Pasal 15',
+  });
+
+  invalidateCacheTags('participants');
+  invalidateCacheTags('matches');
+  revalidatePath('/setup');
+  revalidatePath('/control');
+  revalidatePath('/participants/participant_a');
+  revalidatePath('/participants/participant_b');
+
+  return { success: true, approved };
+}
+
+/**
+ * 11. Cancel Squad Unlock Request by Requester
+ */
+export async function cancelSquadUnlockAction(requestId: string) {
+  const session = await getSession();
+  if (!session) {
+    return { error: 'Anda harus masuk untuk membatalkan permohonan.' };
+  }
+
+  if (!requestId) {
+    return { error: 'ID permohonan tidak ditemukan.' };
+  }
+
+  const db = getDbClient();
+  const reqRes = await db.execute({
+    sql: 'SELECT id, phase, requested_by, status FROM squad_unlock_requests WHERE id = ? LIMIT 1;',
+    args: [requestId],
+  });
+
+  const request = reqRes.rows[0];
+  if (!request) {
+    return { error: 'Permohonan buka kunci tidak ditemukan.' };
+  }
+
+  if (String(request.status) !== 'pending_approval') {
+    return { error: 'Permohonan sudah tidak berstatus pending.' };
+  }
+
+  if (request.requested_by !== session.participantId) {
+    return { error: 'Hanya pemohon yang dapat membatalkan permohonan ini.' };
+  }
+
+  const statements: InStatement[] = [
+    {
+      sql: "UPDATE squad_unlock_requests SET status = 'cancelled' WHERE id = ?;",
+      args: [requestId],
+    },
+  ];
+
+  await executeWithAudit(statements, {
+    actorId: session.participantId,
+    actorName: session.participant.display_name,
+    category: 'squad',
+    action: 'cancel_squad_unlock',
+    entityType: 'squad_unlock_request',
+    entityId: requestId,
+    beforeJson: { requestId, status: 'pending_approval' },
+    afterJson: { requestId, status: 'cancelled' },
+    reason: `${session.participant.display_name} membatalkan permohonan buka kunci skuad Fase ${request.phase}.`,
+    ruleArticle: Number(request.phase) === 1 ? 'Pasal 14' : 'Pasal 15',
+  });
+
+  invalidateCacheTags('participants');
+  invalidateCacheTags('matches');
+  revalidatePath('/setup');
+  revalidatePath('/control');
+
+  return { success: true };
 }

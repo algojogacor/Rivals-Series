@@ -606,3 +606,48 @@ Mengangkat liga 1v1 ini menjadi pengalaman panggung tanding siaran digital berka
 ### C. Verifikasi
 - **Unit Tests:** 70/70 tests lulus 100% (`vitest run`), termasuk tes format Knockout Stage.
 - **Production Build:** `npm run build` sukses 100% tanpa error di seluruh 14 rute Next.js.
+
+
+---
+
+## 8. Fitur Batal Kunci Mandiri & Permohonan Buka Kunci Skuad Bersama (6 November 2026)
+
+### A. Latar Belakang & Kebutuhan Pengguna
+- Pengguna menanyakan apakah terdapat mekanisme koreksi/penggantian kartu pemain jika peserta telah mengunci skuadnya (misalnya ada salah pilih varian kartu pemain virtual sebelum matchday pembuka dimulai).
+- Sebelumnya, aksi penguncian skuad bersifat satu arah permanen tanpa jalur pembatalan.
+
+### B. Mekanisme & Desain Solusi (Pasal 14 & 15)
+1. **Fitur 1: Batal Kunci Mandiri (*Self-Unlock*):**
+   - **Kondisi:** Pengguna sudah mengunci skuad (`myLocked = true`), tetapi lawan *belum* mengunci (`both_locked = false`), dan laga pembuka fase kompetisi (MD1 untuk Fase 1, MD11 untuk Fase 2) masih berstatus `scheduled` (belum kick-off/dilaporkan).
+   - **Perilaku:** Peserta dapat membatalkan kuncinya secara instan tanpa memerlukan izin lawan (`pa_locked = 0` atau `pb_locked = 0`). Skuad kembali ke status draf untuk disesuaikan.
+2. **Fitur 2: Permohonan Buka Kunci Skuad Bersama (*Mutual Squad Unlock Request*):**
+   - **Kondisi:** Kedua peserta telah mengunci skuad (`both_locked = true`), dan laga pembuka fase masih berstatus `scheduled`.
+   - **Perilaku:** Pembatalan sepihak dilarang demi keadilan kompetisi. Salah satu peserta dapat mengajukan permohonan buka kunci dengan alasan wajib ($\ge 5$ karakter). Lawan akan menerima notifikasi di tab *Konfirmasi* (`/control`) dan di banner *Penyusun Skuad*.
+   - **Persetujuan Lawan:** Jika lawan menyetujui, kedua skuad secara atomik dikembalikan ke mode draf (`pa_locked = 0, pb_locked = 0, is_locked = 0`). Keduanya dapat memperbaiki skuad dan wajib mengunci ulang sebelum pertandingan pembuka dilaporkan.
+   - **Penolakan/Pembatalan:** Lawan berhak menolak permohonan (dengan alasan penolakan), atau pemohon dapat membatalkannya sendiri sebelum direspons.
+   - **Proteksi Integritas:** Begitu pertandingan pembuka fase (MD1 atau MD11) sudah berjalan (`awaiting_confirmation`, `confirmed`, dst.), seluruh fitur buka kunci ditutup secara permanen.
+
+### C. Implementasi Teknis
+1. **Database & Migrasi SQLite/Turso:**
+   - Dibuat tabel `squad_unlock_requests` dan indeks `idx_squad_unlock_requests_phase_status` di `web/scripts/schema.sql`.
+   - Migrasi dieksekusi ke database Turso via `web/scripts/migrate-squad-unlock.mjs`.
+2. **Layer Logika & Validasi (`web/src/lib/squad_unlock.ts`):**
+   - Fungsi validator state machine: `canSelfUnlockSquad`, `validateUnlockRequest`, `validateUnlockResponse`.
+3. **Database Access Layer (`web/src/lib/db.ts`):**
+   - `getPendingSquadUnlockRequests()` & `getSquadUnlockRequestById()`.
+4. **Server Actions (`web/src/lib/actions/squad_actions.ts` & `actions.ts`):**
+   - `unlockParticipantSquadAction(phase)`
+   - `requestSquadUnlockAction(formData)`
+   - `respondSquadUnlockAction({ requestId, approved, rejectionReason })`
+   - `cancelSquadUnlockAction(requestId)`
+   - Seluruh mutasi dicatat dalam `audit_events` dengan SHA-256 hash chaining dan cache revalidation otomatis.
+5. **Komponen Antarmuka Pengguna (UI/UX):**
+   - `web/src/components/squad/SquadQuotaBanner.tsx`: Tombol "Batal Kunci" mandiri, tombol "Ajukan Buka Kunci Bersama", modal pengajuan alasan, dan banner status permohonan aktif.
+   - `web/src/components/SquadBuilderWorkbench.tsx`: Prop threading untuk data matches & unlock requests.
+   - `web/src/components/control/PendingMatchesTab.tsx`: Kartu persetujuan/penolakan permohonan buka kunci skuad di tab Konfirmasi Pusat Kontrol.
+   - `web/src/components/ControlCenterClient.tsx` & `web/src/app/control/page.tsx`: Integrasi data server dan badge hitung permohonan menunggu konfirmasi.
+
+### D. Verifikasi & Pengujian
+- **Unit Testing (`web/src/lib/squad_unlock.test.ts`):** 17 skenario pengujian baru mencakup aturan batal mandiri, permohonan bersama, persetujuan, penolakan, pembatalan, validasi alasan, pembatasan matchday pembuka, dan transisi SQLite in-memory.
+- **Hasil Test:** **87/87 tests lulus 100%** (`pnpm test`).
+- **Production Build:** Next.js Turbopack build lulus 100% tanpa error TypeScript.

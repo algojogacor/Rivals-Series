@@ -9,6 +9,7 @@ import {
   getAllGoalNominations,
   getPendingResetRequest,
   getAllGoalEvents,
+  getPendingSquadUnlockRequests,
 } from '@/lib/db';
 import { ControlCenterClient } from '@/components/ControlCenterClient';
 
@@ -33,6 +34,7 @@ export default async function ControlCenterPage() {
     goalNominations,
     pendingReset,
     goalEvents,
+    pendingSquadUnlockRequests,
   ] = await Promise.all([
     getParticipants(),
     getAllMatches(),
@@ -44,6 +46,7 @@ export default async function ControlCenterPage() {
     getAllGoalNominations(),
     getPendingResetRequest(),
     getAllGoalEvents(),
+    getPendingSquadUnlockRequests(),
   ]);
 
   return (
@@ -63,7 +66,7 @@ export default async function ControlCenterPage() {
       goalNominations={goalNominations}
       pendingReset={pendingReset}
       goalEvents={goalEvents}
+      pendingSquadUnlockRequests={pendingSquadUnlockRequests}
     />
   );
 }
-

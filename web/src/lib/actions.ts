@@ -17,6 +17,10 @@ export {
   initializePhase2SquadAction,
   lockParticipantSquadAction,
   lockRosterPhaseAction,
+  unlockParticipantSquadAction,
+  requestSquadUnlockAction,
+  respondSquadUnlockAction,
+  cancelSquadUnlockAction,
 } from './actions/squad_actions';
 
 export {
